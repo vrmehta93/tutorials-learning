@@ -1,0 +1,1009 @@
+Colt Steele
+
+1 - (Course Orientation)
+
+2 - (Introducing...Git!)
+
+3.13 - Installing Git: Terminal vs GUIs (Installation & Setup)
+	A lot of GUIs available for git
+		https://git-scm.com/downloads/guis
+	We'll use GitKraken
+
+3.14 - WINDWOS Git Installation
+	Bash is a CLI for Linux and Mac
+	Since Windows doesn't have Bash (it has cmd), we'll use Git Bash. It's a tool that emulates bash (and git) experience on a windows machine
+	Default editor is vim. But we will change to VS Code (during setup)
+
+3.15 - MAC Git Installation
+	For most macs, git comes pre-installed
+	Make sure you're using git version > 2.23
+
+3.16 - Configuring Your Git Name & Email
+	Your name and email is not tied to an account necessarily (there's no password). You can make this whatever you want
+	This is what shows up when others see who the author of the commit was
+	You can always re-configure these values
+	To configure name
+		git config --global user.name "Vishal Mehta"
+	To check your name
+		git config user.name
+	Same for email
+		git config --global user.email blah@blah.com
+	I recommend you put an email you have acess to especially for when you sign up for a github account
+
+3.17 - Installing GitKraken (Our GUI)
+	gitkraken.com
+
+4.24 - Our First Commands: Git Init and Git Status (The Very Basics of Git: Adding & Committing)
+	git status
+	git init - initialize a new repo wherever we are in our terminal
+
+4.25 - The Mysterious .Git folder
+	git init creates a .git folder
+
+4.26 - A Common Early Git Mistake
+	We do NOT initialize a repo inside of a repo
+
+4.28 - Staging Changes wtih Git Add
+	3 different locations
+		Working directory
+		Staging Area
+		Repository
+	Working directory - fancy way of saying current directory
+	Repository - .git folder
+	Intermediate zone, not a physical location - staging area. This is wherewe add our changes to before we make a commit
+	To add - git add
+
+4.29 - Finally, The Git Commit Command!
+	If you just use 'git commit', it will open your default editor
+	Another variant - git commit -m "message"
+
+4.30 - The Git Log Command (And More Committing)
+	git log - log of commits for a repo
+
+5.33 - Navigating the Git Documentation (Commits In Detail (And Related Topics))
+	git-scm.com/doc
+	Reference Manual
+		All git commands
+		If you select a command and scroll down, you'll also see some examples
+	Book - teaches you on how to use git
+
+5.34 - Keeping Your Commits Atomic
+	Keep each commit focused on one thing
+
+5.35 - Commit Messages: Present Or Past Tense?
+	Git docs - describe your changes in imperative mood aka present tense style commit messages
+	You don't have to do this. This is just convention
+	Just stay consistent
+	It also depends on orgs conventions
+
+5.36 - Escaping VIM & Configuring Git's Default Editor
+	Sometimes -m flag is not going to cut it. That's why we want to configure 'git commit' to open an editor (not vim)
+	If you go to git docs appendix A3.1 (Git Commands - Setup and Config), just like we configured our email, we can configure the editor (table listed on page for each editor)
+	Once you're done with your message, save the file and close it
+	However, if you run 'git log', it will take a up a lot of space
+
+5.37 - A Closer Look At The Git Log Command
+	(continue from previous - commit has really long message)
+	Just use --pretty. e.g. git logs --pretty=oneline OR git logs --oneline
+	OR you can use --abbrev-commit
+	Now, you can see one line of each commit message, which is why your first line of commit message if it's a super long one, should explain/summarize the commit
+
+5.39 - Fixing Mistakes With Amend
+	Suppose you made a commit and realized that you forgot to include a file or you made a typo in your commit message
+	Amend allows us to edit or redo or update just the previous commit. So this doesn't work if you mada a mistake 10 commits ago
+	Pattern
+		git commit -m "message"
+		git add forgotten_file
+		git commit --amend
+	Once you run that last command, it should open up the editor with "message" and giving you chance to edit
+	
+
+5.40 - Ignoring Files w/ .gitignore
+	Webiste - gitignore.io - starting place for .gitignore
+
+6.43 - The Master Branch (Or Is It Main?) (Working With Branches)
+	The name on git and Github for default branch for a long time was master
+	In 2020, Github renamed default branch from master to main
+	With git however (we haven't touched Github yet), the default branch is still master. There are conversations happening about changing that. I will also show you later on how to change the default branch name if you want to do this yourself (later)
+
+6.44 - What On Earth is HEAD?
+	You'll see HEAD at the top log in git logs
+	HEAD is simply a pointer that refers to the current "location" in your repo. It points to a particular branch reference
+	Since we haven't done anything, the HEAD points to the latest commit on the master branch
+	(HEAD -> master) in git logs - HEAD refers to master. That's what this arrow means. The first one is the "tip" of the branch (the most recent commit)
+	So head refers to the branch pointer
+	If you had more branches and you switch to a different branch, HEAD will point to the tip of new branch
+	To reiterate, HEAD is a pointer. It's a reference to a branch pointer. And branch pointer is where a branch currently is.
+	You can have a whole bunch of branches and each one has a branch reference that just refers to where that branch is 
+	(explanation) The key takeaway - a branch is just a reference to some commit and as we make more commits, even if we're just on the master branch, that master pointer now reflects that change. It updates to point to that new commit
+
+6.45 - Viewing All Branches With Git Branch
+	'git branch' - gives a list of existing branches in a repo
+
+6.46 - Creating & Switching Branches
+	'git branch <branch_name>' - create new branch. It does NOT switch to that new branch (aka HEAD still points to master)
+	'git switch <branch_name>' - switch to a new branch
+	This a newer command in git. We use to run something called 'git checkout' to do the same thing (later)
+
+6.47 - More Practice With Branching
+	Alternative to adding and commiting all unstaged changes (git add and git commit) - 'git commit -a -m "message"'
+	 
+6.48 - Another Option: Git Checkout vs Git Switch?
+	Different command to switch branches - 'git checkout <branch_name>'
+	This will do the exact same thing as 'git switch'
+	This 'git checkout' existed for a long time. It still exists and it does a lot more than switching branches
+	And for lot of users, this was confusing and felt like it did too many things. So 'get switch' was introduced
+	Another thing we can do is instead of creating a branch and switching to it in 2 separate steps, we can do it in one - 'git switch -c <branch_name>'
+		-c is for create
+	There is an equivalent command if you use git checkout - 'git checkout -b <branch_name>
+
+6.49 - Switching Branches With Unstaged Changes?
+	If you switch branches, and there's a conflict with unstaged changes, git will complain. But if the changes are not in conflict, it will switch branches and bring those unstaged changes with you
+
+6.50 - Deleting & Renaming Branches
+	(going over git branch docs) - git branch does a lot e.g. create new branch
+	'git branch -d <branch_name>' - delete branch
+		(e.g.) creates a new branch deleteMe from branch1 and tries to delete. Gets error "Cannot delete branch 'deleteMe'..."
+		switches to master and tries to delete that branch again, now he gets a different message "The branch 'deleteMe' is not fully merged ..." because it's not fully merged
+	You can run 'git branch -D <branch_name>' where -D is shortcut for --delete and --force
+		--force - allow deleting of branch irrespective of its merged status
+	You want to be confident in what you're deleting and that you actually want to delete it because without Github, without any sort of backup, which we don't have at this point, if I had a lot of work on this branch and I actually delete it, it's gone
+	To rename a branch, first change to the branch that we want to rename (which is a little confusing since to delete a branch you have to go anywhere but that branch; you could not delete from the branch).
+	Then run 'git branch -m <new_name>'
+		-m is short for --move which is move/rename
+
+6.51 - How Git Stores HEAD & Branches
+	The file .git/HEAD has a reference to a particular (current) branch
+		e.g. ref: refs/heads/master
+	Now this refs/heads/master (directory path inside .git) actually references a particular commit
+	If you open that file, you'll only see the commit hash to a particular commit and HEAD in turn is pointing to one of those branch references 
+
+7.54 - An Introduction to Merging (Merging Branches, Oh Boy!)
+	'git merge <feature branch>' (you're in the master/main branch)
+	2 concepts
+		We merge branches, not specific commits
+		We always merge to the current HEAD branch
+	Remember, branches are just defined by a branch pointer
+	Fast-forward merge
+		master & bugfix branches point to the same commit, until they diverge again
+		master simply caught up on the commits from bugfix
+		There wasn't additional work on the master branch
+		It's just a matter of moving the pointer forward
+
+7.57 - Generating Merge Commits
+	Imagine one of your teammates merged in a new feature or change to master while you were working on a branch
+	I'm going to show you an example where we don't arrive at a conflict and instead git is able to make the merge for us automatically (conflict in next video)
+	So what happens in this scenario? It's not a fast forward merge
+	Something called a "merge commit" gets generated. Basically, git just makes a commit for us on the branhc into the recipient branch
+	NOTE - this new merge commit is the first commit we've seen that actually has 2 different parent commits
+		Remember, every commit has a parent.
+		So commits can have multiple parent and in fact, they do whenever we make a merge commit
+
+7.58 - Oh No! Merge Conflicts
+
+7.59 - Resolving Merge Conflicts
+	When git doesn't know how to automatically merge, then you need to manually resolve (merge conflict)
+	When you run git merge and if there are conflicts, you'll see something like this
+		> CONFLICT (content): Merge conflict in blah.txt
+		....
+	This is a multi step process
+		Git tells us there are conflicts
+		Then we have to go and open the files where there are conflicts and fix them
+		And then we commit those changes
+	The files where there are conflicts are decorated
+		<<<<<<< HEAD
+		....
+		===========
+		....
+		>>>>>> bug-fix
+	What these markers indicate is what content came from HEAD branch, the branch I'm on, the recipient branch I'm trying to merge into and that's indicated with "<<<<<< HEAD" and "======"
+	And the other section is from bug-fix branch that I'm trying to merge in
+	So it's my job now to delete or keep both, figure out which part I want or don't want (and delete the conflict "markers" in the documents/files)
+	And then I save the file
+	Then I go back and add and commit the changes
+
+8.63 - Introducing The Git Diff Command (Comparing Changes With Git Diff)
+	'git diff' - view changes between commits, branches, files, working directory and more
+	First way 'git diff' without any options - lists all chagnes in working directory that are NOT staged for next commit. In other words, compares staging area and working directory
+
+8.64 - A Guide To Reading Diffs
+	The output follows a very similar pattern
+	(example of rainbow.txt by modifying 1 and adding 2 lines)
+		First thing that pops up - 'git diff a/rainbow.txt b/rainbow.txt'
+		Usually these files being compared are going to be the same file but different versions. It could be different files
+		Then next part is 'index <hash> <hash> <internal file mode identifier>'
+		Then we see 2 lines of markers
+			--- a/rainbow.txt
+			+++ b/rainbow.txt
+		This is gits way of telling us that for file a will be indicated with a minus sign and file b will be a plus
+		Then we get to chunks
+			@@ -3, 4 +3, 5 @@ 
+			...
+			-purple
+			+indigo
+			+violet
+		So a chunk header is the header at the beginning of each chunk and you can identify them with @@ and weird looking numbers inside
+		There are 2 pairs of numbers. One set of numbers correspond to file a, the other file b
+		These numbers are telling us how many lines have been extracted in this chunk. So how big is this chunk from file a and what part of the file do they start from
+		But '-3, 4' for file a - 4 lines have been extracted starting from line 3. The minus indicates file a
+		For File b (+3, 5), we have 5 lines
+
+8.65 - Viewing Unstaged Changes
+	'git commit -am "message"' - add everything in working directory and commit
+	Staging is usually refer to the index on the documentation
+
+8.66 - Viewing Working Directory Changes
+	'git diff HEAD' - lists all changes in working directory since last commit (similar to git diff where it's supposed to show differences between working directory and staging area)
+	'git diff' is supposed to show difference between working directory and staging area
+	'git diff HEAD'
+	So 'git diff' shows us all unstaged changes and 'git diff HEAD' shows us all changes staged and unstaged since HEAD (files need to be tracked though)
+
+8.67 - Viewing Staged Changes
+	'gif diff --staged' or '--cached' (it does same thing, it's just an alias) - list changes between staging area and our last commit
+	We've seen how to do all unstaged, we've seen how to do staged and unstaged
+	These 2 options are only for viewing staged changed - what's the difference between my last commit and my staging area
+
+8.67 - Diffing Specific files
+	'git diff HEAD <filename>' and 'git diff --staged <filename' - view changes within a specific file
+
+8.68 - Comparing Changes Across Branches
+	'git diff branch1..branch2' (you can also just add a space) - git will list changes between tips of branch1 and branch2
+
+8.69 - Comparing Changes Across Commits
+	'git diff commit1..commit2' - compare 2 commits
+
+9.75 - Stashing Basics: Git Stash Save & Pop (The Ins and Outs of Stashing)
+	'git stash' - save changes that are not yet ready to commit. You can stash changes and then come back to them later
+	Running this command will take all uncommitted changes (staged and unstaged) and stash them, reverting the changes in your working copy
+	It's a short version of 'git stash save'
+	'git stash pop' - remove most recently stashed changes in your stash and re-apply them to your working copy
+	PERSONAL EXPERIMENT - using branches main and b1
+		If a file is modified, and then switched to another branch, the modified file comes along with you
+		If a file is modified and added, and then you switch to another branch, the staged file comes along with you
+		Seems like this applies when main branch has new changes since b1 branch was created/updated AND you have some staged/unstaged changes in b1 that conflict with those new changes
+	'git stash apply' - apply whatever is stashed away, without removing it from stash. This can be useful if you want to apply stashed changes to multiple branches
+	This will take whatever is in the stash and apply it in the same way that pop does EXCEPT with apply, the stash stays in the stash. In other words, the changes are still in the stash and we can apply them in multiple places versus with pop, our changes are removed from stash after they're applied
+	EXAMPLE
+		He's in branch branch1, makes some changes and creates a stash
+		He switches to master and he could have called 'git stash pop' but calls 'git stash apply' and those changes try to come over but show a "conflict" error message.
+		He resolves the conflict
+
+9.78 - Working With Multiple Stashes
+	So far we've put in one thing in stash and then popped it out. But we can actually stash again and again. We can have multiple stashes in our stack of stahes and they will be kept in the order that we added them in
+	'git stash list' - view stashes
+		Shows the branch and the commit you left
+	You can reference particular stashes by using little stash ids (e.g. git stash apply stash@{2})
+
+9.79 - Dropping & Clearing The Stash
+	'git stash drop <stash-id>' - delete particular stash
+	This is something you only need to do if you're not using pop
+	'git stash clear' - clear everything from your stash
+
+10.82 - Checking Out Old Commits (Undoing Changes & Time Traveling)
+	When we switched branch, we used 'git switch' which is a newer way of doing things. But the long standing way of switching branches is using 'git checkout' but also git checkout does a lot of other things
+	Just a reminder, a lot of people think that 'git checkout' does too much, which is why new commands were added, including 'git switch' and 'git restore'
+	If we use 'git checkout <commit-hash>', rather than checking out a branch, we instead check out a particular commit hash like I've done here (e.e.g git checkout d8194d6)
+		Remember, we can view these commit hashes using git log
+	When we run that commit, something quite peculiar happens
+	We're going to see something that sounds very bad - Detached HEAD. You're in detached head state. You can look around, make experimental changes and commit and you can discard any commits you make in this state without impacting any branches by switching back to a branch
+	When you run that, you travel back in time. When you run 'git log' you only commits up to the commit you checked out
+	When you run git status, you'll see "HEAD detached at <commit-hash>" message
+	Normally, HEAD points to a branch reference. It does NOT refer to a commit. It refers to the branch that we're on and the branch reference points to a commit
+	Now when we checkout an earlier commit, what we're doing is actually changing HEAD to refer to a commit
+	It's kind of a weird state. It's not badd but we can't always do the same things that we could od if we were
+	So we're NOT on a branch, we're just floating around
+	If you run 'cat .git/HEAD', earlier we saw something like 'refs/heads/master' but right now we see '<commit-hash>' (commit we checked out) and that's abnormal. We're used to it pointing to an actual branch reference
+
+10.83 - Re-Attaching Our Detached HEAD!
+	Let's talk about what we can do in this detached head state. You have few options
+		1. Stay in detached HEAD to examine contents of old commit
+		2. Leave and go back to whereever you were before - reattach the HEAD
+		3. Create a new branch and switch to it. You can now make and save changes, since HEAD is no longer detached
+	Now if you want to go back to master, all you need to do is switch to a branch e.g. git switch master and it would re-attach
+	So nothing changed and we didn't mess anything up. We simply went back as an observer. We took a look at what happened, all those commits ago. We time tarvelled back and time travelled forward
+	But if I wanted to go back and then I wanted to split off and try a new version; basically I want to get rid of all of this work (commits that came after), but I'm not going to delete all of that work. But I'm going to try making a new branch that doesn't include any of this
+	So I'll go back in time to this commit, whatever this hash is, and then I will branch off and do somee stuff on that new branch
+	Once I checkout the old commit, I'm going to make a new branch
+	PERSONAL EXPERIMENTS
+		(Add one commit in detached state and switch back to main)
+		I Did 'git checkout' on old commit and created a new file
+		I was able to add and commit that file
+		When I ran 'git switch main' (to see if it would retain those commits if I switch), I got this warning message:
+			CMR552@bcd07455d776 Test-Git-Project % git switch main
+			Warning: you are leaving 1 commit behind, not connected to
+any of your branches:
+
+			  bbb9fa2 be-headed file without branch
+
+			If you want to keep it by creating a new branch, this may be a good time
+to do so with:
+
+			 git branch <new-branch-name> bbb9fa2
+
+			Switched to branch 'main'
+		(Add multiple commits in detached state and switch back to main)
+		Did the same as above but with multiple commits and similar output when switched back to main
+			CMR552@bcd07455d776 Test-Git-Project % git switch main
+			Warning: you are leaving 2 commits behind, not connected to
+			any of your branches:
+
+			  e7798a8 be-headed 2.0
+			  470e378 be-headed 2.0
+
+			If you want to keep them by creating a new branch, this may be a good time
+			to do so with:
+
+			 git branch <new-branch-name> e7798a8
+
+			Switched to branch 'main'
+		(Since commit is already made, test to see if you can checkout those commits)
+		I was able to run 'git checkout e7798a8' (from line 330) and I was able to access my changes once again
+
+10.84 - Referencing Commits Relative to HEAD
+	There's another way that we can reference other commits. We can reference things based upon HEAD
+	The syntax is kind of weird, but it looks like this
+		HEAD~1 refers to commit before HEAD (parent)
+		HEAD~2 refers to 2 commits before HEAD (grandparent)
+	So you can use this as an alternative e.g. git checkout HEAD~1
+	If you checkout a commit and you want to go back to the branch where you were, you can run 'git switch -'
+
+10.85 - Discarding Changes With Git Checkout
+	Suppose you've made some changes to a file but don't want to keep them. To revert the file back to whatever it looked like when you last committed, you can use 'git checkout HEAD <file>'
+	Here's another shorter option to revert a file - 'git checkout -- <file>'. So rather than typing HEAD, you can substitute '--' followed by the file(s) you want to restore
+	THOUGHT - I wonder if I can change HEAD to maybe some other branch name? Or maybe HEAD~3
+	What's extra confusing is that there's a whole new command that also does the same thing and more - 'git restore'
+
+10.86 - Un-Modifying With Git Restore
+	'git restore' is a new commmand to git that helps with undoing operations. It's not that well known
+	git restore takes some of the burden away from git checkout
+	Honestly, it feels a bit clunky to me but I'll show you
+	First thing we can do with git restore is discard changes that we've made in a repo since the last commit. 'git restore <file>'. This is the same as 'git checkout HEAD <file'
+	The other thing we can do is reference a particular commit and go back
+	'git restore <file>' restores using HEAD as the default source, but we can change that using the --source option e.g. git restore --source HEAD~1 app.js
+		We haven't gone back in time (no detached head or anything) but app.js will be listed as modified. To go back to head, you can run git restore app.js and that will remove all changes
+
+10.87 - Un-Staging Changes With Git Restore
+	The second use for git restore is to unstage files that we've currently staged
+	So if we made a mistake, we stage something, it's going to be included in the next commit and we dedice we don't want that. We can unstage it using 'git restore --staged <file>' (aka it "un-adds" the file)
+	So it's confusing right? The two purposes for git restore is to modify a file/files and the other is to unstage file/files	
+	Fortunately, if you use git status, git will tell you at any point, it reminds you how to do both (CONFIRMED - git status shows the commands for staged and unstaged files)
+
+10.88 - Undoing Commits With Git Reset
+	Now we're moving on to a similar soudning command which is 'git reset'
+	The 'git reset' command will reset a repo back to some particular commit
+	Suppose you've just a couple of commits on the master branch, but you actually meant to make them on a separate branch instead. To undo those commits, you can use git reset
+	There are 2 flavors - there's the regular reset and then a hard reset
+	We're going to start with the plain old reset - git reset <commit-hash>
+	(example) add 2 junk commits (aka 5th and 6th commit)
+		If I want to go back to 4th commit, I can reference the commit hash, copy that in git reset <hash>. And what happened?
+		You might think those changes are gone but they're actually not. Those changes are still here
+		Doesn't it seem they should be reset? NO, because all we did was perform a basic or a plain reset that removed the commits, but the changes are still in our working directory
+		So I can get rid of those changes and I can undo stuff in my local files. But all that we did right now was tell git to get rid of some commits
+		(in other words, it moves the changes since the commit hash into unstaged changes
+	git reset with a commit hash removes the commits, but it does not remove the changes from your working directory. So you don't lose that work, you lose the commits
+	The alternative is a hard reset, which is the same command, but with --hard
+	If you want to undo both the commits AN Dthe actual changes in your files, you can use the --hard option. For example, git reset --hard HEAD~1 will delete the last commit and associated changes
+	When we do a git reset --hard with a commit hash, what will actually happen is that we lose the commits. Git undoes the commits up to this commit hash and the changes are removed from our working directory
+	So if you want to get rid of the work and the corresponding commits, you can use --hard
+
+10.89 - Reverting Commits With...Git Revert
+	Another similar sounding command - git revert. Yes we have reset, restore and now revert
+	Revert actually does something very similar to reset. It has to do with undoing changes from a commit but there's a very important difference
+	git reset actually moves the branch pointer backwards, eliminating commits
+	git revert instead creates a brand new commit which reverses/undos the changes from a commit. Because it results in a new commit, you will be prompted to enter a commit message
+	So both revert and reset will undo changes from commits, but the way that they accomplish it is different
+	As we saw with reset, reset moves commits entirely and it moves the branch pointer backwards as if those commits never occurred. They didn't ever exist in the first place
+	Revert is something different. It actually makes a brand new commit and in that new commit, it undoes the changes from an earlier commit. So it still helps us undo changes but again, it makes a new commit that basically says undoing changesinsetad of just deleting everything
+	When you run git revert, it opens up editor for a commit message because it generates a new commit. Just like when we merge, it generates a commit when we merge
+	Why do git revert? Why not just reset?
+		It has to do with collaboration
+		If other people have copies of that commit, if everyone else had that bad commit on their copy and then decided to get rid of it using reset that can cause some serious problems because I'm undoing history that other people have and that can be difficult to reconcile
+		So instead what we usually would do is use revert and that will make a new commit as we've seen and I can share that new commit with everyone
+		Now, potentially I might make a mistake and make it commit I want to get rid of and I haven't shared it with anyone else yet. Then it's fine to use reset. Nobody ever knows they don't have it on their machines
+		But as soon as collaborators have a commit, if you're trying to get rid of those changes, it's better to use revert
+	Last thing I'll say about the revert command is that sometimes reverting a commit can result in conflicts where you need to go into the file just like any other merge conflict and figure out what you want to keep and what you want to get rid of
+	PERSONAL EXPERIMENT
+		(if you have multiple bad commit, does git revert revert all the changes since then?)
+		So 'git revert <hash1>' only reverts one particular commit
+		I tried 'git revert <hash1> <hash2>' but that creates 2 different commits
+		Based on stackoverflow - use 'git revert --no-commit HEAD~n..'
+			Reverts last n commits with only one commit
+			Tried with '--no-commit' and it was the same as previous where it creates a new commit for each commit that needs to be reverted
+			'HEAD~n..' is the same as 'HEAD~n..HEAD'
+			This solution undoes the changes from the commits and brought to the staging area. So you have to manually commit those changes
+
+
+11.92 - What Does Github Do For Us? (Github: The Basics)
+	Github has evolved over time and added new features but the core mechanic, the single thing that github is known for is that it's a hosting platform for git repos
+	Git is completely independent
+	Github is not the only option for hosting repos. Other options are GitLab, Bitbucket and Gerrit but the truth is that in recent years, Github has completely obliterated the competition. It's now the largest host of source code
+	It's free for our purposes
+
+11.93 - Why You Should Use Github!
+	Collaboration is the most important to use github
+	Open source projects - github is home for open source projects
+	Github can give you, as a developer, exposure it can give you I won't say noteriety, but if you contribute to open source projects consistently, you are going to run into people and sort of make friends or at least github friends
+	Your github page can act sort of as a resume
+	Last reason - stay up to date with projects and tools you rely on
+
+11.94 - Cloning Github Repos With Git Clone
+	'git clone <url>' gets a repo to your machine
+	'git clone' is part of git and NOT github
+	Make sure you're not in a git repo when you run this because it creates a folder and in that folder, there's a .git repo that's been initialized
+
+11.95 - Cloning Non-Github Repos
+	'git clone' works with any hosted repo. Whether that's something that you're serving yourself like maybe a company has their own internal server with a hosted repo, or maybe we're using something like Gitlab
+
+11.96 - Github Setup: SSH Config
+	Create an account in Github
+	Maybe choose an email address that's the same as 'git config user.email'
+	Second step is to configure SSH key - so we don't need our username and password every single time we want to interact with Github from the CLI
+	So what we need to do is generate one of these SSH keys and then tell Github about it
+	This depends on what platform you're on but check if there's an SSH key already and all you do is run these commands
+		'ls -al ~/.ssh'
+		By default, the filenames of the public keys are one of the following:
+			id_rsa.pub, id_ecdsa.pub, id_ed25519.pub
+		REFERENCE - https://docs.github.com/en/authentication/connecting-to-github-with-ssh/checking-for-existing-ssh-keys
+	If you don't see these, no big deal. We'll just generate a new key
+		REFERENCE - https://docs.github.com/en/authentication/connecting-to-github-with-ssh/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent
+	Once you've created an SSH key, follow the steps to add the SSH key to Github
+
+11.97 - Creating Our First Github Repo!
+	Let's talk about how we actually get our code up on github
+	There are 2 different approaches or options that I'm going to walk through
+	Option 1 - existing repo
+		Create new repo on github, connect your local repo (add a remote), push your changes to github
+	Option 2 - Start from scratch
+		Create a brand new repo on github, clone it down on your machine, do some work locally, push up your changes to Github
+
+11.98 - A Crash Course on Git Remotes
+	Before we ccan push anything up to Github, we need to tell git about our remote repo on Github. We need to setup a "destination" to push up to
+	In git, we refer to these "destinations" as remotes. Each remote is simply a URL where a hosted repo lives
+	It's just like a label for a URL that we can then push code up to or fetch or pull down new code from
+	An easy place to start is 'git remote' or 'git remote -v' (-v for verbose). If you haven't added any remotes, you won't see anything
+	(talking about folder with git init + some work) So we did not clone this repo. We created it from scratch. So there are no remotes, but we can make a remote using this command - 'git remote add <name> <url>'
+	This is a way of telling git - please remember this URL using this name
+	e.g. git remote add origin https://github.com/blah/repo.git
+		Anytime I use the name "origin", I'm referring to this particular github repo URL
+	The term "origin" is just a conventional git remote name, but it's not special in any way. No magical powers. It's just a name for a URL. You can rename them
+	When we clone a github repo, the default remote name setup for us is called origin. You can change it. Most people leave it
+	We could instead add a new remote for same URL, but instead call it 'mygithuburl'
+		git remote add mygithubrurl https://github.com/meh/repo.git
+	If we go to the github repo we created that's empty, we see some instructinos
+		(for existing repo from CLI)
+		git remote add origin <url>
+		...
+	This is NOT common but if needed, you can rename a remote with this command
+		git remote rename <old> <new>
+	And you can get rid of remote
+		git remote remove <name>
+
+11.99 - Introducing Git Push
+	We have one more step to get our code to Github. We need to push it up
+	If you remember Option 1 (existing repo), the final step is to push it up
+	So we do this using 'git push'. This is NOT github specific. It's a git command
+		git push <remote> <branch>
+	We need to specify the remote we want to push up to AND specific local branch we want to push up to that remote
+	It works with any remote
+	Common command - 'git push origin master' (or main)
+	If you're working on branch 'branch1' and you want to push those changes - git push origin branch1
+
+11.100 - Touring A Github Repo
+
+11.102 - A Closer Look At Git Push
+	While we often want to pus ha local branch up to a remote branch of the same name, we don't have to
+		git push <remote> <local_branch>:<remote_branch>
+	To push our locale branch 'pancake' up to a remote branch 'waffle'
+		git push origin pancake:waffle
+	This is NOT common
+
+11.103 - What does "git push -u" mean?
+	The -u in 'git push' allows us to set the upstream of the branch we're pushing
+		git push -u origin master
+	The upstream of a branch, a local branch is, think of it as a connection, pointing to a remote branch
+	So if we have our master branch on our local machine, normally we want the upstream branch to be origin master or some master branch on Github
+	They are connected and this enables me to do things like just run 'git push' without having to specify 'origin master'
+	It's not something that we have to do in order to push, but it's recommended because it can make your life easier
+	When you run this 'git push -u origin master', this tells git that on my computer locally in my repo, I want to push up the master branch to origin master and I want you to remember that. I want you to recall in the future that my master branch on my computer is connected to the master branch on origin
+	Equivalent of -u is --set-upstream
+
+11.104 - Another Github Workflow: Cloning First
+	Option 2 - start from scratch
+	This works if you haven't started your work on your project at all
+	When you clone the repo, the remote is pre-configured with origin
+
+11.105 - Main & Master: Github Default Branches
+	'git branch -M <branch-name>' - change branch name
+
+12.108 - Remote Tracking Branches: WTF Are They? (Fetching & Pulling)
+	This section is focused on getting code down to our machine
+	Befor we talk about git fetch and pull, we have to understand a bit more about how cloning a repo works and how remotes work
+	When we close a repo, whether it's one I made or I'm cloning some popular open source repo, what happens is that we have at the very beginning, nothing on my machine. When I clone that, I end up with the same commits and files from the repo, (example) and I have the master branch, but there's actually 2 branches here and we've only talked about one
+	So there's the standard master branch reference (or whatever the default branch is), a regular old branch reference that acts like any other branch reference. If we add commits, it'll move
+	But then there's this other thing - 'origin/master'. This is something called a remote tracking branch reference
+	It sounds complicated but basically it's just a pointer in the same way that 'master' is a pointer. But 'origin/master' doesn't move or I don't move it myself. It's pointing to the last known commit on the master branch from the origin remote
+	So to reiterate this term, remote tracking branch, think of it as the bookmark or a pointer that remembers at the last time you communicated with this remote repo, "here is where the master/main/branch1 branch was pointing on that Github repo on origin
+	They follow this pattern - <remote>/<branch>
+	So git names them for us
+	As we talked about, origin is a very common remote name. So we've got 'origin/master' or 'upstream/branch1' (upstream is another common remote name)
+	We can actually view these remote tracking branches if we use 'git branch -r origin/master'
+	(example) 'git branch -r' - shows remote tracking branches
+
+12.109 - Checking Out Remote Tracking Branches
+	(example) When you clone, both master and origin/master point to the same commit. Once you do some work add commits to master, and run 'git status', you'll see something like
+		Your branch is ahead of 'origin/master' by 1 commit
+	If you wanted to, if you were ahead of origin/master, we can stilltake a look at origin/master, we can check it out
+		git checkout origin/master
+	You will go into detached HEAD like any other time we've done this before
+
+12.110 - Working With Remote Branches
+	When you clone a repo, you only get the default branch
+	How do I work on the other branches that already exist on github?
+	If we look at the remote branches (git branch -r), you'll see every one of the other branches (e.g. origin/food)
+	So my local repo knows about all of those branches and it has a remote tracking reference where it can tell me where each one of those is
+	My repo knows them but I don't see full fledged branches for them. How do I make that that happen?
+	We need to talk a little bit about the relationship between a full fledged barnch and a remote tracking branch
+	By default, when we clone a repo, let's say in this diagram, it's master that we end up with, that master branch is automatically tracking. It's connected to the remote branch, origin/master. I didn't make that happen.
+	We have thes eothe branches e.g. origin/puppies, that are remote. How do I make a branch here that is connected to origin/puppies? I want to work on that so I could check out one of those branches, checkout origin/puppies, but that puts us in detached head
+	It's not the same thing. What I want is a branch that I can work on that is connected to origin/puppies rather than just checking out the remote branch,I want to actually have my own branch here that's connected to it
+	The way we do that is super easy - git switch puppies. This creates a new local branch from the remote branch of the same name
+	'git switch puppies' makes a local puppies branch AND sets it up to track the remote branch origin/puppies
+	Normally when you git switch to a branch that doesn't exist, you'll get an error message
+	NOTE - The old way of doing this, before 'git switch' looked like this
+		git checkout --track origin/puppies
+	git switch simplifies this a lot
+
+12.111 - Git Fetch: The Basics
+	(diagram showing relationship between git commands and workspace/index/local repo and remote repo)
+	git fetch and pull are 2 commands we can use to get new changes, new commits from a remote repo from github, in our example
+	We'll start with git fetch
+	Fetching is going to take remote changes, stuff coming from github repo and bring them to a local repo, NOT into our working directory. That's what git pull does
+	Fetching allows us to download changes from a remote repo BUT those changes will not be automatically integrated into our working files
+	It lets you see what others have been working on, without having to merge those changes into your local repo
+	Think of it as "please go and get the latest info from github, but don't screw up my working directory"
+	'git fetch <remote>' fetches branches and history from a specific remote repo. It only updates remote tracking branches
+		if not specified, <remote> defaults to origin
+	'git fetch origin' would fetch all changes from remote repo
+	We can also specifically fetch just one branch - git fetch <remote> <branch>
+	If your master and origin/master fork out, you can checkout origin/master to see the changes
+
+12.112 - Demonstrating Git Fetch
+
+12.113 - Git Pull: The Basics
+	'git pull' is another command we can use to retrieve changes from a remote repo. Unlike fetch, pull actually updates our HEAD branch with whatever changes are retrieved from the remote
+	"go and download data from github AND immediately update my local repo with those changes"
+	You can think of it as git pull = git fetch + git merge
+	Syntax - git pull <remote> <branch>
+	What really is important to understand is that when we run git pull frommatters. So whatever branch I'm on, that is where the changes will be merged into where I'm pulling down to
+	Pulls can results in merge conflicts
+
+12.114 - Git Pull & Merge Conflicts
+
+12.115 - A Shorter Syntax For Git Pull?
+	Shorter syntax - git pull
+	If we run 'git pull' without specifying a particular remote or branch, git assumes
+		remote will default to origin
+		branch will default to whatever tracking connection is configured for your current branch
+	NOTE - this behavior can be configured and tracking connections can be changed manually. Most people don't mess with that stuff
+	git fetch vs git pull
+		safe to do anytime vs not recommended if you have uncommitted changes
+
+13.117 - Github Repo Visibility: Public Vs. Private (Github Grab Bag: Odds & Ends)
+	To edit to public repo, you still need collaborator access
+
+13.118 - Adding Github Collaborators
+	You can't just add someone. It requires permission on both sides. I have to invite someone and they have to accept
+
+13.120 - What are READMEs?
+	A README file is used to communicate important info about repo including
+		What the project does
+		How to run the project
+		Why it's noteworthy
+		Who maintains the project
+	READMEs are markdown files, ending with .md extension
+	Markdown is a convenient syntax to generated formatted text
+
+13.121 - A Markdown Crash Course
+	Markdown is this tool that generates a markup
+	Official project doc - https://daringfireball.net/projects/markdown/
+	Markdown is not specific to github. People use markdown all over hte place. There are tools that allow you to view markdown and render it yourself
+	The one I'll be using in this demo is https://markdown-it.github.io/
+
+13.123 - Creating Github Gists
+	Github Gists are a simple way to share code snippets and useful fragments with others. Gits are much easier to create, but offer far fewer features tha na typical Github repo
+	Go to gist.github.com (OR Profile > Your Gists)
+	You can create secret and public gists
+	They are, I believe behind the scenes, actual git repos, although they don't expose the same features on github that we normally have access to with a full fledged repo. But we can see revisions, we can see diffs, history, but they're very slimmed down
+
+13.124 - Introducing Github Pages
+	Github pages are public webpages that are hosted and published via Github. They allow you to create a website simply by pushing your code to Github (for free)
+	There are some restrictions. This is not a full fledged hosting service. You can't do anything except static web pages
+	So it makes hosting very easy for certain situations
+	https://pages.github.com/
+	For free version, it's going to have github's domain name
+	There are 2 types of Github pages
+		User site
+		Project Sites
+	Project sites
+		For every single repo you create, you can have a corresponding hosted website. And the default URLs are going to follow this pattern
+		<your username>.github.io/repo_name
+		That's one per project
+	User site
+		You are limited to one per github account and this is a different application. It's actually setup differently as well
+		This is where you could host somethinhg like a personal website, a portfolio, anything that you want to be based upon your username
+		e.g. <username>.github.io where it's not a particular repo. Instead it's about your or your group or org. You are allowed one per github account
+	We're going to focus on project sites
+
+13.125 - Github Pages Demo
+	To setup github pages, all you ahve to do is select some branch that contains a website and specifically, it's going to look for a file called 'index.html'
+	Go to Settings > scroll all the way down to Github Pages > Under source, select your branch
+
+14.136 - Introducing Forking (Git Collaboration Workflows)
+	Instead of just one centralized repo on Github, every developer has their own github repo in addition to some main centralized repo. And then individual developers can make changes and push to their own versions, their own forks before making PRs
+	This fork and clone workflow enables anybody to try and make a contribution. You don't need permission. You make your own copy, you try making changes and then you make a PR. Anybody can make a PR
+
+14.138 - The Fork & Clone Workflow
+	So you have your forked repo from the original repo. You clone that down
+	Now, you have this automatic remote setup called 'origin' just because I cloned this forked repo, the default remote name is going to be origin. So 'origin' refers to my fork
+	But then I'm going to setup a second remote and this remote is goign to be anything I want but normally we would call it 'upstream'. That's a very conventional name and it refers to the original repo that we forked
+	This allows me to basically have a place where I can do my own work and push changes to but also if there are changes to the original repo on a large open source project like React, there might be new commits and PRs merge daily. I want to be able to get those down on my machine
+	So even if I can't push up, I can still pull changes down. So often upstream or original will be the name of this remote. but now we have 2 remotes - one going to my fork and one going to original
+	The whole point of this workflow is to allow people who don't have direct access/permission to push or change anything in a repo. They can still collaborate, they can still make PRs by forking and then pushing their changes and opening a PR
+	(diagram) So this will be the cycle
+		Local > push > forked repo
+		Forked repo > PR > Original repo
+		Original repo > pull > local
+	Brief summary
+		Fork project
+		Clone project
+		Add upstream remote
+		Do some work
+		Push to origin
+		Open PR
+
+15.141 - Why is Rebasing Scary? Is it? (Rebasing: The Scariest Git Command?)
+	There are 2 main ways to use git rebase command
+		as an alternative to merging
+		as a cleanup tool	
+
+15.142 - Comparing Merging & Rebasing
+	Both commands git merge and git rebase help us combine changes from 2 branches
+	I'm going to start with identifying problem with merging or something that rebase addresses that merging doesn't
+	(example) a very active master branch and I'm working on feature branch. I need to continuously merge those changes in and I end up with all these merge commits. So my entire feature branch might have dozens of merge commits that don't actually say anything about that don't actually say anything about what I'm working on. They have nothing to do with my actual code or with my commits
+	In other words, the feature branch has a bunch of merge commits. If the master branch is very active, my feature branch's history is muddied
+	This is something that rebase can help with
+	What happens when we rebase is that we actually rewrite history and this is why it's sometimes problematic. We're rewriting history, we're creating new commitsor we have git create new commits for us based upon the original feature branch commits
+	'git rebase master' - If I use rebase, so I'm going to rebase the feature branch onto the master branch. Think of the term re-base - we're coming up with a new base for our feature branch
+	(diagram) We have the master branch and then we have our feature commits from the feature commits from that feature branch on top of the master branch added to the tip of that master branch.
+	So we don't have these merge commits. We have the same original commits on feature branch, the commits from master branch, but they've actually been rewritten
+	(talking about rebase diagram) this doesn't indicate the time where things were made, where commits were created. Each commit actually has a date, so that is preserved, but commits are moved around in order to give us the new structure
+	So all the feature branch work I have done, all those commits begin at the tip of the master branch. I don't have the merge commits anymore but the end result is that whatever I'm working on here contains all the commits from master and from feature
+
+15.143 - Rebasing Demo Pt 1: Setup & Merging
+
+15.144 - Rebasing Demo Pt 2: Actually Rebasing
+	(demo - setup currently has feature branches with merges from master branch)
+	The workflow looks like this - I want to be on my feature branch and then I run 'git switch feature' and then 'git rebase master'
+	This is not going to screw up or change the master branch. Instead, it's going to rewrite history by taking my feature branch ocmmits, creating new ones that are based on the originals and putting them all at the tip of the master branch or starting them at the tip of the master branch, re-basing them at the tip of this master
+	(demo) I'm showing you sort of merging first and then rebasing, but you can actually rebase instead of merging (he just ran 'git rebase master' in his feature branch and reorganized his commits)
+	If we see the logs and compare them to before rebase, we have fewer commits because we don't have those mrege commits and the commit hashes have changed because we actually end up with new commits
+	The commit messages and dates are still in there, the metadata but they are in fact new commits
+	I also want to show that we can just use rebase instead of merging
+		git switch feature
+		git diff feature..master	// see diff between branches
+		git rebase master
+	So even though there are just one new commit on master, all of my commits on feature were recreated. They're new commits
+
+15.145 - The Golden Rule: When NOT to Rebase
+	 Because we're updating the history because rebase rewrites commits, there is a big NO NO, a big thing to be aware of - You do NOT ever want to rebase commits that people already have
+	You don't want to rebase if you've pushed up some branch to github or somewhere else and your collaborators have that work on their machine because then they have those commits and then all of a sudden you rebase and you rewrite those commits, you rewrite history, and that can be really really annoying to reconcile
+	When your collaborators have different histories, you have commits that just don't even exist in their history and they have commits that don't exist in yours
+	And it's all in the past. That can be very tricky
+	So again, the rule never rebase commits that you've shared with others
+	If you're on a small team that rebases all the time, just make sure you know what you are rebasing and don't rebase shared history any commits people already have. Only rebase stuff that is yours and yours alone. Rebase it and then you can push it up, and then you can share that
+
+15.146 - Handling Conflicts & Rebasing
+	If there's a conflict (just like merge), you'll see an error saying "CONFLICT (cotnent):  Merge conflict ... failed to merge changes"
+	HOWEVER, if you look at our history, it partially rebases
+	The rebase is not done. I have couple of options
+		I can abort the whole thing (included in the message for conflict) with git rebase --abort
+		Resolve conflict. You can go into the file(s) that have conflicts and decide what to keep and not keep
+			(also included in the message) Once you're done resolving conflicts, you can run git add/rm <conflicted_files> and 'git rebase --continue'
+			If you run git status, you'll see "rebase in progress"
+			Now if you see logs, you'll see that you've successfully completed the rebase
+
+16.148 - Introducing Interactive Rebase (Cleaning Up History With Interactive Rebase)
+	Rebase - rewriting history - sometimes we want to rewrite, delete, rename or even reorder commits (before sharing them). We can do this using 'git rebase'
+	Remember, there are 2 main ways to use git rebase command - alternative to merging and cleanup
+	Common workflow - if you've been working on a branch, you have lots of commits that maybe you've been working on this feature for a while and you have some half baked commits or some buggy things or half complete commits. If you want to go through and streamline that and combine commits down, rename them, that can be a nice thing to do before you share your code with anyone
+	So it's a step a lot of people take before sort of unveiling of their branch/feature
+	The way we do this is a little different. We use git rebase but we don't specify a branch to rebase onto
+	Instead, we're just going to rebase a series of commits onto HEAD that they're currently based on. So instead of rebasing onto master branch, for example, or main branch, we'll rebase whatever we're on. e.g. for feature branch
+	So it's just a way of recreating commits, every commit that we specify and we do have to provide a range. In this case, 4 commits, recreate each one
+		git rebase -i HEAD~4
+	We pass this "-i" flag which stands for interactive (next video). It's very different way of rebasing than what we've seen so far
+
+16.149 - Rewording Commits With Interactive Rebase
+	(example of choosing one commit for rebase - 9th commit or 9 commits ago)
+	git rebase -i HEAD~9
+	Remember that I'm not specifying a branch. We're not rebasing onto a branch, we're rebasing in place
+	When I hit enter, it will open up our text editor and it's not the most interactive thing and it will give us a list of our commits with these commands next to them
+		pick - use the commit
+		reword - use the commit, but edit the commit message
+		edit - use commit, but stop for amending
+		fixup - use commit contents but meld it into previous commit and discard commit message
+		drop - remove commit
+		(and more)
+	In this vidoe, we're going to focus on 'reword'
+	(he hits enter and it shows all commits up to the 9th one) Notice the order is reverse. Normally in git log we see the oldest commit at the bottom and newest commit up top. Here it's reversed
+	This is because basically this is a list of commands that we're telling git to do for each commit starting with the first commit
+	If I change what these are, if I drop something, rename edit,  it's going to go through the order from the top and execute one by one
+	There's a list of these commands that are available down at the bottom (of the text editor when git opens it for you)
+	Once I change a commit from "pick" (default) to "reword), it now opens something new. It opens commit message (you can see the comments that it says you're in the middle of interactive rebase)
+	Next video - combine commits
+
+16.150 - Fixing Up & Squashing Commits With Interactive Rebase
+	(example of wanting to combine 2 commits - made a first commit and then second commit because forgot to add something in first)
+	We can use "fixup" which basically says use the contents of this commit, but mush it into previous commit and get rid of the commit message
+
+16.151 - Dropping Commits With Interactive Rebase
+	To remove the entire commit "drop"
+
+17.153 - The Idea Behind Git Tags (Git Tags: Marking Important Moments In History)
+	The main idea git tags is that we can tag particular commit so we can label commits by creating a git tag, a reference to a moment in time
+	Tags are often used to makr version releases in projects
+	Think of tags as branch references that do NOT CHANGE. Once a tag is created, it always refers to the same commit. It's just a label for a commit
+	There are 2 types of tags
+		Lightweight tags - they're just a name/label that points to a particular commit
+		Annotated tags - store extra meta data including author's name, email, date, tagging message (like a commit message)
+			For that reason, because they include all this additional metadata, they are generally preferred in a lot of big projects, they'll ask you to use annotated tags, not lightweight tags
+
+17.154 - A Side Note On Semantic Versioning
+	Semantic versioning is a protocol, a specification, a set of rules and requirements that dictate how version numbers are assigned and incremented
+	e.g. 2.4.1
+	The whole point of semantic versioning, it's an actual specification that we can take a look at (semver.org)
+	And the idea is to just lay out set of rules for making versioning, transparent and consistent
+	So 2.4.1 - 2 is 'major' release, 4 is 'minor' release and 1 is 'patch' release
+	Initial release will be 1.0.0
+
+17.155 - Viewing & Searching Tags
+	'git tag' - view existing tags
+	'git tag - "*beta*"' - '-l' is for list (it's implicit if you just run git tag). But whe we try and filter with some sort of wild card with a pattern that we're trying to match - "*beta*". You need to use -l if you want to pass a pattern
+
+17.156 - Comparing Tags With Git Diff
+	'git checkout <tag>' - to view state of a repo at a particular tag. This puts us in detached HEAD
+		Remember, a tag refers to a particular commit, not a branch
+	To see a diff between 2 tags - 'git diff <tag1> <tag2>'
+
+17.157 - Creating Lightweight Tags
+	To create a lightweight tag - 'git tag <tagname>'
+	By default, it will point to whatever the head is pointing at that moment in time or whatever the HEAD is referencing
+
+17.158 - Creating Annotated Tags
+	'git tag -a <tagname>' - create a new annotated tag
+	Git will then open your default text editor and prompt you for additional info
+	You can also pass in "-m" flag to pass a message directly and forgo opening of the text editor
+	And just like before, it will be based upon current HEAD commit
+	How do we view more info about one of these tags? How do we see the metadata?
+	'git show <tagname>' - this will show us the metadata
+
+17.159 - Tagging Previous Commits
+	'git tag <tagname> <commit_hash>' - to tag an older commit
+
+17.160 - Replacing Tags With Force
+	If for some reason, we need to move a tag, we need to have it referring to a different commit, we can use the -f option to force that tag through because git doesn't like it when you try and re-use a tag
+	'git tag -f <tagname>' OR alternatively 'git tag -f <tagname> <commit_hash>'
+		This moves the tag to the new commit
+	So that's how you can move tags if needed
+
+17.161 - Deleting Tags
+	'git tag -d <tagname>' - delete a tag
+
+17.162 - IMPORTANT: Pushing Tags
+	One last important note about tags has to do with pushing. By default, when you push changes to remote repo, tags are NOT included, so you can push tags 2 ways
+		'git push --tags' - push all tags
+		'git push <remote> <tag>' - push one tag
+
+18.164 - Working With The Local Config File (Git Behind The Scenes - Hashing & Objects)
+	We'll focus on the .git directory
+	There's a lot in there that we're not going to talk about but I'll highlight some of the most important pieces in these videos
+	Let's talk about the .git/config file
+	The config file is for...configuration. We've seen how to configure globa settings like our name and email across all git repos, but we can also configure things on a per-repo basis
+	This config file is going to exist in every repo
+	It's a complex file
+		You can add git aliases here too
+	(showing git-config command) We can configure git, we can change settings from CLI which we've seen before
+
+18.165 - Inside Git: The Refs Directory
+	Inside of refs folder, you'll find a "heads" directory. refs/head directory contains one file per branch in a repo. Each file is named after a branch and contains the hash of the commit at the tip of the branch
+	For example refs/heads/master contains the commit hash of the last commit on the master branch
+	Refs also contains a refs/tags folder which contains one file for each tag in the repo
+	Theres a "refs/remotes" folder, there's a subdirectory for each remote you've set up	
+
+18.166 - Inside Git: The HEAD file
+	HEAD is just a text file that keeps track of where HEAD points
+	If it contains ref/heads/master, this means that HEAD is pointing to the master branch
+	In detached HEAD, the HEAD file contains a commit hash instead of a branch reference
+
+18.167 - Inside Git: The Objects Directory
+	The objects directory contains all the repo files. This is where git stores the backups of files, the commits in a repo and more
+	The files are all compressed and encrypted, so they won't look like much
+	The objects has a bunch of subdirectories (a repo with history). We have these 2 digit hexadecimal folder names and then inside of them there are files
+	If I open the file, VS Code says it can't display because it's either a binary or uses an unsupported text encoding. So we won't be able to look at the contents
+	These files are meant to be small but they store those files, store all of the git history, all the commits, all of the files and their information, the contents of files
+	Git stores full snapshots. It doesn't store diffs or changes like a delta between 2 commits. It stores full, complete snapshots, which is somewhat unique
+	But inside this folder, there are 4 different types of basic git objects
+		Commit
+		Tree
+		blob
+		annotated tag
+
+18.168 - A Crash Course On Hashing Functions
+	Commit hashes are hexadecimal characters exactly 40 digits long
+	Hashing functions are family of functions that have one goal - they take inputs of arbitrary size and then spit out outputs of a fixed size
+	Cryptographic hash functions, which are a subset of hash functions, they do the same thing (map variable input to fixed output) but the have couple of more constraints
+		1. They are deterministic
+		2. One-way function (shouldn't allow you to infer anything about the input based on output aka it shouldn't allow you to reverse engineer)
+		3. Small change in input should yield a large change in output
+		4. Unlikely to find 2 outputs with the same value (avoid collisions)
+	git uses one of these hashing functions called SHA-1, although this actually is set to change eventually, it's something that the group behind git has said - they plan on changing but don't know when and it's going to be a nightmare to change, but we plan on it at some point
+	At the end of the day, it will just be another hashing function
+
+18.169 - Git As A Key-Value Datastore
+	Git uses SHA-1 in many other places, not just to generate commit hashes
+	If you recall, there are 4 types of git objects (commits, tree, blob, annotated tag) and all of these are hashed using SHA-1
+	Git is a key-value data store. We can insert any kind of content into a git repo, and git will hand us back a unique key we can later use to retrieve that content. These keys that we get back are SHA-1 checksums
+	Git is a key-value data store meaning that we can put data into git, we can ask git to store something for us which could be a file/folder/100s of filers and folders
+	So we can put all sorts of content into a git repo and git is going to hand us back a unique key that we can later use to retrieve that content. So the keys that we get back in git are SHA-1 checksums or the output of the SHA-1 hashing functions
+
+18.170 - Hashing With Git Hash-Object
+	In this video, we're going to take a peek at some of the internals of git
+	Specifically, I'm going to show you a command called "git hash-object" that I never really use except when teaching
+	From last video, git a key-value datastore. We can give it any sort of info and it will give us back a unique key
+	This command "git hash-object <file>" is one way of doing that
+	It returns a unique SHA-1 hash that would be used to store our object, but it doesn't actually store anything in this form. So this won't store anything for us but there's a variant where we can tell git actually store this, store this info and it will create a new entry in .git/objects directory
+	Remember, the objects directory is where all the info eventually is stored
+	A more complicated variant 'echo "hello' | git hash-object --stdin'. This allows us to hash something that's not a file. --stdin option tells git hash-object to use the content from stdin rather than a file
+	When you run this, it generates a 40 character checksum. However, this doesn't store anything in git
+	However, if we add on "-w" flag, this is going to tell git to actually store our object, to actually take this info ("hello" in this example), hash it with SHA-1 and then store that
+		echo "hello" | git hash-object --stdin -w
+	After we run this command, the outpt is "ce1036......". So it starts with "ce" and then "0136..."
+	If you look in the .git/objects folder, you'll a subdirectory "ce" and a file starting wtih "1036..."
+	So there's this entry in the objects folder, there's a folder inside "ce" and the remaining 38 digits are used to name this file
+	So this file is the most basic way that git stores content. This file contains our content but it's been compressed and encrypted
+
+18.171 - Retrieving Data With Git Cat-File
+	Now that we've seen how to store data in a very low level way in git, normally we use a whole bunch of other commands and git hashes things for us, but we can tell it, hash this, turn it into a git object and store it
+	So imagine I don't know what was stored with these checksums (re-use from previous vide) and I want to retrieve that data out. I have the key
+	To get it out, there's a function or command called "git cat-file -p <object-hash>". So that could be a commit hash or it be one these hashes that's not from a commit. But any of these hashes we get in git, they're all tied to a git object, one of 4 types and we can get info, we can read them using cat-file
+	"-p" option tells git to pretty print the contents of the object based on the type of object it is
+	You can pass the whole 40 digit or you can give it something fewer
+	We're one step closer to understanding things. We have not made a single commti. We have only hash things, hashed files and stored those and we've been able to retrieve them using the hash that we get back
+	But that's not a commit. In fact, there's something called a blob
+
+18.172 - Deep Dive Into Git Objects: Blobs
+	All the stuff in this objects directory, they are examples of one type of git object calls blob - binary large objects
+	So this is one type of an object git can store
+	Blob is used to store the content of a file. It is just the content of a file, just the insides. It doesn't include even the filename, it's just the content
+	Git of course, keeps track of a file name and that's where trees come in
+	But git stores the contents of a file separate from the name
+	And then each blob gets its own hash
+	Blobs are the building block of the way that we use git where we have different fiels and different contents and different versions and commits. They play a very important role
+	But on their own, a blob is just a git object that stores the content of a file. Doesn't even include the file name, but it does gets its own hash
+	So it's not a commit hash, it's a blob hash. They might look a commit hash, but that's just because they're all 40 digits
+
+18.173 - Deep Dive Into Git Objects: Trees
+	If I tell git to cehck out this commit or switch to this branch and it can change all of those files, how is it able to keep track of that structure?
+	It's not just the insides of the files, it's the relationships between the files, it's the structure of the directories. So that's the role of tree objects
+	Trees are git objects that are used to store the contents of a directory. So blob store the contents and trees store the contents of a directory
+	So trees actually contain pointers that can refer to blobs and to other trees
+	Think about it this way - if we have one folder and inside that one folder there is one file. Git would represent that with one tree and that tree would point to or refer to one blob for that file
+	So each entry in a tree contains the SHA-1 hash of a blob or tree, as wellas the mode, type and filename
+	So we end up with references to blobs, but also references to trees because we have nested directories often
+	Remember, blob doesn't store the name, tree stores the name
+	'git cat-file -p master^{tree}' - this syntax specifies the tree object that is pointed to by the tip of our master branch
+	'git cat-file -t <hash>' - get the type of git object
+
+18.174 - Deep Dive Into Git Objects: Commits
+	Commit objects combine a tree object along with info about the context that led to the current tree. Commits store a reference to parent commit(s), the author, the commiter, and of course the commit message
+	When we make commits, git generates a new commit git object and it stores that just like it stores all the other objects, blobs and trees
+	A commit contains a reference to the parent commit - a reference to the hash of the commit that came before. So really all we need to get the entire chain, the entire history of a git repo is just a commit that links back to a parent and then we can go look at that parent, and that links it to its parent and so on
+	Commits have a reference to parent commit but also they have a reference to a tree object
+	So every commit is tied to a tree and that tree is something that represents the structure of the application and in turn the blobs that it contains all the data in the files
+	So we could go look at any commit and we can see that tree for that commit. And then, if we check out a commit, if we make a new branch based upon a commit, git is going to take that tree and use it as the basis for our working directory
+	It's not going to come up with new hashes and change these objects if it doesn't need to. If nothing changes in those files, the contents are the same. A blob stores the content of a file
+	And the trees will references one of these versions depending on what was in that snapshot
+	(for multiple commits, if a file hasn't change, it uses the same blob checksum)
+
+19.176 - Introducing Reflogs (The Power of Reflogs - Retrieving "Lost" Work)
+	Git keeps a record of when the tips of the branches and other references were updated in the repo. We can view and update these reference logs using the 'git reflog' command
+	They are just logs. They're just a transcript or a record that git keeps for us of whenever references are updated
+	.git/logs folder. Inside there's a file called HEAD. this file is readable. What we have here is a series of entries. Each one of these entries is a move for the head reference
+	It keeps tracks of all the commits you made and when you switched branches
+	NOTE - you should NOT edit this file directly. These are just logs kept by git
+	In other words, git is tracking our moves
+	There are also other things in this .git/logs directory. It keeps track of the tip of every branch (including remote branches)
+
+19.177 - The Limitations of Reflogs
+	Git only keeps reflogs of your LOCAL activity. They are not shared with collaborators
+	Reflogs also expire. Git cleans out old entries after around 90 days, though this can be configured
+
+19.178 - The Git Reflog Show Command
+	This command works with 4 subcommands (show, expire, delete and exists), but the good news is that we only need to one which is 'git reflog show'. The other 3 are not really used (also mentioned in git docs)
+	'git reflog show HEAD' - the show command is pretty straightforward. You pass a reference HEAD or a branch tip or a remote branch and then we will see a log. We'll see a printed version of the stored ref log
+	You'll also see this notation something like 'HEAD@{2}'. This syntax refers to a particular entry in ref log. The most recent entry is HEAD at 0 (HEAD@{0})
+	This syntax can be very useful we can actually pass this around and reference, this ref log entry syntax
+	And it's important to note that these numbers are not set in stone
+	If you're looking at reflogs for another branch named 'donkey' (git reflog show donkey), the syntax will be 'donkey@{2}'
+
+19.179 - Passing Reflog References Around
+	The syntax has this form - 'name@{qualifier}'. We'll stick to 'qualifier' being a number in this video
+	So if you run 'git reflog show HEAD@{10}', it will show all logs starting at the 10th entry all the way to the last entry
+	But you can also do things like 'git checkout HEAD@{2}' - to see what HEAD looks like 2 moves ago
+	Now this is different from 'git checkout HEAD~2' - this means the parent of head and then its parent 2 generations of parents ago. So basically the grandparent commit
+	But if I use HEAD@{2}, this may not even be commits. We may be on the same exact commit and we just switched branches because HEAD@{2} is just saying 2 moves ago in the ref log for HEAD. That might be changing branches, it might be detached HEAD
+	We can pass these in other commands to. e.g. diff
+	If I want to know what's changed between HEAD right now and HEAD five moves ago, I could do 'git diff HEAD@{0} HEAD@{5}' (i.e. you won't see a diff if they both refer to the same commit)
+
+19.180 - Time-Based Reflog Qualifiers
+	Hopefully every single ref log entry has a timestamp associated with it. Every entry has a commit hash and has a timestamp
+	We can use this or rather git can use it for us if we pass through some of these nifty timed references
+	We can filter reflog entries by time/date by using time qualifiers like
+		1.day.ago
+		3.minutes.ago
+		yesterday
+		Fri, 12 Feb 2021 14:06:21 -0800
+	Examples
+		git reflog master@{one.week.ago}
+		git checkout bugfix@{2.days.ago}
+		git diff main@{0} main@{yesterday}
+	Remember, this typically doesn't go back more than 90 days and also it only includes local changes
+
+19.181 - Rescuing Lost Commits With Reflog
+	(example) of deleting one log with 'git reset --hard <commit>'. Since that commit is not dangling (that aren't connected)  and reflog is referencing it, it still exists in .git folder
+	And then use 'git checkout <commit>' to have it in detached head state
+	But, if you want to make this the new head of your branch, you can run something like 'git reset --hard master@{1}' (you get the commit from reflog)
+	This says that the new tip of this master branch is whatever master @ 1 is from the ref logs
+	If we run git logs, we'll see that we have that commit back
+	So it was gone. We didn't see it at all in the git log, but because we had ref log available, we could go back and find that commit hash or just find the correct line (master @ 1) and we could reset based upon that
+	So even though it looks like we lost the commit, it wasn't tied to any other commits, it was floating on its own, we were able to rescue it and that ca nbe extremely useful. We just undid a hard reset
+	But remember, this only works with local changes and they do expire
+
+19.182 - Undoing A Rebase w/ Reflog - It's A Miracle!
+	This time, instead of reset, I'm going to perform a rebase (rewrites commits, makes new commits and those old ones are gone or seem to be gone)
+	
+
+20.184 - The Global Git Config File (Writing Custom Git Aliases)
+	There are multiple places we can configure git. There's actually 3
+		Local config file in every repo - .git/config
+		Global git config file where you can configure settings that apply across all repos - ~/.gitconfig OR ~/.config/git/config
+		There's one level above that which I never use. There's a system wide config file. If you have multiple users/accounts on one machine, that system wide config file would apply to all of those users
+	There are lot of settings you can change/update just like the local config file
+	Aliases are probably the most important, aside from the basic things like username and email as well as setting up your editor
+
+20.185 - Writing Our First Git Alias
+	So a git alias is just a shortcut. It's a custom command, a name that we can come up with that corresponds to some existing git commands
+	The way that we do this is we work in the global config file or we set tthe alias from the CLI but there's no git alias command
+	Instead, we configure aliases just like we set any other property
+	In .gitconfig file
+		Add [alias] section and add your aliases
+		e.g. s = status
+		You don't need to write 'git status'. We can just write 'status'
+		After you add your alias, run 'git s' in CLI
+
+20.186 - Setting Aliases From The Command Line
+	To configure aliases from CLI, you can run 'git config --global alias.s status'
+	It also autocompletes for you
+
+20.187 - Aliases With Arguments
+	If you define your alias as "cm = commit -m" and when you run from CLI, you can run 'git cm "first commit"'
+
+20.188 - Exploring Existing Useful Aliases Online
+	There are a lot of blog posts and reddit posts about different git aliases
+	Resources
+		https://github.com/GitAlias/gitalias
+		https://www.durdn.com/blog/2012/11/22/must-have-git-aliases-advanced-examples/
+		https://gist.github.com/mwhite/6887990
+	"!" in aliases, it actually tells git that this is a shell script. So that gives us access to things that are not git commands
+	One word of caution (from personal experience), if you use aliases, I realized how heavily I actually had relied on aliases or like my muscle memory was accustomed to my personal aliases
+

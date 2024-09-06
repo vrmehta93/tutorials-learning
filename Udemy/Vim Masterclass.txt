@@ -1,0 +1,970 @@
+James Cannon
+
+1.3 - What Vim Is and Why You Should Learn It (Course Introduction)
+	Vim is an advanced text editor
+	Vim = Vi + IMproved
+	Vi is short for "visual"
+	On most modern systems, vim has replaced vi
+	Even if you think you're starting vi by running vi command, vim is what actually starts
+	Features
+		Vim is ubiquitous
+		Vim is amazingly powerful. If you're used to using nano, then you're going to be blown away when you start learning some of the most basic features available to you. Once you start learning vim, you'll be more effective and efficient with nano
+		Vim's knowledge is transferable
+		Vim is cross-platform
+		Vim is available in a TUI and GUI
+		Vim has syntax highlighting. If there isn't syntax highlighting available by default for a certain file type you find yourself working wiht often, you can many times find plugins that provide such highlighting
+		Commands are easy to remember
+		Vim is like a language
+		Vim is thoroughly documented
+		Vim is fun
+
+2.4 - Modes (Vim Quickstart)
+	When you start vim, you're actually placed into what's called "normal mode". Some people refer to it as "command mode" because anything you type at this point is interpreted as a command
+	Vim commands are case sensitive
+	To send what you're typing into the document, you have to enter "insert mode"
+	There are few ways to enter "insert mode" but simplest is to enter "i". To leave insert mode and return to normal mode, press "Esc"
+	The last mode is "line mode". Sometimes line mode is referred to as "last line mode" or even "command line mode"
+	To enter line mode from normal mode, type ":"
+	You'll use line mode to perform various actions such as saving file, going to a specific location
+	There are 2 ways to leave command mode
+		1. Enter a command and execute it
+		2. To abandon the command, press "Esc" to return to normal mode
+	There are other modes in vim but they're just slight variations of these 3 main modes
+
+2.5 - Vim Quickstart
+	We're going to focus on CLI version of vim
+	To start vim, just type "vim" in terminal
+	When you start vim, you're going to see a welcome screen
+	To quit, ":q!"
+	To create a file - "vim <filename>"
+	To save and quit (write and quit) - ":wq"
+
+3.8 - Essential Navigation Commands (Vim Essentials)
+	(refer to vimclass/nav.txt from downloads)
+	To move down a line - "j"
+	To move up a line - "k"
+	To move to the right - "l"
+	To move to the left "h"
+	I just want to ponit out that you could do pretty much anything in vim without leaving the normal typing position
+	Page down - Ctrl + f
+	Page up - Ctrl + b
+	If you keep prettying "Ctrl + f", you'll reach the end of file and you'll notice that there are several "~". Those tildes aren't actually in the file itself. They represent lines beyond the end of file
+3.11 - Deleting Text and "Thinking in Vim"
+	To move right one word - "w"
+	A word in vim is simply a sequence of non-blank characters
+	Note that vim considers punctuation as a word with lowercase w
+	You can also move right one word by using "W" - this ignores punctuation and uses whitespaces as word boundaries
+	To backup a word, we'll use "b". Now lowercase "b" considers punctuation a word
+	"B" ignores punctuation and uses whitespaces as word separators
+	To redraw the screen and position the text within the view window - "Z + enter" - keeps your cursor in current position but moves the text up on your screen
+	Note - you might get slightly different result if you press z + enter on your screen. That depends on some configuration settings that we'll get to later
+	Notice how the lowercase command and uppercase command are very closely related. Lowercase w doesn't do the exact same thing as uppercase W but they're very similar. This is something characteristic of vim and you're going to see this pattern again and again
+	To move to the beginning of the line - "0". This will take you to the literal beginning of the line
+	To go to the very first character in the line - "^". If you're familar with regex, you'll know that ^ represents the beginning
+	Also in regex, "$" represents the end. That's exactly how you can position the cursor at the end of the line - by typing "$"
+	To jump to a specific line. In vim there are 2 ways you can execute the "go to line" command"
+		1. type "gg"
+		2. type "G"
+	If you want to go to a specific line, then type that line number followed by either version of go to line command. e.g. "2gg" or "2G" - that takes you to second line
+	You might be wondering what the difference si between "gg" and "G" - if you don't specify a line number, "gg" defaults to the first line in the file
+	If you don't specify a line number with "G", it defaults to the last line in the file
+	You can also use line mode to jump to a specific line as well - ":<line_number>"
+	You can also use this line mode to jump to the end of the file without knowing how many lines are in the file. To do that ":$"
+	If you want to know how many lines are in a file - "Ctrl + g". It also  shows cursor position which includes current line as well as how many total lines are in the file. You'll also notice how far you're down a file as a percentage	Finally, vim tells you what column your cursor is in
+	BTW, the information is good at the time you type control + g and it doesn't automatically udpate. So, if we were to move the cursor up, you'll see that control g still says we're on that previous line but that's not true. We press control g again and now it shows that we're on the current line
+	You can even get more controlled info with "g Ctrl+g"
+	Depending on your configuration, you might have already had the cursor location info on your screen. Vim has an option called "ruler" that can be turned on or off. To turn the ruler option on, use ":set ruler" and enter
+	Now the line and column number appear on the lower right hand side of your screen
+	Now if you have this "set ruler" option set, you actually see slightly different info when you press "control + g"
+	BTW, the "set" command is used to control vim options
+	The "ruler" option is either on or off. So ":set ruler" turns on the ruler
+	To turn off the ruler, we can use ":set noruler" and enter
+	This is a pattern by the way, for options that are either on or off like ruler, use ":set" and the option to turn on the option and ":set no[option]" to turn that option off
+	Instead of explicitly turning an option on or off, you can append an "!" to the end option to toggle it
+	That means that if we use ":set ruler!", that means it will toggle the ruler on and off
+
+3.11 - Deleting Text and "Thinking in Vim"
+	(reference vimclass/deletinglesson.txt)
+	Simplest of deletion command is - "x". It deletes the character at your current cursor position
+	"X" - this deletes the character right before or to the left of your cursor
+	To delete a word - "dw"
+	(operation{motion}) If you break down this simple 2 character command, you'll learn that it's comprised of an operator and a motion
+	The operator is "d" for delete, the motion is "w" for word motion
+	Remember if you press lowercase w, it will move the cursor to the next word. So, "dw" means delete word
+	Note that the deletion starts where your cursor is 
+	So now instead of trying to remember a new command for each and every possible thing you would like to delete, you just remember the pattern "operator motion" because you've already studied some of the navigation techniques, you know, several motions
+	Let's test some of them out
+	"dl" - deletes the character under the cursor. Equivalent of "x". You think of "x" as being a shortcut for "dl"
+	"dh" - does the same thing as "X"
+	"dj" - It deletes the current line and the line below it because that is where the motion would have taken you
+	"dk" - likewise, it will delete current line and the line above
+	"d0" - delete from cursor to the beginning of line (not include cursor character)
+	"d$" - delete from cursor to end of line (include cursor character)
+	Just like "x" is a shortcut for "dl", "D" is a shortcut for "d$"
+	This brings us to another interesting point - there are several ways to accomplish the exact same task. Use whatever works for you
+	"dd" - delete current line
+	To delete multiple lines "<num>dd" e.g. "3dd" delete 3 lines
+	This brings us to another important and powerful vim concept
+	([count]operation{motion})If you precede a command with a number, that command will repeat that number of times. e.g. "5dw" - repeat "dw" 5 times
+	If you don't specify a number, it defaults to 1
+	Let's say you want to move forward 3 words - "3w"
+	Think about the operator motion pattern. If "3w" is a motion, it would stand to reason that you could use an operator in combination with that motion. So we can also delete 3 words using "d3w" and it reads just like in English - delete 3 words. OR you can use "3dw". Use whatever makes sense to you
+	What do you think would happen if we typed "2d3w"? The command "d3w" would be repeated twice. So it deletes 6 words
+	"." - repeats the previously issued command
+	To save file and continue editing ":w"
+	To write and quite "wq"
+	If you don't want to save your changes - "q!"
+	There are 3 main things that "!" does in vim
+		1. force an action e.g. "q!" which is force quit
+		2. Toggle vim setting
+		3. execute external commands
+
+4.14 - Getting Help (The Vim Help System)
+	I wouldn't recommend that you learn how to use vim by reading vim's documentation alone
+	However, Iwant to teach you how to use vim's built-in help system so that you can be self-sufficient
+	Also, I want you to know where to look when you have a question about a specific command
+	(reference vimclass/help.txt)
+	Use ":help" - you'll see your screen is divided into 2 windows
+		Top window contains the help documentation and your original file is in the bottom window
+	Vim's documentation is simply a series of text files
+	You can even see the name of this file is "help.txt"
+	If you type "Ctrl + g", you'll actually see where this file is located on your local system
+	You can navigate through this help file like you would any other file
+	One of the first things this help file tells you is how to quite out of help - ":q"
+	What makes this help system really handy is that you can get help with a specific command by typing ":help <command>" 
+	For example, ":help dd" - the help command says "Delete [count] lines [into register x] linewise". When you come across information enclosed in brackets in vim documentation, know that it's optional
+	In addition to getting help with commands, you can ask for help on various subjects. For example, "count" isn't a command in and of itself, but if you wanted help on it, you would type ":help count"
+	To go back to the previous section you were at - "Ctrl + o". It's very similar to hitting the back button in a web browser
+	To jump forward - "Ctrl + i"
+	Here's another way to navigate through the help file - instead of typing ":help linewise" and enter, you can place your cursor under the word "linewise" and type "Ctrl + ]"
+	If you type ":help q" - you'll see "q[uit]". One thing I'd like to point out here is that :q is the shorthand version of the "quit" command. Since "uit" is surrounded by "[]", they are optional
+	":help :help" - here you an see that even thougyh we've been typing :help, we can just as easily type :h
+	The first sentence about the help command is "open a window and display the help file in read-only mode". As I mentioned, when you start the help system, vim opens up a new window. If you want to keep the help window open while editing or navigating through your file - "Ctrl + w, Ctrl + w"
+	That's simply holding down control key and pressing "w" twice. Now you can see that the cursor jumped to the bottom of the screen, which is the file that you opened at the beginning of this lesson
+	Now that the cursor is back in your file, you can do whatever you want while referring to the above documentation
+	To get back to the help window, just use "Ctrl + w, Ctrl + w". It just flips back and forth
+	One more quick tip - let's say you want to look at the documentation for a command but you're not quite sure what the entire command is. In this situation, you can use command line completion and to do that, we'll type ":h <start of the command you're looking for>" + Ctrl + d". e.g. ":h q" + Ctrl + d
+	What "Ctrl + d" does is list the commands that match the pattern in front of the cursor
+	You can also use the "tab" key and it will cycle through all the available options
+	BTW, with my configuration, I have an option called "wild menu". When I press tab, the possible matches are shown just above the command line with the first match being highlighted (":set wildmenu")
+	"Shift + tab" goes in reverse order
+
+4.15 (EXERCISE) - Exercise 04 - Getting Help
+	":h Ctrl-f" (ctrl-f also works but using "+" does NOT work)
+	":h ^f" - Using "^" is the same as using "Ctrl"
+
+5.17 - Cut, Copy and Paste - Part 1 (Deleting, Yanking and Putting)
+	Even though you may not realize that you already know how to uct text. The "d" or delete operator you've been using and the "x" operator are actually cutting, not just deleting
+	When I say cutting text, I mean that the text is deleted and it's saved into a reusable place in memory
+	This reusable place in memory is commonly known as the clipboard. However, vim uses a concept called "registers" where you can store cut and copied text
+	(reference vimclass/cutcopy.txt)
+	When you run "dd", this places the cut text into what vims calls the the unnamed register. Many people call the unnamed register, the default register
+	To paste - "p". Vim refers to "p" as "put" command. If it's easier for you to remember, you can think of it as the paste command
+		NOTE - "p" puts the text one line below the cursor
+	To swap two lines, place cursor on the top line, "dd" and then press "p" (you think of it as "ddp")
+	You can put or paste text with the uppercase "P" command. Lowercase "p" puts the text after your cursor, "P" puts the text before your cursor
+	Even after you paste the text, it stays in the unnamed register until it is overwritten by another operation like "delete". This means that you can use it over and over if you want
+	You don't have to cut and paste entire lines. You can also cut and pate characters, words ,etc 
+	To just copy text and not cut it, use "y" operator which in vim stands for "yank". You can think of "yank" as copy. More accurately, text is being yanked into a register
+	Here's the vim language
+		cut = delete
+		copy = yank
+		pate = put
+	You're familiar with the operator motion pattern, using it to delete words and so on. You can use the same pattern with a "y" operator
+	To yank 4 lines - "4yy"
+	To use undo and repeat - "u" and "ctrl-r"
+	The "u" command doesn't restore one line at a time. What the "u" command is it totally undoes your last command, no matter how many lines in the file or how many characters it affects
+
+5.18 - Cut, Copy and Paste - Past 2 - Registers
+	Up until now, we've been using the unnamed register to perform our cut, copy and paste operations, but there are actually many types of registers in vim, but we're going to focus on the next 2 most commonly used registers - "Numbered" and "Named"
+	Registers are preceded with a double quote. The unnamed register is actually ""
+	The numbered registers are "0" through "9"
+	The unnamed register contains the last bit of text from an operation like delete or yank as you've already seen. But to be completely accurate, vim fills the unnamed register with text copied or deleted with "d, c, s, x and y" operations, although we haven't covered all of them yet
+	Quickly, "c" is the change command and "s" is the substitute command
+	In any case, register "0" contains the text from the most recent yank operation (y) and register "1" contains the most recent text from a delete or change operation
+	With each successive deletion or change, vim shifts the previous content of register "1" to register "2", from register "2" to register "3" and so forth. Contents of register falls of the end if you will
+	To look at registers, we can type ":reg"
+	To paste the most recently yanked text, precede put command with the register. e.g. '""P'
+	If you find yourself needing to paste the same thing over and over again while deleting and cleaning up things in between those times, you'll find yourself using the 0 register
+	Another way you can approach this is to use what's called as the "black hole register" - it's represented by double quote, "_". When writing to the black hole register, nothing happens
+	This is used to delete text without affecting the normal registers
+	e.g. '"_dd'. If you see ":reg", nothing changed in the registers
+	Normally, a deletion operation would cause the unnamed and 1 reigster to be changed but when you use the black hole register, nothing happens
+	Again, with vim, there is usually more than one way to achieve the exact same end result. Just use whatever makes the most sense to you
+	Let's say you want to paste something from register 2 - '"2p'
+	If you run "3yy" and see ":reg", when you look at what we just yanked, you'll notice a carrot "^J" symbol that simply represents a new line character
+	When you paste that text, that "^J" will be replaced with an "enter" effectively
+	Instad of relying on the numbered register behaviors, you can use named reigsters. There are 26 named registers from A to Z, just like you can specify a register when pasting, you can specify one when yanking or deleting
+	To yank a line into the A register - '"ayy'
+	Now, if you run ":reg", you'll see "a as an entry
+	To paste from a register - '"ap'
+	If you want to append more text to the regsister, use capital letters of the register name - '"Ayy'
+	If you use lowercase "a", then the text would have been replaced
+	Remember, you can use the registers with the delete operations too
+	If you want to look at a specific register like z - ":reg z"
+	If you want to look at multiple registers, just list them - e.g. "reg 1z"
+	You already know how to repeat a command multiple times by starting the command with the number working
+	Working with the register is no different 
+	Again, you're thinking in vim ([count][register]operator OR [register][count]operator)
+	e.g. to yank line into h register - '"hyy'. To paste 2 lines of the text, we can run '2"hp' OR '"h2p'
+	With named registers, you have full control over what goes into each of the named registers
+
+6.21 - Inserting, Changing, Replacing, and Joining (Transforming and Substituting Text)
+	There's more than one way to enter insert mode
+	(reference vimclass/inserting.txt)
+	Command to enter insert mode and beginning of line with nonblank character (alternative to "^" and "i") - "I"
+	"a" - also enters insert mode and moves the cursor to the right by one character
+	"A" - appends to the end of the line
+	"o" - It begins a new line below the cursor and place you in insert mode
+	"O" - Begins new line above the cursor and places you in insert mode
+	You can make a command repeat as many times as you want by preceding that with a number called count. This also works with the "insert" command
+	e.g. to create a line that contains 80 asterisks, "80i", type "*", and Esc. When you press Esc, that command is repeated 80 times and you're left with a line of 80 asterisks
+	There's a very similar mode to insert mode and it's called "replace mode". Some would actually  argue that it's just really another form of insert mode
+	When you're in replace mode, each character you type replaces an existing character - "R". At the bottom of screen, you'll see "REPLACE"
+	If you want to replace one character - "r". Once you hit that one character, you're automatically placed back into normal mode
+	(e.g. replacing "canine" with "cat") After you replace the first 3 characters, you would have to delete the remaining characters since it's longer than the word you want to replace it with. This is where the "c" or change command is useful
+	The format of the "c" command is an optional register, followed by c, followed by a motion
+	So to change a wor, we could type (place cursor at the beginning of word) - "cw". Now "canine" is deleted, we're into insert mode and now we can just type "cat" and press Esc
+	You can quickly change a single word into multiple words or lines or whatever replacement text that you want when you're using this "c" motion command
+	Let's do it one more time but this time we want to save it into a named register. Position cursor at the beginning of canine and type '"acw'
+	"c$" - delete from cursor to end of line and enter insert mode
+	You might notice that "c" command is really behaving a lot like the "d" command
+	Remember, how d$ deletes characters from under the cursor until the end of line? And do you remember the one letter command that does the exact same thing? - "D"
+	So, if "c$" changes text to end of line, what one letter command do you think does the same thing? "C"
+	"cc" - another handy command that allows you to change an entire line of text
+	Just like the c command, you can optionally use a reigster to store the text that you replaced
+	You can use an optional count with the command. e.g. "3cc"
+	"~" - switches the case of the character under the cursor
+	To change the case of word - "g~w"
+	To switch case of the entire line - "g~$" OR "g~~"
+	If you want to make a word upper case when there's already a character that's upper case aka to force all uppercase - "gU[motion]"
+	To force the whole line uppercase - "gUU"
+	To force to lowercase - "gu[motion]"
+	"J" - join lines together and appends a space at the end of the current line
+	"J" tries to be smart about how ti includes spaces at the end of the line. If there's already a space at the end of the line, it will not add an additional space, for example
+	Also, if the line ends with a period, then "J" command will append 2 spaces at the end of the line before it appends the line below it
+	To join 2 lines without vim adding any additional spaces for us - "gJ"
+	Like most commands in vim, you can make it repeat by providing a count. e.g. "3J" which joins 3 lines
+	
+
+6.22 - Search, Find, and Replace - Part One
+	(reference vimclass/searching.txt)
+	Let's start with line-wise searching
+	To search forward or to the right on the same line - "f" + character you're searching for
+		e.g. If you want to move the cursor to the next occurence of the letter "b" on the line, type "fb". 
+	So, if you keep pressing ";", the cursor keeps advancing to the next search
+	Now, if you want to repeat this search, but in the opposite direction, you can type ","
+	If you want to position your cursor one position before a given command, use till command which is "t"
+	e.g. If you type "ti", the cursor moves to the position before the starting letter i
+	If you repeat that command, your cursor wouldn't go anywhere because it is already one position before the search for the character
+	If you want to redo the search without having to change your current cursor position, use ";"
+	You can also perform a reverse or backwards till search by using "T". So when you type "Ta", cursor is positioned just after the "a" in the line
+	Likewise, you can use ";" and "," to repeat the search
+	Of course, you already know how to repeat a command by starting it with a number. So, if you were to type "2fa", your cursor will jump directly to the second a it found on the line. So, you can use count with these commands as well
+	BTW, these are considered motions. This means you can comboine these motions with other commands you already know, such as "d" for delete, "c" command change or "y" command for yank
+	Let's practice this motino on this line
+		Delete THIS<<--- word.
+		"fT"
+		To delete everything from your current cursor position up until the letter w, use "dtw" or "df "
+		There's another way - "dW". Now this is perhaps more efficient for this particular example but what really matters is that you know how to think in vim. This way you have options. You can go for super efficiency or you can just use what you can remember and what feels right for you
+	What if you want to find something that may or may not be on the same line? Or what if you want to search for an entire word or series of characters instead of juts one single character?
+	That's when you use the forward search command - "/" + whatever it is you're looking for. e.g. "/" + "and"
+	To repeat your forward search - "n". You can keep pressing "n" to jump to the next word. Eventually the search will wrap back around to the first occurence and you'll see a message at the bottom "Search hit BOTTOM..."
+	To repeat the search in reverse direction - "N"
+	You can start a new forward search at any time to search for the characters
+	If you see something slightly different than what I'm showing here, it's probably due to a couple of settings
+		First setting is "is" which is short for "incsearch" which stands for "incremental search"
+		I have this option turned on (to search ":set is?")
+		When I type "/" + "a" (without pressing enter). You'll see that the "a" is being highlighted
+		My cursor hasn't moved yet because I haven't hit enter but vim is showing me where I would end up if I did hit enter right now
+		If I type "/" + "an" (without pressing enter", it now highlights to a different part of the screen where "an" is matched
+		If you turn is off (":set nois"), you won't see the words being highlighted anymore
+		Another option that can affect how searching appears is the highlighting search option representing by "hls" or "hlsearch"
+		Now all the matches that we previously searched for are highlighted. And they stay highlighted until your next search or you temporarily turn them off with a ":nohls"
+		Now this doesn't diable HLS option. This only disables highlighting until the next search
+	A common pattern I find myself using
+		I'll perform a search such as "/" + "and", execute it
+		I'll do "cW" to change word and I'll change it to "&" and pressing Esc
+		And the next part of the pattern is using "n" to move forward to the next match and using "." command to repeat the previous command
+	If I need to make 4-5 quick edits, I'll using this pattern of searching, performing a command, moving to the next occurence with "n" and repeating that with "."
+	You'll learn global find and replace which can do the same thing. But again, for quick edits, this method works fairly well
+	To start a backwards or reverse search, use "?" + pattern
+	e.g. "?" + "is"
+	You can use "n" and "N" to repeat search in the same or opposite direction
+	Now to search for the next occurence of the word under or nearest the cursor - "*"
+	If you keep typing "*", it moves to the next occurence of the word
+	You can also use "n" to move to the next occurence and "N" to reverse direction
+	The asterisk if meant for matching an entire word.
+	To perform a backward search for the word nearest or under the cursor, use the "#". You can keep hitting "#" to do this backward search or I can hit "n" or "N" to continue in the direction or go in the opposite direction
+	You can use these search motions with the commands such as "d" or "c" and "y"
+	For example, you can delete everything from your cursor position until the last line by typing "d/" + first word from last line
+	Also note that you don't have to make these big motions. You can do something even on the same line such as '"ay/z'. That makes all the text from your current cursor position up to the next letter z
+	If we type ":reg a", you can see that the text was yanked into register a 
+
+6.23 - Search, Find, and Replace - Part Two
+	Vim has a "find and replace" functionality in the form of ":s" command
+	In its simplest form, the substitute command is - ":s/[old text]/[new text]/"	
+	The substitution is only performed on the current line and only changed the first occurence
+	An optional part of the substitute command is the flag section with this format - ":s/[old]/[new]/[flags]"
+	The most common is the "g" flag which causes the substitute command to replace all occurences in the line
+		e.g. ":s/old/new/g"
+	In addition to being able to supply flags to the substitute command, you can proceed it with a range to operate on - ":[range]s/old/new/[flags]"
+	The default rannge is the current line, which is why we the substitute command operates on the current line only by default
+	Now, a range is one or more line specifiers separated by a "," or a ";"
+	The simplest range is a line number
+	e.g. to change the word from "is" to "isn't" on line 1 - ":1s/is/isn't/"
+	Another is "1,5" which is the first 5 lines of the file
+	There are also some special characters that represent lines
+		"$" - last line
+		"." - current line
+	So you can use a range like ".,$" which includes current line all the way through the line line of the file
+	The special character range I use most often is the "%" sign, which is the range for the entire file (aka all lines)
+		You can even think of it as being the same as "1,$"
+	There is another way to specify a range, and that is by a pattern
+	You can specify a pattern with "/" - /Pattern-1/,/Pattern-2/
+		So if we only want to change "net" to "org" in teh file, starting with (line that starts with) "# Global configuration" and ending (line that starts with) "# Local configuration", you can use this command
+		":/Global/,/Local/s/net/org/g"
+	You can combine these search patterns with line numbers or special characters like "$" too - ":/Local/,$s/net/org/g". That means everything from the search pattern that matches local all the way to and including the last line of file
+	If you work on Linux, Unix or Mac, you might have noticed that the pattern separator we're using in vim also happens to be the directory separator for those OSs
+	It's not uncommon that you'll need to change a path with a substitute command, especially if you're working with configuration files
+	I'm going to show you the hard way first - escape each "/" with a "\"
+	That totally works, but it really slows me down because I have to be careful and think closely about what I'm doing
+	The easy way is just to use a different character for the pattern separator. I like to use the "#". You can use any other single non alphanumeric character that you like. Some people like the pipe symbol ("|"), others like comma, whatever. You can even use a "+" or "-"
+	With # sign - ":s#/var/spool#/usr/local#"
+	I could have made it simpler by leaving out the leading forward slahes because it really wasn't replaced
+	To turn on line numbering - ":set nu" OR ":set number". "nu" is short for "number"
+	To turn off line numbering - ":set nonu" or ":set nonumber"
+	You can also use ":set nu!" to toggle
+
+7.28 - Text Objects (Text Objects and Macros)
+	When you're editing text, you'll often find yourself working with text constructs such as words, sentences and paragraphs
+	Sometimes when you're editing a file, you'll want to change an entire paragraph or delete a sentence or save a word to register
+	When you're editing shell scripts, source code or HTML, you'll find yourself working with text that is delimited by various bits of punctuation such as quotation marks, back ticks, curly braces and tags
+	e.g. It's nice to have a quick way to change the value of a variable or even replace an entire function with a bit of text
+	All of these objects, be they sentences, paragraphs or text enclosed within quotes are vim text objects
+	These text objects or logical regions, if you will, are faily intuitive for us humans and are often very efficient blocks for us to edit
+	Let's start looking at some examples
+	(reference vimclass/textobjects.txt)
+	Text objects are used after an operator. It's very similar to using motions
+	e.g. you previously learned how to delete a word by using "dw"
+	Let's place the cursor in the middle of the "compromised". Now, when you type "dw", the text that's under your cursor all the way through the motion is deleted (so the word now is "comp")
+	So how do you delete a word if your cursor is not at the beginning of a word? You use a text object
+	When you combine a command with a text object, the command operates on the entire object regardless of the cursor position
+	So if you undo and type "daw", you can think of this as "delete a word", you'll notice that hte whitespace after the word was deleted too
+	If you don't want to delte the whitespace, then use "diw" which stands for "delete inner word"
+	The pattern you want to remember is this operator followed by either an "a" or "i" followed by an object
+		{operator}{a}{object}
+		{operator}{i}{object}
+	e.g.
+		daw = delete a word
+		ciw = change inner word
+
+7.31 - Macros
+	You've already learned to repeat commands. e.g. 3dw - execute dw 3 times and delete 3 words
+	To repeat this command again, type "."
+	But, what if you need to repeat a series of commands? You use macros
+	Vim calls macros "complex repeats" because they go beyond simple one command repititions and can involve many steps
+	One of the most common usese of vim macros is to change the format of data or text. You can do things like normalize data into a desired format, move columns around in a csv file, delete extraneous text within a line to clean up your data and more
+	In short, you should consider using a macro anytime you have a complex or lengthy edit that needs to be repeated multiple times
+	(reference macros.txt)
+	Vim macros are nothing more than a recorded sequence of key strokes. These keystrokes are saved in registers. When you play back a macro, all the keystrokes recorded in the register are played back
+	When you play back a macro, all the keystrokes recorded in the register are played back. This means you have access to the full power of vim in your macros
+	The only slight limitation is that you can't make an existing macro record a new macro. But past that, you can do pretty much anything you can think of
+	To start recording a macro, "q" command followed by a register. e.g. To record a macro in the "a" register, type "qa"
+	In the bottom, you'll see "recording @a" in the status line
+	When you're done recording your macro, type "q"
+	You can see the macro in register a with ":reg a"
+	Esc key is represented as "^["
+		BTW, you can actually use that key combination in palce of escape to get back to normal mode
+		If for some reason the Esc key sin't working, you can just use that keystroke
+	To play a macro back - "@" + register. e.g. "@a"
+	A very quick way to repeat the most recently executed macro - "@@"
+	Macros best practices
+		Normalize the cursor position so that the cursor starts at the same position every single time (e.g. 0)
+		Perform edits and operations
+		Position your cursor to enable easy replays (e.g. position the cursor to the next line with j)
+	Let's say you want to repeat the macro over the entire block of text all at once. Like any other command, you can repeat a macro using {count}. e.g. "5@a" - this will transform the 5 lines
+	(If you forget to append a "j" at the end) The good news is that macros use registers and as you know, registers can be appended to
+	To append a j to the macro, use "q" to uppercase register. e.g. "qA" and then type "j" and then "q" to finish our update
+		Just as you learned with registers, using the capitalized register letter appends to the register
+	Remember that macros simply replay keystrokes so you can use commands and different modes too
+	"^M" (aka control M) represents the Enter key
+	Up until this point, you've been eyeballing how many times you need to repeat a macro and then supplying that count. That works when you're working with small datasets but if you want to apply a macro to many lines, maybe lines that even scroll beyond the end of your screen, you'll need a way to apply your macro to that exact range
+	And if you need to apply the macro to every line in the file, you could use "Ctrl + g" to get the line count and then use that line count with the macro
+	But there's an even better way, even when you know hte line count and that way is with the normal command
+		First you enter command mmode, supply a range, type the normal command, and then follow it with the macro
+		e.g. If you want to apply the macro from line 27 to 35 - ":27,35normal @d" (using macro in d register)
+		To apply to every line in the file, use ".,$"
+	Note that macros don't have to operate on just a single line 
+	Another scenario you may find yourself in with macro is that you want to change something in the macro. You already know how you can append to a macro. But what if you want to do something like insert a "0" at the beginning of your macro?
+	The good news is you're just working with registers so you can paste the contents of your register, modify it and yank it back into another register
+	Let's say you want to save one of your macros for future use, thereare a couple of ways to go about this
+		One is relying on "viminfo" file, which is stored in your home directory as ".viminfo" for Unix like systems. And "_viminfo" on Windows
+		.viminfo file stores a lot of information like the command line history, search history and the contents of the non-empty registers
+		When vim starts, it reads the contents of the .viminfo file. So if yo uwere to exist out of vim and then start tomorrow, all the reigsters would be available to use. So you could just use your macros right away
+		The only problem with this method is that if you overwrite the register, then you lose the contents of your macro
+		You could get around this by assigning your must-have macros to registers and just make sure that you never use them for anything else
+		However, there's a more reliable way to save your macros and that's in your ".vimrc" file
+		We'll cover ".vimrc" later but briefly, it's a file that contains initialization commands. On a Unix like systems, it's stored in your home directory as ".vimrc" and "_vimrc" on Windows
+ 		When you're editing your .vimrc file, use the following syntax - "let @" + register letter you want to store your macro into + " = '" + contents of register you want to save + "'". e.g. "let @d = '0:s/"/'/g'"
+		This is pretty much a variable assignment statement. You're programming your text editor at this point
+		When you start vim, the contents of the d register will be exactly as specified in the .vimrc file
+		If you were to overwrite the contents of the d reigster, that would be for the duration of that vim session. But when you start them again, that let command will set the contents of the d register
+		I highly recommend the method of pasting your pre-recorded macros in order to save them. That way you know they work and they contain all the special characters you need
+		However, you can manually enter macros too
+		If you want to include the escape character in your macro, then you can't just press "Esc" since that would just quit insert mode. If you type "^[" thinking you would cause vim to interpret that as an escape character, that would be wrong also
+		To insert the literal character - "Ctrl + v" + the character. e.g. "Ctrl + v" + "[". Now the proper character has been inserted
+
+8.34 - Visual Mode - Part 1 (Visual Mode)
+	If you're using a text editor in a graphical user env, then you can do things like highlight text with your mouse and then do something with that highlighted text like delete or copy it
+	If you're using vim in a non graphical env, then you don't have the option of using a mouse
+	However, Vim has a visual mode that behaves in a very similar way, and in many cases  it's actually more powerful than simply using a graphical application that has mouse support
+	For example, you can select and operate on a vertical block of text that spans multiple lines, allowing you to make edits in the middle of many lines at once
+	Even if you don't plan to take advantage of some of the more advanced features, using vim visual mode can be a good way to select irregular text, or at the very least, see what portion of a document your change will affect before actually making that change
+	If you're using a graphical version of vim, it doesn't mean you ahve to use the mouse
+	If you're going for pure efficiency, you could argue that using visual mode commands is quicker than moving your hands back and forth from the mouse and keyboard
+	(reference visual.txt)
+	There are 3 versions of visual mode
+		Characterwise visual mode
+		Linewise visual mode
+		Blockwise visual mode
+	The command to start characterwise - "v"
+	You'll notice "VISUAL" in the status line
+	Whatever is under the cursor when you enter visual mode becomes highlighted. Additionally, when you perform a motion, it gets highlighted too
+	After you've select your desired text, you can perform an operation on that text. For example, after selecting the text, type "d". Everything that was visually highlighted is now gone
+	To get out of visual mode without performing any operations, press Esc
+	Let's say you want to highlight on both side of the cursor position
+	If you know this going in, you cna position your cursor at one end or the other end of the highlight.
+	But if you don't know that going in or you change your mind - go to visual mode with "v", go to the right. Then use the "o" command which moves your cursor to the opposite end of the highlight. Now you can move in the other direction and your highlight expands
+	You can press "o" again to go back to the previous end
+	Let's say you want to save the highlighted text to an unnamed register. Type "y". The text gets yanked and you return to normal mode
+	In addition to using motions to control the visually highlighted areas of text, you can use text objects
+	If the cursor is in the middle of a word and you want to highlight the word, type "iw"
+	To highlighted the paragraph, type "v" to enter visual mode, "ap" - "a" for all and "p" for paragraph
+	It's worth mentioning here that you could have done the exact same thing with "yap" vs "vapy"
+	The only advantage in this particular situation is being able to see the text you're operating on before you do it
+	If that makes you feel comfortable, then go ahead and use visual mode to use these types of commands. If you want to shave off that one keystroke, then skip visual mode in this case
+	Let's move on to linewise visual mode
+	To start linewise visual mode, - "V"
+	You'll notice that even though the cursor was in the middle of the line, the entire line was selected. So the smallest selection you can make is one entire line in linewise visual mode
+	Again, you can use motions to change the highlighted area. e.g if you move your cursor to the next line, the entire next line also gets highlighted
+	No matter where your cursor ends up on a line, that entire line will be selected in linewise visual mode
+	You can also use the "o" command to position the cursor on the opposite end of the visual area
+	You can use "gv" to start visual mode with the same area selected as the last time you were in visual mode. And it will also put you in the same type of visual mode
+	Basic list of commands for visual mode are also listed in visual.txt
+	Visual block mode
+	To start blockwise visual mode - "Ctrl + v". At the bottom you'll see "VISUAL BLOCK" in status line
+	When you move your cursor to different line, you'll see a block selected. If you were to make a motion with characterwise visual mode, all text on the first line would have been selected including the cursor position on the next line would have been selected as well
+	But with visul block mode, you can make vertical selections
+	You can use "o" to go to the opposite corner
+	With visul block mode, you can use "O" which moves the cursor to the other corner on the same line
+	To toggle case - "~". To change hilighted text to upper case "U", to lower case "u"
+	To select all the way to the end of every line, use the "$" otion (for lines that have different lengths)
+	Now, you can append to the entire block with "A". "a" (lowercase) doesn't work in visual mode
+	Once you press "A", you're placed into insert mode. Type the desired text you want to append to every line. You'll only see that text appear on that one line you're on but when you hit Esc, that same bit of text is appended to all the highlighted lines
+	You can prepend with blockwise visual mode with "I". "i" (lowercase) doesn't work in visual mode. You have to use uppercase "I"
+	You'll enter into insert mode, once you add your text and press Esc, the text is inserted on all the lines that were highlighted
+	You can use "c" in blockwise visual mode to change text
+
+8.35 - Visual Mode - Part 2
+	In addition to selecting text with motions, you can use text objects too. For example, if you want to indent all the lines inside a function
+		Start linewise visual mode with "V" and select all the lines ("i}")
+		To shift all the text over to the right - ">" (greater than)
+	BTW, if you wanted to shift one line without using visual mode, you can use ">>"
+	To be thorough, you can accomplish the same thing without using visual mode at all - ">i}" (I tried and didn't seem to work for me - TODO)
+	Let's say you want to shift everything to the left. To quickly select the last visual area - "gv", then type "<" (less than)
+	Before we finish with visual mode, I want to talk about indentation in tabs
+	When you perform one of these shift operations, it shifts text by the "shift-width" setting
+	To view the value of the "shift-width" setting - ":set shiftwidth?" (value is 8 on local and in video)
+	So each time you perform a shift operation, the text gets shifted by 8 characters
+	Also, by default, the "tab-stop" setting is set to "8" as well and we can confirm this with ":set tabstop?"
+	The tabstop setting is the number of spaces that a tab character in a file counts for. Said another way, tabstop is the width of a tab
+	Another setting that comes into play when working with tabs is the "expand-tab" setting
+	By default, it's disabled, which you can see with ":set expandtab?"
+	When it's enabled, it inserts the appropriate number of spaces instead of an actual tab character
+	So given that the shiftwidth is 8 and tabstop is 8 and expandtab is off, that means that when you perform a right shift operation, a tab gets inserted
+	If you want to make tabs easy to spot, turn on list mode with ":set list" - instead of setting the spaces a "tab" character represents, when you have list turned on, you see the actual tab character which is represented by "^I"
+	Also notice the "$" at the end of each line. This helps you spot extraneous whitespace at the end of lines
+	Let's set shiftwidth to 4 with ":set shiftwidth=4". Now when you shift the text over, if you turn on list mode, you'll notice that there are no tabs, just spaces at the beginning of the shifted lines
+	If you perform the shift once again, now you'll see the tab character shows in list mode because you shifted over to a multiple of the tabstop width and expandtab is turned off
+	If you're like me, you're not a big fan of tabs, especially abs mixed with spaces throughout a file
+	So now, turn on expandtab with ":set expandtab"
+	If you perform a shift, it moves the block 4 spaces
+	So now each line in the block starts with a series of spaces and not tab characters
+	If you want to save your settings like turning on expandtab option and setting shiftwidth with 4, add those statements in your .vimrc file
+	So that's how you use visual mode in combination with operatos like delete, change, yank, shift and so on
+	Now let's look at how you can limit the range of command mode commands on a selected region of text
+	First, I'm going to toggle of the list option
+	Let's say you want to make a substitution to a part of file
+	With "V" enter visual mode and select the lines
+	Now let's start command mode with a ":". You'll see ":'<,'>" automatically inserted. That text is arranged, which represents the visually selected area
+	The "'<" is the start of the visual area and "'>" is the end of the visual area. And like any other range, start and end points are separated by ","
+	Now you can perform your command on that range
+	So you can type, for example, the substitute command ":'<,'>s/United States of America/USA/" (replace with USA)
+	At the time of this recording, command mode commands affect entire lines
+	So if you were to use characterwise visual mode, commands would affect an entire line even if the line was partially visually selected
+	This may change in future versions of vim per the note in vim's own built-in documentation. But again, as of now, this is how it works
+	Let's work on another quick example of using visual mode with commands. Let's say you want to center the text between the lines between the lines of #s
+	Select lines by starting visual mode. Then enter command mode with ":"
+	Now you can use the center command - ":'<,'>center"
+	The center command uses a default of 80 columns to center with the lines
+	If you want the center the selection with the width of 40, just supply that after the command - ":'<,'>center 40"
+	BTW, the shortened version of the center command is "ce"
+	You can also left align line text with the left command - ":'<,'>left"
+	The shorthand version of left is "le". Also you can supply a column to left a line too. e.g. "'<,'>le5" which will move text 5 characters to the right from left
+	You can use the right command to right align lines with "right" command. "ri" is the shorthand version of the right command
+	Let's say we want to position this text in the middle of the screen and also start each line with # - "'<,'>ce" and position the cursor with 0 and then start blockwise visual mode, then "j" and then "r#"
+
+8.36 - Exercise 10 - Visual Mode
+	(in visual mode)
+	"yis" - yank inner sentence
+	"ip" - select paragraph. "J" to join all the lines
+	"U" - change to uppercase
+
+9.38 - Vim Settings and the Vimrc File - Part 1 (Vim Settings, Preferences, and Customizations)
+	You store these options and settings in your .vimrc file
+	BTW, having files that end in "rc" is a Unix/Linux convention. "rc" stands for run commands
+	So each time vim starts, it runs the commands in the .vimrc file
+	There's a system wide .vimrc file that will be executed each tiem anyone on the system starts vim
+	Additionally, each individual user can have their own .vimrc file. This is where you want to pur yout customizations
+	It's a good idea to just leave the system-wide .vimrc file alone and letthe vim installation process put the default file in place
+	This also explains why sometimes you can see something different than I'm demonstrating
+	Each versino of vim has a slightly different set of system wide defaults
+	If you're using Unix, Linux or Mac, .vimrc is located in your home directory - ~/.vimrc
+	On windows - $HOME/_vimrc
+	You may or may not have a .vimrc file already. By default, you won't. But if you're working on a system where someone else set up your account, then maybe they've placed a .vimrc file in your home directory as part of user creation process
+	You can also use the version command to see where the system wide and user specific .vimrc files are located - ":version"
+	We'll be focusing on our own .vimrc file so we can control our own vim experience
+	Each line in the .vimrc file is executed as a command. Said another way, it contains a list of commands as you would type them after a color
+		e.g. set ruler = :set ruler
+	However, the commands in the .vimrc file are NOT proceeded with a colon
+	Let's take a closer look at one of the commands we'll be using a lot in the .vimrc file - "set"
+	When you type ":set" and enter, all the options that are set at something other than their defaults are displayed
+	If you want to display the value of an option, use ":set <name>?"
+	BTW, "hls" is shorthand version of "hlsearch"
+	To find more info about hls - ":h hls"
+	To toggle a boolean option, you can simply append an "!" to the end of it
+	
+	Some options are assigned a numeric or string value
+	If you type ":h history" and then press Ctrl + d - you'll see several choices. The one we want is surrounded in single quotes ('history')
+	Using single quotes jumps to the option documentation
+	For example, ":h history" - this is help about history in general
+	What we want is the history option. To go there ":h 'history'". Now we're looking at the documentation about the history option
+	Now let's type a ":" and if you wanted to step back over the commands in your history, one by one, you would just keep pressing up arrow
+	You can actually narrow your search by typing a partial command line and then pressing the up arrow key to back through your history displaying only what matches your partial command
+	If we look back at the history option help, it says the default value of history is 50
+	If you want to return an option to its default value, append an "&" to it - ":set history&"
+	":set" command alone displays options that differ from their default value
+	So now what I'm going to do is create a .vimrc file for my user. I'm going to create it from scratch. Later I'll show you how to create a .vimrc file with "makerc" command 
+	To open a file with "e" or edit - ":e <file>"
+	You already know that you can use Ctrl + g to display the filename you're working on
+	You can also supply a count that is greater than 0 to Ctrl + g to force it to display the full path to the file
+	I'm going to start going over some commonly used vim options. There are tons and tons of options and you can configure them to do almost anything you want
+	To see the options - ":h option-list"
+	BTW there's another way you can view these options, and that is by using the options command - ":options"
+	This opens up a window with the list of options and brief descriptions of each one
+	Let's start with history. I personally like to keep a large command history. So I'm going to override the default history value
+	.vimrc file is read and executed when vim starts. So to make the changes take effect, you have to exit out of vim and start again
+	To use comments in your .vimrc file, start like with double quote """
+	To show cursor position at all times, use "set ruler"
+	You can use "set showcmd" if you want to display the incomplete commands in the bottom right hand
+	Let's say you wanted to to display completion matches on your status line. To do that, you would use "set wildmenu"
+	Let's say you want to show a few lines of context around your cursor - "set scrolloff=5" (some value other than 5). This value is the minimum number of lines to keep above and below the cursor. By default, this is set to 0
+	Remember in the previous lessons, where I would reposition the text on the screen using "z + enter". If this is set to 0, then z + enter moves the text all the way to the top of the screen
+	If you want to highlight your search matches - "set hlsearch"
+	Sometimes in my .vimrc I like to use longer names because they're more descriptive, but when I'm just typing them, I like the shorter names because they're quicker
+	If you want to enable incremental searching - "set incsearch". This tells vim to highlight the matched string as you're typing it when it performs a search
+	Another search related option is ignore case. Now if you want to ignore case when searching, you can turn this on with "set ignorecase".
+	If you're going to use this, I would suggest also setting something called smartcase - "set smartcase". This tells vim to override the ignorecase option if the search pattern contains uppercase letters
+	To show line numbers - "set number"
+	If you're the type of person who has backups of your backups, you might be interested in "set backup" - It makes a backup copy of the file you're editing before saving it
+		e.g. if you're editing a .vimrc, once you make your changes and "wq", you'll see a ".vimrc~" file. The file with the "~" is the backup file
+		By default, that ~ is appended to the end of the name to create the backup. That's an unusual ending and it's used to make sure that you don't overwrite something you care about
+	If you want to change that, you can use another option - "set bex=SOMETHING" and whatever you want that to be
+	BTW, "bex" is short for backup extension. I'm going to leave that out
+	Normally, vim will wrap text without regard for spacing. So, if the end of your visible screen happens to be in the middle of the word. Said another way, vim wraps at the last character that fits on the screen
+	Again, this is just wrapping. The contents of the file aren't being changed in any way
+	If you want to make sure to not break mid word, then you can use "set lbr". This makes it easier to read line wrap
+	If you happend to do some coding or scripting, you might be interested in the next 2 settings
+	The first one is "set ai" which stands for auto indent. What this does is copies the indentation from the current line when starting a new line by pressing enter when you're in insert mode or by using the lowercase "o" or upppercase "O" commands when you begin a new line
+	Another useful setting is "set si" which is short for smart indent. This tells vim to do what it considers smart auto indenting when starting a new line
+	This works for C like source code in other programming languages. It automatically indents based on "{" and "}"
+	If you're going to use this smart indent setting, you should also use "set autoindent" setting
+	Now if you're coding or even if you're editing a lot of configuration files that have syntax highlighting, you want to be able to clearly see that syntax highlighting
+	You can tell vim if you're using a dark background or light with "set bg=light" (or "dark")
+	Now vim will try to use colors that look good with your background. So if you're editing a file with syntax highlighting and you're having trouble reading the colors, tell vim what background you have and more than likely you'll be able to clearly see all the text	
+
+9.39 - Vim Settings and the Vimrc file - Part 2
+	We were just talking about color and make vim easy to read
+	So along those lines, you can specify a color scheme. By default, vim includes several color schemes
+	You can configure this with a color scheme command. You can also see the available color schemes by typing ":color <Ctrl + d>"
+	BTW, you can use "colo" or "color" for shortend version of colorscheme command
+	If you want to add a custom color scheme, just search the internet for vim color schemes. There are plenty of resources out there and there are tons of color schemes to choose from	
+	How you install a custom color scheme is to create a .vim directory in your home directory and then a and then a subdirectory under that called "colors" (~/.vim/colors)
+	Now what you would do is just place the color scheme file in the colors directory. And so now when you restart vim, you'll see the additional color schemes available to you as an option
+	So far we've covered the "set" command the "colorscheme" command. Next is the "map" command
+	The map command is used to change the behavior of typed keys. Said another way, a mapping allows you to bind a set of vim commands to a single key
+	The most common use is to define a series of commands for a function key. The function keys are typically unassigned by default
+	The format of the map command is "map" followed by the key you want to map, followed by the keystrokes that you want to be typed when that map key is pressed
+	For example, we could assign F2 to insert your name and address. To do that, you would use something like "map <F2> iJohn Smith<CR>123 Main Street<CR>Anytown, NY<CR><ESC>" (<CR> is carriage return or enter)
+	That is very similar to a macro
+	Here's a list of character you can use with a map command
+		<BS>		backspace
+		<CR>		enter
+		<Enter>		enter
+		<Return> 	enter
+		<Esc>		Escape
+		<Space>		Space
+		<Up>		Up arrow
+		...
+		<Insert>	Insert
+		<Del>		Delete
+		<Home>		Home
+		<End>		end
+		<PageUp>	Page-up
+		<PageDown>	Page-down
+		<Tab>		tab
+		<bar>		'|'
+		<C-X>		Ctrl-X
+		<F1>-<F12>	function keys
+	Let's say you happen to edit a lot of HTML docs and you want a quick way to get an unordered list started
+	Let's map that to F3. "map <F3> i<ul><CR><Space><Space><li></li><CR><Esc>0i</ul><Esc>kcit
+	You don't have to exit out and come back in if you want to. You can actually use a vim command which is "source" or "so" and then you can provide a file and this source command will execute all those commands in that file
+	And of course, we want to do that with a file we're editing, which is our .vimrc file
+	Now it's important to remember that when you're remapping keys, you can actually override existing vim commands. If you want to do that, that's totally fine. You can do that. I don't typically recommend that
+	As you already know, vim has many commands. So it can be hard to find a key that doesn't already have a purpose
+	In order to get around this challenge, vim provides what it calls a "leader key"
+	By default, the leader key is the backslash. What this does is gives you your very own name space that won't collide with any existing vim commands
+	So many people start their custom mappings with leader key
+	For example, if you wanted a quick way to save a file, you could create a mapping like this - "map <leader>w :w!<CR>"
+	Now if you were to type "\w", ":w! + enter" will be executed and your file will be saved
+	If you didn't use the leader in this example, then you would have overriden the "w" command, which you already know moves forward by a word
+	BTW, if you don't like the default leader key of \, you can change it with this "let mapleader=","" whatever key you want (a comma in this example) and enclose that in quotes
+	Make sure you place this statement BEFORE the special leader variable. Otherwise, mappings will use the default leader key
+	You can use the map command by itself without any arguments to see the current mappings
+	If you want to explore more on this topic, then you can check out the help with ":h mapping"
+	So that's how you can create a .vimrc file by hand
+	However, you can also just get everything configured the way you like it while you're using vim and then use this make vimrc command to write out your settings to your rc file
+	the "mkvimrc" command writes out all the map and set commands in such a way that when these commands are executed, the current key mappings and options will be set to the same values
+	When you run the "mkvimrc", it gives you a warning that you already have a .vimrc file. If you want to override that, then you have to use an "!" at the end of that command
+	BTW, you can use this "mkvimrc" command and provide another path so you can see what it's going to create before you overwrite your file
+	Even though you didn't see anything change, what happened is actually this .vimrc file that I'm currently editing was actually replaced. So I can reload it by typing ":e"
+	You'll see a lot of commands in your .vimrc once you run the mk command. Some of them actually come from the system wide .vimrc file and other lines are created by tyhe mkvimrc command itself
+	I'm going to go over few of them
+	"vmap" is key mapping for just visual mode, meaning that particular mapping is only valid in visual mode, nor normal mode, not in command mode
+	"nmap" is key mapping for just normal mode. By default, key mappings are recursive. So if you use a mapped key in another key mapping, it gets expanded there as well
+	"noremap" - disables that functionality. It essentially disables recursive key mapping for that map
+	So "vnoremap" is the visual version of noremap and "nnoremap" is the normal mode version of the noremap
+	At the bottom of the file, you can see several set commands. However, the very last line of this file is what's known as a "mode line"
+	What you can do is embed vim settings within a file at the very bottom or the very top of that file
+	You place these mode lines as a comment. For .vimrc files commented lines begin with a double quote
+	If you were doing this in another type of file that could be a pound sign or soemthing else
+	(in this case, the line says - '" vim: set ft=vim :')
+	What it's telling vim to do is execute the set ft=vim command
+	"ft" btw is short for file type, so it forces vim to treat this as a rc file type
+	You might want to do something similar to this
+	For example, if you're editing a C source code file, but it doesn't end in the normal C extension, you can force vim to treat it like a C source code file as "set ft=C"
+	The syntax of the mode line is important. Whitespace has to come before "vim". Then you use a color followed by the set command and then end the set command with another colon
+	If you want to see more info on this - ":h modeline"
+	I want to point out that your .vimrc file doesn't have to be anywhere near this complicated. Just use it to set whatever defaults you like and find useful
+	I like to make things as simple as possible, so my personal .vimrc file is really short
+
+10.42 - Editing Multiple Files and Vim Buffers (Vim Buffers and Windows)
+	You might find yourself in a situation where you want to edit or at least view multiple files at once and quickly switch between them
+	One way to do things like this would be to have multiple terminals open
+	You could even use something called a terminal multiplexer like Screen or Tmux or you can use vim's built-in mechanisms for handling multiple files which is what we're going to cover
+	Let's start by talking about buffers. Whether you realize it or not, you've been using buffers this whole time
+	Any time you open a file with vim, it reads the contents of that file into memory. That in-memory presentation of the file is what vim calls "buffer"
+	A common computer science definition of a buffer is a temporary memory area in which data is stored while it is being processed or transferred
+	Said another way, a buffer is a file loaded into memory for editing
+	The original file remains unchanged until you write that buffer to the file
+	So when you make a change, it's not automatically saved to the file, only the buffer is updated. When you're sure about your changes, then you write those changes to the associated underlying file
+	BTW, even though a buffer is typically associated with a file, it doesn't have to be, e.g when you start vim without supplying a file for it t oopen, vim starts with empty buffer
+	So again, a buffer resides in memory
+	(reference vimclass/buf*)
+	One way to open several files at once is to supply multiple files as arguments to vim command - "vim file1 file2 ..."
+	What you see is the contents of the first file supplied on the CLI, even though we actually opened 2 files
+	If you want to open even more files, you can do so within vim using the edit command - ":e file"
+	Now the file is opened and we can see the contents
+	Another way to open multiple files at once is to use your shell's expansion feature
+	A common shell expansion is the "*" which matches 0 or more characters. e.g. vim buf*. This is a common way to open multiple files at once
+	To view all the open buffers, let's use the buffers command - ":buffers"
+	This displays the list of buffers and the far left column you see a number. This number is a unique number for each buffer
+	BTW, this numbe rwill not change for the duration of your current vim session
+	The next column is used for indicators and flags
+	The next column displays the filename
+	And the last column displays current cursor position in that buffer
+	To quickly look at the help for buffers command - ":h :buffers"
+		You'll see that you can also use ":files" or ":ls" command
+	To open another buffer, you use the buffer command. You can either supply a buffer number or a buffer name which is the same as filename. e.g. ":buffer 2"
+	BTW, the shorthand for the buffer command is ":b". To open the third file - ":b3". To open another file ":b filename"
+	You can also use tab completion
+	You can also press Ctrl + d - ":b " + Ctrl + d to get a list of buffers to select from
+	You can move to the next buffer with the b next command - ":bnext"
+	The shorter version is ":bn"
+	This command will wrap around the buffer list
+	You can also move in the previous direction with b previous - ":bprevious" or ":bp"
+	This command will also wrap around the buffer list
+	There's also b first command that takes you to the first buffer. The short version of that is ":bf"
+	Also, there's a b last command which takes you to the last buffer and the short hand version of that is ":bl"
+	If you want to quickly switch back to the previously open buffer use Ctrl + ^ or Ctrl + shift + 6
+	I can keep hitting Ctrl + ^ to quickly switch back and forth between those buffers
+	In the buffers list, you'll see "%a" and "#"
+	The "%" sign means it's the buffer in the current window and "a" means  it's an active buffer
+	"#" represents the alternate buffer, which is the buffer that you were previously editing. So when you press Ctrl + ^, it switches to the alternate buffer
+	Another quick way to quickly switch back to the alternate buffer is ":b#"
+	"+" in the indicator column signifies that the buffer has been modifed, but those changes haven't been saved. By default, if we try to switch to another buffer without saving changes, we'll get an error
+	There are couple of ways to handle this
+		Write changes to file and load another buffer
+		You can overrite the normal error message with "!". e.g. ":bn!"
+	Now the we just changed has a + sign because it has unsafe changes and now it also has an "h" indicator which means it's what vim calls a "hidden buffer"
+	A buffer can be in 1 of 3 states
+		active - meaning it's loaded into memory and displayed in a window hidden 
+		inactive - it's not loaded into memory and it's not being displayed
+			So when buffers don't have any indicators, it's not loaded into memory
+			When we switch to them, they are then loaded into memory
+			So when you swtich away from them, vim unloads them and frees that memory
+			Even though the file itself isn't loaded into memory, when it's inactive, vim remembers the metadata about the file in the buffer, eg. it remembers what line you're on
+	If you want to change this default behavior of unloading a buffer each time you switch away from it, you can turn on the hidden option with ":set hidden"
+	This allows you to edit multiple files at once without before switching buffers or forcing the switch with an exclamation mark
+	Once a buffer is loaded into memory, it stays in memory. In other words, when you load a different bffer in the new window, the buffer you were just editing becomes hidden
+	Even if you don't make a chance to a buffer, it becomes hidden because we turn on the hidden option
+	If you forget to save your changes to one or more of your buffers and try to exit, we'll get an error message and switch to the first buffer with unsaved changes so you can save or abandon them
+	This even works with ":q!"
+		You can see that we get an error message
+		To save your change - ":w"
+		To discard your changes - run ":q!" again
+	So using the hidden option is fairly safe. If you like this option, you can add it to your .vimrc file
+	BTW, if you want to abandon all of your changes and all of your buffers, then you can use ":qall!"
+	Likewise, if you want to save all of your buffers, you can use "wall"
+	You already know how to open a file for editing in the current window with ":e"
+	If you want to open a file without switching to it immediately, you can use the b add command - "badd filename"
+	Let's say you're done with a buffer and you want to remove it from your list of buffers. To do that, use the ":bdelete" or ":bd"
+	bdelete unloads the current buffer from memory and flags it as unlisted
+	You can specify a buffer to delete by passing it's name or number as an argument to bd. e.g. ":bd 3"
+	You can also give the bd command a range - e.g. "1,3bd"
+	BTW, if you want to delete all the buffers, you can use the special range of "%" sign - e.g ":%bd"
+	Now all buffers have been deleted and vim gives you a fresh no-named buffer to work wtih, just like you would if you started vim without opening a file
+	If you want to execute a command in every buffer, use the buf do command - e.g. ":bufdo set nu" which will turn on line numbers for all buffers
+	To perform a global substitution acrosss all buffers - ":bufdo %s/#/@/g"
+	You'll get an error message if you have any unsaved changes. What happened was bufdo executed the command in the current window and got an error when it tried to switch to the next buffer. So it stopped
+	There are couple of ways to deal with this
+		One way we can handle this is to save our changes along the way - ":bufdo %s/#/@/g | w"
+		The pipe symbol in vim is the command separator
+		The other way to handle this is to use the hidden option, which we've talked about earlier. Right now hidden is off
+	":explore" or ":E" - when you execute this command, you get a file explorer window. You can use your normal vim navigation like j, k, Ctrl + f, and so on
+	Once you've found the file you want to open, then place your cursor somewhere underneath that file and press Enter
+	If you decide not to open any files, then you can use the bd command because this is just a special buffer that vim is using for this
+
+10.45 - Working with Multiple Windows
+	What we haven't covered is how to view more than one of those buffers at the same time or how to view the same buffer in multiple places all at once
+	In vim, a window is a view of a buffer. By default, when you start vim wthout supplying any filenames as arguments, vim starts with one window open and it loads an unnamed buffer into that window
+	If you pass one or more files, vim will start with one window open and it will display the first buffer
+	The whole time we've used one window. However, when you were using the help system, you were using 2 windows that were split horizontally
+	If you remember from the help lesson, you learned how to switch between those windows with Ctrl + w, Ctrl + w command
+	What Ctrl + ww really does is cycles through all of your open windows
+	You also learned to close the window with ":q" or quit command which is how you can close any window regardless of what is being displayed
+	To split the window horizontally - ":sp" or ":split". Now we're looking at the same buffer in 2 different windows
+	Since you're looking at the same buffer in 2 different views, any edits made to the buffer will be displayed in both windows
+	You can also use Ctrl + ws command to perform the same action as split
+	If you want to open a different buffer or file in the newly split window, supply that to the split command
+	If the file is in the buffer list, then that buffer is loaded
+	If that file is not already in the buffer list, then it's added to the buffer list and displayed in newly created window
+		e.g ":sp filename"
+	To view buffers side by side, then use the v split command - ":vs" or ":vsplit"
+	You can also use Ctrl + wv command to do the same thing
+	To load a different buffer in the newly created vertically split window, supply the file or buffer name to the v split command - ":vs filename"
+	BTW, we've been using colon quit or q command to close the current window. You can also close the window with Ctrl + wq
+	You can have more than 2 windows open at once
+	To close all the other windows except the one you're currently in, use the only command - ":on" or ":only" or Ctrl + wo
+	This makes the current window hte only window on the screen
+	BTW, you can also use Ctrl + w in conjuntion with h,j,k,l pattern
+	If you work with windows often, you can create mappings to make this even quicker
+	Examples
+		map <C-h> <C-w>h
+		map <C-j> <C-w>j
+		map <C-k> <C-w>k
+		map <C-l> <C-w>l
+		map <leader>h <C-w>h 
+		map <leader>j <C-w>j 
+		map <leader>k <C-w>k 
+		map <leader>l <C-w>l 
+	For more info on mappings, see lesson on .vimrc file
+	BTW, if you're using a graphical version of vim, you can just simply click in a window to make it active window. You can also change the size by dragging the status bar
+	Vim also provides a few shortcuts you can use to resize windows as well
+		To increase the height of a window - Ctrl + w+
+		TO decrease the height of a window - Ctrl + w-
+		To increase the width of a window - Ctrl + w>
+		To decrease the width - Ctrl + w<
+		To maximize the height of a window - Ctrl + w_
+		To maximize the width - Ctrl + w|
+		To make all the windows the same - Ctrl + w=
+	Now, let's say you have all your windows arranged the way you liked them, but you want to rearrange which buffers are displayedinto which windows
+	One way to do this is with Ctrl + wr which rotates the windows
+	You can also use Ctrl + wR - this performs the rotation  in the opposite direction
+	In addition to rotating windows, you can be more explicit using
+		Ctrl + wH
+		Ctrl + wJ
+		Ctrl + wK
+		Ctrl + wL
+	BTW, you can still use all the buffer command you know in any window
+	If you run ":ls", you'll see that every buffer has an "a" indicator meaning that they're all being actively displayed
+	The buffer that's in the current window has "%" indicator
+	If you want to open all the buffers in your buffer list in their own window, use ball comamnd - ":ba" or ":ball"
+	In the buffers lesson, you learned about the bufdo command which allows you to execute commands to all of your open buffers
+	There is a very similar command "windo" which you can use to execute a command in every window
+	Let's pull up the help on the Ctrl + ww command with ":h ^ww"
+	There are 2 ways to execute this command
+		One way is Ctrl + ww
+		the other is Ctrl + w and Ctrl + w again
+	This holds true for all the window commands you learned
+	To get a list of those commands, you can use ":h ctrl-w"
+	Try both versions of the commands and see which one works for you
+	Also be aware that there might be a couple of gotchas when you use the ctrl ctrl version of some commands
+		e.g. Ctrl + s suspends screen updating on some terminals
+		So if you type Ctrl + w Ctrl + s to split a window and nothing happens, what you need to do it is type Ctrl + q to resume screen udpating
+		Likewise Ctrl + w, Ctrl + q might not work because some terminals intercept that control q combo
+
+11.46 - Managing Vim Plugins (Vim Plugins)
+	If you wanted to maange plugins prior to vim version 8, you would need to use a third party plugin managers such as
+		vim-plug
+		Vundle
+		Neobundle
+		Pathogen
+	Vim version 8 and beyond now includes a built-in plugin manager
+	If you're currently using a 3rd party plugin manager, you can continue to do so even if you're using vim version 8
+	If you're just now starting to use plugins fro vim, then I highly recommend using the official built-in mechanism to do so and that's what you will learn in this lesson
+	Before you can install plugins, you first have to find them
+	The 2 biggest resources that I use and recommend are
+		Google.com
+		https://vimawesome.com/
+	vimawesome is a great resource that allows you to search for and browse thousands of vim plugins
+	Currently, most of the plugins are hosted on github.com
+	The easiest way to install plugins is to clone their git repo
+	Before we get into the details of managing plugins, we're going to take a couple of minutes to cover few concepts
+	A vim package is a directory that contains one or more plugins
+	To determine exactly where to store plugins
+		First, view the pack path setting with this command
+			vim (start vim)
+			:set packpath
+		Here you'll see a list of directories separated by a comma
+		These are the directories that vim will search for packages and plugins
+		The packpath is the base directory or top most directory where packages are stored, but it's not the complete path
+		You'll need to create a directory named "pack" inside the packpath directory. From that pack directory, you will create a directory for each package you want to create
+			{packpath}/pack/{package-name}
+	BTW, a package is a collection of one or more plugins. So if you have a set of plugins you use like on every system you use, you can create a package of those plugins
+	You can also organize your plugins into packages. One way to do that is by putting similar plugins together
+	Below the package directory, you can have a directory name "start" and a directory named "opt" or you can have both start and opt
+		{packpath}/pack/{package-name}/start/{plugin-name}
+		{packpath}/pack/{package-name}/opt/{plugin-name}
+	The plugins placed in the "start" directory will automatically be loaded when vim starts
+	If you don't want a plugin to automatically load when vim starts, pace it in the "opt" directory
+	Plugins placed in "opt" directory are available to load
+	To load a plugin that is in the "opt" directory
+		:packadd {plugin-directory-name}
+	The ":packadd" command doesn't care about the package name, but it does care about the name of the directory that is storing the plugin
+	(demo) we're ready to install our first plugin - V Nerd Tree but many people simply call it Nerd Tree
+	It's a file system explorer. Mainly it allows you to browse directories, quickly open files
+	clone the repo in the start/opt directory
+	To start nerd tree in vim - ":NERDTree"
+		For help, "?"
+		And then you can navigate this help like any other vim doc
+	Sample shortcuts for nerd tree
+		"O" - to open all sub directories
+		"X" - to close all sub directories
+		Ctrl + ww - change window
+		"o" - open folder/file
+	This is a very brief look at nerd tree. You can do so much more like create bookmarks, rename files, add/remove directories/files and more
+	Some people even choose to map a key to toggle nerdtree on/off
+	(another demo) Let's install a fuzzy file finder plugin named Control P (ctrlpvim/ctr - org/repo)
+	You can start the Control P plugin with "Ctrl + p"
+	If you use control p to ope na file, it will replace the file in the current buffer. However, you can also use control p to open up split
+	To open in horizontal split - "Ctrl + x"
+	To open file in vertical split - "Ctrl + v"
+	Now if you work on projects that contain many files and many different subdirectories, control p can really save you a lot of time searching for files
+	(another demo for opt directory)
+	Let's install a plugin named Tabular
+	Command to start tabular plugin - ":Tab". You'll get an error
+	To load a plugin that is stored in "opt" directory, you have to run ":packadd <directory>"
+	BTW, the shortcut for packadd is ":pa"
+	Now, when you run ":Tab" instead of getting an error from vim, you'll get an output from the plugin itself
+	To run - ":Tab /<delimiter>" e.g. ":Tab /,"
+	It makes the block of text look very nice. There are additional formatting options you can read in the doc
+	(another demo)
+	Let's install easy motion (vim-easymotion)
+	This plugin allows for a simple way to perform vim motions
+	To use these e-motions, type the leader key twice, followed by a motion key
+	By default, the leader key is the backslash
+	To jump to the beginning of the line that is below the current cursor position - "\\j" 
+	Some people prefer this plugin, as opposed to searching for text or using native vim motions
+	To go to the beginning of the line that is above our cursor position. The line up motion is - "k". So we would use "\\k"
+	To do a single character search in either direction - "\\s"
+	(another demo)
+	Let's install fugitive plugin
+	The fugitive plugin is essentially a wrapper around git
+	Many of the commands start with ":Git"
+	For example, here's how you would run git blame - ":Git blame"
+	To remove a plugin, you simply remove the plugin directory
+
+12.47 - Vim Graphical User Interfaces: Gvim and MacVim (Vim Graphical User Interfaces: Gvim and MacVim)
+	There are couple of good reasons to use graphical version of vim
+	e.g. if you're a linux admin and you work with vim all day. So you don't have to use one editor in one place and another editor in another place
+	Another reason - you don't really use the command line as part of your normal workflow
+	Another reason to use GUI version of vim is to take advantage of the GUI only features. e.g. access system's clipboard or use file explorer to open files or use scroll wheel on your mouse to skim through a document
+	These options aren't available to you in the command line only version of vim
+	Gvim for windows
+	Macvim for mac
+	For linux you have couple of options
+		gvim from CLI
+	Just because you have the textual version of vim installed doesn't mean you ahv ethe GUI version installed
+	So if you don't find macvim installed on your mac or gvim reports command not found on a linux, then you'll need to install the graphical version
+	You'll find the official versions of vim at vim.org. So go there and install if need be
+		https://www.vim.org/
+	Of course, linux users can use the package manager for their OS and install it from there. If you do, you'll be looking for something like "vim-x11" or "vim-gnome" or something similar
+	One of the most obvious differences between graphical version and textual version of vim is that the graphical version includes menus
+	In macvim you can take advantage of some mac conventions like Cmd + o to open a file, etc
+	Keep in mind that you can still use all the commands you've learned
+	You can actually look at what each menu item does by checking out the menu.vim file
+	You can toggle toolbar
+	With a grpahical version of vim, you have access to the system's clipboard
+	You already know about vim's clipboard like system registers. You also learned about some special registers along the way
+	There are 2 more special vim registers that are used in graphical mode
+		"+ register - clipboard register. It contains the contents of the clipboard
+		"* register
+	To paste from clipboard (+ register) - '"+P'
+	In the menu Edit > Paste, the shortcut shows '"+gP'
+	The only difference between P and gP is that gP places the cursor after the pasted text if there's room on the line. P just places the cursor on the last character of the pasted text
+	On mac and windows systems, the * asterisk register is the same as the + plus register
+	As a matter of fact, if we look at the registers, you'll only see the + or * register but not both
+	(ran ":reg") Here you see the asterisk register but not a plus register
+	Again, if you're on a mac or windows system, + or * registers are interchangeable
+	If you're on Unix/linux or Windows X, then
+		+ register contains text that uses the traditional clipboard
+		* register contains text that is highlighted or selected with the mouse
+	To yank a line into the clipboard - '"+yy'
+	If you're looking to make this a more seamless experience, you can set vim's clipboard option to unnamed - ":set clipboard=unnamed"
+	What this does is to tell vim to use the clipboard register for all yank, delete, change and put operations which would normally go to unnamed register
+	Now, by default, you don't have to specify the asterisk register
+	Now vim acts more like other applications by using the system's clipboard by default instead of its
+	To do this in linux, instead of using "unnamed" use "unnamedplus"
+	If you like this option, it makes sense to save it so you don't have to set it every time you start vim
+	This brings me to the last topic
+	You already know about .vimrc file. .gvimrc acts in the same way but it's only used by the graphical version of vim
+	So if you have some specific gvim only settings, this is where you should put them
+		.gvimrc - for linux and mac
+		_gvimrc - Windows
+	This file goes in your home directory
+	Also be aware that the gvimrc file is read and executed after the normal startup. This means that your .vimrc file is read before your .gvimrc file
+	You can use ":version" command to see the location and name of the .gvimrc file
+	You'll also see the name and location of the menu file
+	If you want to change the font, use the GUI font option or "gfn" for short. To use your OS's font selector, type "set gfn=*"
+	You could have also used a menu option to start the font selector as well
+	If you want to use this font each time you start gvim, place it in your gvimrc file
+	BTW, if your font name has spaces in it, you'll have to escape those spaces with backslash
+		e.g. "set gfn=Courier\ New:h14"
+	Typically you can surround values with quotes but it doesn't work with GUI font option. Again, just escape any spaces in your font name
+	For more info on GUI specifics, including settings, you can read up on the docs by typing ":h gui"
+
+13.48 - Live Q&A Call #1 (Live Q&A Calls)
+	Screen or Tmux - CLI screen manager
+ 

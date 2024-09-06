@@ -1,0 +1,695 @@
+Jose Portilla
+State date - Aug 10, 2023
+
+1.2 - Introduction (Course Introduction)
+	We'll use PostgreSQL
+
+1.4 - Overview of Databases
+	Databases are systems that allow users to store and organize data
+	(comparing DBs to spreadsheets)
+	We can think of a DB's tables as tabs of a spreadsheet
+	Tables are made of rows and columns
+	What are our DB platform options? (only including main ones)
+		PostgreSQL
+		MySQL/MariaSQL
+		MS SQL Server Express
+		Microsoft Access
+		SQLite
+	We'll focus on PostgreSQL because it's free, open source, widely used, multi platform meaning you can use on different OSs
+	My main reason is that it's super easy to install
+	Most of the commands learned are general SQL but you'll be notified if any SQL commands we learn are specific to PostgreSQL
+
+1.5 - Course FAQs
+	Course slides - https://drive.google.com/drive/folders/1aPfWD-2K6mZ4LuyKBUVH3nf-CWSt4euv?usp=sharing
+	Default
+		username - "postgres"
+		password - ""
+
+1.6 - Windows Installation - PostGreSQL and PgAdmin with First Query
+	PgAdmin - GUI on top of PostgreSQL to type queries
+	Step 1 - Download and install from postgresql.org
+	Download link for windows installer will take you to enterprisedb.com
+	Use defaults during installation
+	For password - you must remember your password. Otherwise you need to start over
+	Step 2 - download and install pgAdmin from pgadmin.org
+	There's 2 version - pgAdmin4 and 3 (for older verions of Windows)
+	Select teh defaults
+	Step 3 - Download (but do NOT directly open) dvdrental.tar file
+	This file is a compressed version of the DB we're going to be using for this course
+	Step 4 - restart computer
+	Step 5 - restore the DB (ignore failed exit code if it appears)
+	Now, open pgAdmin (not the .exe file)
+	You will be asked to set a password. This password is for pgAdmin. NOT PostgreSQL. But it's fine for both to be the same
+	Create a new database and restore the "dvdrental.tar" file
+	In restore window, click "Restore Options" tab
+		Select Yes for pre-data, data and post-data
+
+1.7 - MacOS Installation - PostgreSQL and PgAdmin with First Query
+	Step 1 - download and install from postgresql.com
+	Download the interactive installer from enterprisedb.com link
+	It will download a zip file
+	Unzip the file using default app and open the file
+	Use defaults
+	Step 2 - download and install pgadmin
+	Downlad the dmg file, open the file and move to Applications folder
+	Step 3 - download dvdrental.tar
+	Step 4 - Restart computer
+	Step 5 - restore the DB
+
+1.8 - pgAdmin Overview
+	File > preferences
+
+2.12 - SELECT Statement (SQL Statement Fundamentals)
+	SELECT is the most common statement used and it allows us to retrieve information from a table
+	Syntax: SELECT <column_name> FROM <table_name>
+	In general we capitalize SQL keywords. This isn't 100% necessary but it makes it much easier to read
+	"*" if you want all columns from a table
+	In general, it's not a good practice to use "*" in SELECT statement if you don't really need all columns
+	It will automatically query everything, which increases traffic between DB server and application, which can slow down the retrieval of results
+	If you only need certain columns, do your best to only query for those columns
+	(in pgAdmin) The ";" is to denote the end of a query but if you remove it, it'll work just fine
+
+2.14 - SELECT DISTINCT
+	Sometimes a table contains a column that has duplicate values, and you may find yourself in a situation where you only want to list the unique/distinct values
+	The DISTINCT keyword can be used to return only the distinct values in a column
+	Syntax: SELECT DISTINCT <column> FROM <table>
+	Sometimes to clarify which column distinct is being applied to, you can also add in parentheses for clarity
+		SELECT DISTINCT(<column>) FROM <table>
+	So not that distinct on a column works with or without parentheses
+	Later on when we learn about adding more calls such as COUNT and DISTINCT together, the parentheses will be necessary
+
+2.16 - COUNT
+	The COUNT function returns the number of input rows that match a specific condition of a query
+	We can apply COUNT on a specific column or just pass COUNT(*)
+	SELECT COUNT(name) FROM table - this simply returns the number of rows in the table
+	In fact, it should be the same regardless of the column we call
+	Because each column has the same number of rows since they're literally in the same table
+	Which is why whether you call "SELECT COUNT(name) FROM table" or "SELECT COUNT(*) FROM table" (which is saying select the count of all the rows for all the columns in the table), they should all return the same thing since the original table has 4 rows
+	Now keep in mind, it's sometimes useful to use a column instead of just providing an asterisk because if you come back on your SQL query sometime later, it may actually help kind of stir the memory of what actual question you were trying to answer
+	So again, because of this COUNT by itself simply returns back a count of the number of rows in a table
+	COUNT is much more useful when combined wiht other commands such as DISTINCT
+	e.g. SELECT COUNT(DISTINCT name) FROM table;
+		If you want, you can also provide parentheses for DISTINCT on name
+		SELECT COUNT(DISTINCT(name)) FROM table;
+
+2.17 - SELECT WHERE - Part One
+	SELECT and WHERE statements are the most fundamental SQL statements and you will find yourself using them often
+	The WHERE statement allows us to specify conditions on columns for the rows to be returned
+	Syntax - SELECT <columns> FROM table WHERE conditions;
+	WHERE clause appears immediately after FROM clause of the SELECT statement
+	The conditions are used to filter the rows returned from SELECT statement
+	PostgreSQL provides a variety of standard operators to construct the conditions (these are NOT unique to PostgreSQL)
+	Comparison operators - =, >, <, >=, <=, <> or !=
+	Logical operators - AND, OR, NOT
+
+2.20 - ORDER BY
+	 You may have noticed PostgreSQL sometimes returns the same request query results in a different order
+	 You can use ORDER BY to sort rows based on a column value, in either ascending or descending order
+	 Syntax - SELECT <columns> FROM table ORDER BY <columns> ASC/DESC
+	 Notice the ORDER BY towards the end of a query, since we want to do any selection and filtering first, before finally sorting
+	 ASC = ascending, DESC = descending
+	 If you leave it blank, ORDER BY uses ASC by default
+	 You can provide multiple columns to ORDER BY. If you have duplicates in a particular column and you want to sort not just by that particular column but another column as well, it makes sense to do an ORDER BY with multiple columns
+
+2.21 - LIMIT
+	The LIMIT command allows us to limit the number of rows returned for a query
+	Useful for not wanting to return every single row in a table, but only view the top few rows to get an idea of the table layout
+	LIMIT also becomes useful in combination with ORDER BY
+	LIMIT goes at the very end of a query request and is the last command to be executed
+
+2.23 - BETWEEN
+	The BETWEEN operator can be used to match a value against a range of values
+		value BETWEEN low AND high
+		Equivalent - value >= low AND value <= high
+	You can also combine BETWEEN with the NOT logical operator
+		value NOT BETWEEN low AND high
+		Equivalent - value < low AND value > high
+	BETWEEN operator can be used with dates NOTE - you need to format dates in the ISO 8601 standard format, which is YYYY-MM-DD
+
+2.24 - IN
+	In certain cases you want to check for multiple possible value options, for example, if a user's name shows up IN a list of known names
+	We can use the IN operator to create a condition that checks to see if a value is included in a list of multiple options
+	Syntax - value IN (option1, option2, ...)
+
+2.25 - LIKE and ILIKE
+	We've already been able to perform direct comparisons against strings such as
+		WHERE first_name = 'John'
+	But what if we want to match against a general pattern in a string? e.g.
+		All emails ending in '@gmail.com'
+		All names that begin with an 'A'
+	The LIKE operator allows us to perform pattern matching against string data with the use of wildcard characters
+		'%' - matches any sequence of characters
+		'_' - matches any single character
+	Notice that LIKE is case-sensitive, we can use ILIKE which is case-insensitive
+	Here we just focus on LIKE and ILIKE for now, but keep in mind PostgreSQL does support full regex capabilities
+		https://www.postgresql.org/docs/12/functions-matching.html
+
+3.27 - Introduction to GROUP BY (GROUP BY Statements)
+	GROUP BY will allow us to aggregate data and apply functions to better understand how data is distributed per category
+
+3.28 - Aggregation Functions
+	SQL provides a variety of aggregate functions
+	The main idea behind an aggregate function is to take multiple inputs and return a single output
+	https://www.postgresql.org/docs/12/functions-aggregate.html
+	The most common aggregate functions
+		AVG() - returns average value
+		COUNT() - returns number of values
+		MAX() - returns maximum value
+		MIN() - returns minimal value
+		SUM() - returns sum of all values
+	Aggregate function calls happen only in SELECT clause or HAVING clause
+	Notes:
+		AVG() returns a floating point value
+		You can use ROUND() to specify precision after the decimal
+
+3.29 - GROUP BY - Part One
+	GROUP BY allows us to aggregate columns per some category
+	We need to choose a categorical column to GROUP BY
+	Categorical columns are non-continuous
+	Keep in mind, they can still be numerical
+	The way the group by operates is the following:
+	You've already chosen our categorical column
+	Then what we're going to do is essentially split this table up on a per category basis
+	And then we have the corresponding data values
+	Recall that an aggregation function takes in multiple values and reduces them back down to one single value
+	Syntax - SELECT category_col, AGG(data_col) FROM table GROUP BY category_col
+		AGG is just some place holder for some aggregate function
+	The GROUP BY clause must appear right after a FROM or WHERE statement
+	So if you want, before you do the GROUP BY, you can filter things out using a WHERE statement
+	Important note - In the actual select statement, columns must either have an aggeregate function call on them or be themselves in the GROUP BY call
+	The only exception to this is if I'm calling some sort of aggregatino function on the column itself
+	Keeping in mind that the WHERE statements should NOT refer to the aggregation result
+
+3.30 - GROUP BY - Part Two
+	In the ORDER BY statement, you cannot just specify the column name, you have to use the aggregate function that was used
+	e.g.
+		SELECT customer_id, SUM(amount) FROM payment
+		GROUP BY customer_id
+		ORDER BY SUM(amount)
+	If we want to perform a GROUP BY on a date, we have to call a specialized date function to convert the timestamp to a date, and then we can actually group by that
+	Use DATE()
+	e.g.
+		SELECT DATE(payment_date), SUM(amount) FROM payment
+		GROUP BY DATE(payment_date)
+		ORDER BY SUM(amount)
+
+3.32 - HAVING
+	The HAVING clause allows us to filter after an aggregation has already taken place
+	So it comes after the GROUP BY call
+	e.g.
+		SELECT comapany, SUM(sales)
+		FROM finance_table
+		WHERE company != 'Google'
+		GROUP BY company
+	We've already seen we can filter before executing the GROUP BY, but what if we want to filter based on SUM(sales)
+	So after performing the GROUP BY and calculating the sum of sales per company, I want to perform an additional filter on that result based on the sum of sales, I could add the HAVING clause	
+		SELECT comapany, SUM(sales)
+		FROM finance_table
+		WHERE company != 'Google'
+		GROUP BY company
+		HAVIGN SUM(sales) > 1000
+	HAVING allows us to use the aggregate result as a filter along with a GROUP BY
+
+5.38 - Introduction to JOINs (JOINS)
+	JOIN will allow us to combine information from multiple tables
+
+5.39 - AS Statement
+	AS clause allows us to create an "alias" for a column or result
+	Syntax: SELECT column AS new_name FROM table
+	We can also use this on functions on a column
+	e.g. SELECT SUM(column) AS new_name FROM table
+	Keep in mind that the AS operator gets executed at the very end of a query, meaning that we cannot use the alias inside a WHERE operator
+	Alias is going to exist at the very end of the data output
+	So because an alias gets assigned at the very end, you cannot use it in something like WHERE statement or a HAVING clause
+	Unfortunately, you have to go back and choose hte original either column name or original function
+
+5.40 - Inner Joins
+	There are several types of JOINs
+	What is a JOIN? JOIN allows us to combine multiple tables together
+	The main reason for hte different JOIN types is to decide how to deal with the information only present in one of the joined tables
+	An INNER JOIN will result with the set of records that match in both tables
+	So when we're talking about INNER JOIN, we're only looking for the set of records that happen to be in both tables
+	Syntax: SELECT * from tableA INNER JOIN tableB ON tableA.col_match = tableB.col_match
+	(showing a Venn diagram) - it is the intersection of tableA and tableB
+	It's the crossover middle, essentially stuff that can be found in both of these circles
+	Because of that, inner join is essentially symmetrical, which means that if you switched tableA with tableB (in query above), you'll get the same results
+	Remember that table order won't matter in an INNER JOIN
+	Also, if you see just JOIN without INNER, PostgreSQL will treat it as an INNER JOIN
+
+5.41 - Full Outer Joins
+	There are few different types of OUTER JOINS
+	They will allow us to specify how to deal with values only present in one of the tables being joined
+	(showing 2 example tables - registrations table with reg_id and name columns and logins with log_id and name columns)
+	We're going to assume that the name is the unique identifier
+	Recall, with inner join, we could match Andrew and Bob in both tables
+	However, keep in mind we have names that only appear in one table, and that is Charlie and David in registrations and Xavier and Yolanda in logins
+	So an OUTER JOIN or FULL OUTER JOIN just grabs everything
+	Syntax - SELECT * FROM tableA FULL OUTER JOIN tableB ON tableA.col_match = tableB.col_match
+	And it's essentially just grab everything, whether it's present in both tables or present only in one table
+	(Venn diagram - union of tableA and tableB)
+	Notice that it doesn't really matter again if tableB and tableA are switched here because this is completely symmetrical
+	If certain column values exist in one table but doesn't exist in another, the values show up as "null"
+	FULL OUTER JOIN with WHERE - get rows unique to either table (rows not found in both tables)
+	Essentially, this is opposite in both tables
+	The way it works is the following
+		SELECT * FROM tableA
+		FULL OUTER JOIN tableB
+		ON tableA.col_match = tableB.col_match
+		WHERE TableA.id IS null OR TableB.id IS null
+	(Venn diagram - union of TableA and TableB minus the intersection)
+	Notice that you can switch the order since it's symmetrical
+	Essentially, you can think of this as adding a WHERE statement after you've already done the join
+
+5.42 - Left Outer Join
+	A LEFT OUTER JOIN results in the set of records that are in the left table, if there is no match with the right table, the results are null
+	Syntax: SELECT * FROM TableA LEFT OUTER JOIN TableB on TableA.col_match = TableB.col_match
+	(Venn diagram - Only TableA is selected (including the intersection part)
+	Notice that our Venn is no longer symmetrical, which means that the order will actually matter
+	So notice we're essentially just grabbing information from TableA where there's either exclusive TableA or TableA ha a match with something in TableB
+	If something is only found in TableB, then it's not going to be returned in the query
+	Recall that a LEFT OUTER JOIN can be shorted to just LEFT JOIN in SQL syntax
+	(Basically the rows will only be TableA rows but TableB columns are added into the result)
+	We can further qualify this with a WHERE statement to get rows unique only to the left table
+		SELECT * FROM TableA LEFT JOIN TableB
+		ON TableA.col_match = TableB.col_match
+		WHERE TableB.id IS null
+	(Venn diagram - TableA minus the intersection of TableA and TableB)
+
+5.43 -  Right Joins
+	A RIGHT JOIN is essentially the same as a LEFT JOIN, except the tables are swtiched
+		SELECT * FROM TableA
+		RIGHT OUTER JOIN TableB
+		ON TableA.col_match = TableB.col_match
+	This would be the same as switching the table order in a LEFT OUTER JOIN
+	Keep in mind, you can do either RIGHT JOIN or RIGHT OUTER JOIN
+		SELECT * FROM TableA
+		RIGHT OUTER JOIN TableB
+		ON TableA.col_match = TableB.col_match
+		WHERE Table.id IS null
+	And just like with LEFT OUTER JOIN, you can also add a clarifying WHERE statement (WHERE TableA.id IS null) in order to clarify that you only want tables that ca nbe found exclusively in TableB and not TableA
+	It's up to you and how you have the tables organized "in your mind" when it comes to choosing LEFT vs RIGHT join, since depending on the table order you specify in the JOIN, you can perform duplicate JOINS with either method
+
+5.44 - UNION
+	The UNION operator is used to combine the result-set of 2 or more SELECT statements
+	It basically serves to directly concatenate two results together essentially "pasting" them together
+	Syntax
+		SELECT column_name(s) FROM table1
+		UNION
+		SELECT column_name(s) FROM table2
+	(example of 2 tables of sales from different quarters and you want to stack them on top of each other to get one table view)
+
+6.46 - Overview of Advanced SQL Commands (Advanced SQL Commands)
+
+6.47 - Timestamps and Extract - Part One
+	In this we will focus on displaying time information
+	These will be more useful when creating our own tables and databases, rather than when querying a database
+	We've already seen that PostgreSQL can hold date and time info:
+		TIME - only time
+		DATE - only date
+		TIMESTAMP - date and time
+		TIMESTAMPZ - date, time and timezone
+	Careful considerations should be made when designing a table and database and choosing a time data type
+	Depending on the situation you may or may not need the full level of TIMESTAMPZ
+	Remember, you can always remove historical information, but you cannot add it
+	Functions and operations related to these specific data types:
+		TIMEZONE
+		NOW
+		TIMEOFDAY
+		CURRENT_TIME
+		CURRENT_DATE
+	To see current timezone you're working in, use SHOW command. The main command is SHOW ALL
+	Documentation lists all parameters you can use with the SHOW command
+	To see current timezone - SHOW TIMEZONE
+	To get current timestamp - SELECT NOW(). This gives you in a timestamp format
+	If you want it as a string, you can run - SELECT TIMEOFDAY(). This returns same info as before but as a string
+	To grab current time - SELECT CURRENT_TIME or SELECT CURRENT_DATE
+
+6.48 - Timestamps and Extract - Part Two
+	We're going to explore how to extract information from time based data type using:
+		EXTRACT()
+		AGE()
+		TO_CHAR()
+	EXTRACT()
+		Allows you to "extract" or obtain a sub-component of a date value
+			YEAR
+			MONTH
+			DAY
+			WEEK
+			QUARTER
+		You can check SQL documentation for more info
+		example for extracting year - EXTRACT(YEAR FROM date_col)
+	AGE()
+		Calculates and returns the current age of a given timestamp
+		Usage - AGE(date_col)
+		Returns - 13 years 1 mon 5 days 01:34:13.003423
+	TO_CHAR()
+		General function to convert data types to text
+		Useful for timestamp formatting
+		Usage - TO_CHAR(date_col, 'mm-dd-yyyy')
+
+6.49 - Quick Note on TO_CHAR
+	TO_CHAR has certain codes that are "blank padded to 9 characters", which means instead of returning "Monday", it returns "Monday   " with extra spaces to fill up at least 9 spaces
+
+6.51 - Mathematical Functions and Operators
+	Documentation contains plenty of info on mathematical operators and functions
+
+6.52 - String Functions and Operators
+	PostgreSQL provides a variety of string functions and operators that allow us to edit, combine and alter text data columns
+	Documentation contains plenty of of info on operators and functions
+
+6.53 - SubQuery
+	A subquery allows you to construct complex queries, essentially performing a query on the results of another query
+	The syntax is straightforward and involves 2 SELECT statements
+	Let's imagine a table consisting of student names and their grades
+	How can we get a list of students who scored better than the average grade?
+	We need 2 steps - first get the average grade, then compare the rest of the table against it
+	This is where a subquery can help us get the result in a "single" query request
+		SELECT student, grade
+		FROM test_scores
+		WHERE grade > (SELECT AVG(grade) FROM test_scores)
+	The query inside the parentheses (avg) is going to be run first
+	We can also use the IN operator in conjunction with a subquery to check against multiple results returned. For example:
+		SELECT student, grade
+		FROM test_scores
+		WHERE student IN
+		(SELECT student FROM honor_roll_table)
+	The EXISTS operator is used to test for existence of rows in a subquery
+	Typically a subquery is passed in the EXISTS() function to check if any rows are returned with the subquery
+	Typical syntax
+		SELECT column_name
+		FROM table_name
+		WHERE EXISTS
+		(SELECT column_name FROM table_name WHERE condition)
+
+6.54 - Self-Join
+	A self-join is a query in which a table is joined to itself
+	Self joins are useful for comparing values in a column of rows within the same table
+	The self-join can be viewed as a join of 2 copies of the same table
+	The table is not actually copied, but SQL performs the command as though it were
+	There is no special key for a self join, its simply standard JOIN syntax with the same table in both parts
+	However, when using a self join, it is necessary to use an alias for the table, otherwise, the table names would be ambiguous
+	Syntax
+		SELECT tableA.col, tableB.col
+		FROM table AS tableA
+		JOIN table as tableB ON
+		tableA.some_col = tableB.other_col
+
+8.59 - Introduction to Section (Creating Databases and Tables)
+	We've focused on querying and readying data from existing DBs and tables
+	Let's shift focus to creating our own DBs and tables
+
+8.60 - Data Types
+	Review Data types
+		Boolean
+		Character - char, varchar and text
+		Numeric - integer and floating-point
+		Temporal - date, time, timestamp and interval
+		UUID
+		Array
+		Json
+		Hstore key-value pair
+		Special types such as network address and geometric data
+	When creating DBs and tables, you should consider which data types should be used for the data to be stored
+	Review docs to see limitations of data types - https://www.postgresql.org/docs/current/datatype.html
+	When creating a DB and table, take your time to plan for long term storage
+	Remember, you can always remove historical info you've decided you aren't using, but you can't go back in time to add in info
+
+8.61 - Primary Keys and Foreign Keys
+	A primary key is a column or a group of columns used to identify a row uniquely in a table
+	Primary keys are also important since they allow us to easily discern what columns should be used for joining tables together
+	A foreign key is a field or group of fields in a table that uniquely identifies a row in another table
+	A foreign key is defined in a table that references to the primary key of the other table
+	The table that contains the foreign key is called referencing table or child table
+	The table to which the foreign key references is called referenced table or parent table
+	A table can have multiple foreign keys depending on its relationships with other tables
+	You may begin to realize primary key and foreign key typically make good column choices for joining together 2 or more tables
+	When creating tables and defining columns, we can use constraints to define columns as being a primary key or attaching a foreign key relationship to another table
+
+8.62 - Constraints
+	Constraints are the rules enforced on data columns on table
+	There are used to prevent invalid data from being entered into the DB
+	This ensures the accuracy and reliability of the data in the DB
+	Constraints can be divided into 2 main categories
+		Column constraints - column level constraint
+		Table constraints - table level constraint
+	The most common constraints
+		NOT NULL - ensures that a column cannot have NULL value
+		UNIQUE - ensures that all values in a column are different
+		PRIMARY Key - uniquely identifies each row/record in a DB table
+		FOREIGN Key - constrains data based on columns in other table
+		CHECK - ensures that all values in a column satisfy certain conditions
+		EXCLUSION - ensures that if any 2 rows are compared on the specified column or expression using the specified operator, not all of these comparisons will return TRUE
+	Table constraints
+		CHECK (condition) - check a condition when inserting or updating data
+		REFERENCES - constrain the value stored in column that must exist in a column in another table
+		UNIQUE(column_list) - forces the values stored in columns listed inside () to be unique
+		PRIMARY KEY(column_list) - allows you to define the primary key that consists of multiple columns
+
+8.63 - CREATE Table
+	Create a table
+	Syntax
+		CREATE TABLE table_name(
+			column_name TYPE column_contraint,
+			column_name TYPE column_contraint,
+			table_constraint
+		) INHERITS existing_table_name;
+	Common simple syntax
+		CREATE TABLE table_name(
+			column_name TYPE column_contraint,
+			column_name TYPE column_contraint,
+		);
+	SERIAL data type
+		In postgreSQL, a sequence is a special kind of DB object that generates a sequence of integers
+		A sequence is often used as the primary key column in a table
+		Serial will create a sequence object and set the next value generated by the sequence as the default value for the column
+		This is perfect for a primary key, because it logs unique integer entries for you automatically upon insertion
+		If a row is later removed, the column with the SERIAL data type will NOT adjust, marking the fact that a row was removed from the sequence
+
+8.64 - INSERT
+	INSERT allows you to add in rows to a table
+	General syntax
+		INSERT INTO table (column1, column2,...)
+		VALUES
+			(value1, value2, ...),
+			(value1, value2, ...),...;
+	 Keep in mind you ccan also have a syntax for inserting values from another table
+	 It looks kinda similar
+	 	INSERT INTO table(column1, column2, ...)
+		SELECT column1, column2,...
+		FROM another_table
+		WHERE condition;
+	Keep in mind, the inserted row values must match up for the table, including constraints
+	SERIAL columns do not need to be provided a value
+
+8.65 - UPDATE
+	UPDATE keyword allows for the changing of values of the columns in a table
+	General syntax
+		UPDATE table
+		SET column1 = value1, column2 = value2, ...
+		WHERE condition;
+	You can reset everything without WHERE condition
+	You can also set based on another column
+	You can also use another table's values (UPDATE join)
+		UPDATE TableA
+		SET Original_col = TableB.new_col
+		FROM tableB
+		WHERE tableA.id = TableB.id
+	You can return affected rows
+		UPDATE account
+		SET last_login = created_on
+		RETURNIGN account_id, last_login
+
+8.66 - DELETE
+	We can use DELETE clause to remove rows from a table
+	Syntax
+		DELETE FROM table
+		WHERE condition;
+	We can delete rows based on their presence in other tables
+		DELETE FROM tableA
+		USING tableB
+		WHERE tableA.id = tableB.id
+	Essentially where there happens to be a match between these 2 tables, we'll go ahead and delete those rows from tableA
+	We can delete all rows from a table
+		DELETE FROM table
+	Similar to UPDATE command, you can also add in a RETURNING call to return rows that were removed
+
+8.67 - ALTER Table
+	The ALTER clause allows for changes to an existing table structure, such as
+		Adding, dropping or renaming columns
+		Changing a column's data type
+		Set DEFAULT values for a column
+		Add CHECK constraints
+		Rename table
+	General syntax
+		ALTER TABLE table_name action
+	To add columns
+		ALTER TABLE table_name
+		ADD COLUMN new_col TYPE
+	To remove columns
+		ALTER TABLE table_name 
+		DROP column col_name
+	To alter constraints
+		ALTER TABLE table_name 
+		ALTER COLUMN col_name
+		SET DEFAULT value // DROP DEFAULT // SET NOT NULL // DROP NOT NULL // ADD CONSTRAINT constraint_name // RENAME COLUMN old_col TO new_col
+
+8.68 - DROP Table
+	DROP allows for the complete removal of a column in a table
+	In PostgreSQL, this will also automatically remove all of its indexes and constraints involving the column
+	However, it will not remove columns used in views, triggers or stored procedures without the additional CASCADE clause
+	General syntax
+		ALTER TABLE table_name
+		DROP COLUMN col_name
+	To remove all dependencies
+		ALTER TABLE table_name
+		DROP COLUMN col_name CASCADE
+	Check for existence to avoid error
+		ALTER TABLE table_name
+		DROP COLUMN IF EXISTS col_name
+	To drop multiple columns
+		ALTER TABLE table_name
+		DROP COLUMN col_one,
+		DROP COLUMN col_two
+
+8.69 - CHECK Constraint
+	The CHECK constraint allows us to create more customized constraints that adhere to a certain condition
+	Such as making sure all inserted integer values fall below a certain threshold
+	General syntax
+		CREATE TABLE example(
+			ex_id SERIAL PRIMARY KEY,
+			age SMALLINT CHECK(age > 21),
+			parent_age SMALL INT CHECK(parent_age > age)
+		);
+
+10.72 - Conditional Expressions and Procedures Introduction (Conditional Expressions and Procedures)
+
+10.73 - CASE
+	We can use the CASE statement to only execute SQL code when certain conditions are met
+	This is very similar to IF/ELSE statements in other programming languages
+	There are 2 main ways to use a CASE statement, either a general CASE or a CASE expression
+	Both methods can lead to the same result
+	Syntax for general CASE statement
+		CASE
+			WHEN condition1 THEN result1
+			WHEN condition2 THEN result2
+			ELSE some_other_result
+		END
+	You can use alias as well. Eg
+		SELECT a,
+		CASE WHEN a = 1 THEN 'one'
+			WHEN a = 2 THEN 'two'
+		ELSE 'other' AS label
+		END
+		FROM test;
+	The CASE expression syntax first evaluates an expression then comparees the result with each value in the WHEN clauses sequentially
+	CASE expression syntax
+		CASE expression
+			WHEN value1 THEN result1
+			WHEN value2 THEN result2
+			ELSE some_other_result
+		END
+	e.g.
+		SELECT a,
+		CASE a WHEN 1 THEN 'one'
+			WHEN 2 THEN 'two'
+			ELSE 'other'
+		END
+		FROM test;
+	Common way to sum things
+		SELECT
+		SUM(CASE rental_rate
+			WHEN 0.99 THEN 1
+			ELSE 0
+		END) AS bargains,
+		SUM(CASE rental_rate
+			WHEN 2.99 THEN 1
+			ELSE 0
+		END) AS regular,
+		...
+		FROM customers
+	Now I'm able to format the results in this easy to read manner where I have the number of bargains showed at the exact same time regular
+	This is something a lot more difficult to do with other tools and it's almost impossible to format it in this way
+	It's super common to use CASE with a WHEN statement, and then you say THEN 1 else 0 as ways of summing things up or counting the results
+
+10.75 - COALESCE
+	The COALESCE function accepts an unlimited number of arguments. It returns the first argument that is not null. If all arguments are null, the COALESCE function will return null
+	Syntax
+		COALESCE(arg_1, arg_2,...,arg_n)
+	Example
+		SELECT COALESCE(1,2)	# result 1
+		SELECT COALESCE(NULL, 2, 3)	# result 2
+	The COALESCE function becomes useful when querying a table that contains null values and substituting it with another value
+	Keep the COALESCE function in mind in case you encounter a table with null values that you want to perform operations on. However, you don't want to actually go in and do any changes to the table itself, because it's often nice to understand that there's a null value there
+
+10.76 - CAST
+	The CAST operator let's you convert from one data type into another
+	Keep in mind not every instance of a data type can be CAST to another data type, it must be reasonable to convert the data
+	2 ways to perform CAST operation
+		1. CAST function syntax
+			SELECT CAST('5' AS INTEGER)
+		2. PostgreSQL CAST operator
+			SELECT '5'::INTEGER
+
+10.77 - NULLIF
+	The NULLIF function takes in 2 inputs and returns NULL if both are equal, otherwise it returns the first argument passed
+	Syntax
+		NULLIF(arg1, arg2)
+	eg.
+		NULLIF(10, 10)	# result NULL
+		NULLIF(10, 12)	# result 10
+	This becomes very useful in cases where a NULL value would cause an error or unwanted result
+
+10.78 - Views
+	Often there are specific combinatins of tables and conditions that you find yourself using quite often for a project
+	Instead of having to perform the same query over and over again as a starting point, you can create a VIEW to quickly see this query with a simple call
+	A view is a DB object that is of a stored query
+	A view can be accessed as a virtual table in PostgreSQL
+	Notice that a view does not store data physically, it simply stores the query
+	You can also update and alter existing views
+	Syntax for creating a view:
+		CREATE VIEW view_name AS {QUERY}
+	Now, you can just run
+		SELECT * FROM view_name
+	Keep in mind you're not duplicating any information internally. Instead you're really just saving the query and it will be automatically called for you
+	That way, you can expand on this by adding things like WHERE calls or HAVING statements or GROUP BYs
+	It really helps you simplify things for complex queries
+	Now, if you find yourself needing to alter a view and basically change the underlying query information from it, that's also pretty easy to do.
+	You simply call the CREATE OR REPLACE command. To do that
+		CREATE OR REPLACE VIEW existing_view_name AS {NEW_QUERY}
+	To remove a view
+		DROP VIEW view_name
+	You can also check if it exists to prevent errors
+		DROP VIEW IF EXISTS view_name
+	If you ever find yourself wanting to change the name of a view, you can do
+		ALTER VIEW current_view_name RENAME TO new_view_name
+
+10.79 - Import and Export
+	Import/export allows us to import data from a .csv file to an already existing table
+	There are some important notes to keep in mind when using Import/Export
+	Not every outside data file will work, variations in formatting, macros, data types, etc may prevent the Import command from reading the file, at which point, you must edit your file to be compatible with SQL
+	Details of compatible file types and examples are available in the documentation
+	You MUST provide the 100% correct file path to your outside file, other wise the import command will fail to find the file
+	The most common mistake if failing to provide the correct file path, confirm the file's location under its properties
+	The import command DOES NOT create a table for you
+	It assumes a table is already created
+	Currently, there's no automated way within pgAdmin to create a table directly from .csv file
+	You can use tools to automate this process. However, these tools are nto part of standard pgAdmin or standard postgreSQL
+
+11.80 - Overview of Python and PostgreSQL (Extra: PosgreSQL with Python)
+	Python library - psycopg2
+
+11.81 - Psycopg2 Example Usage
+	Sample code
+		import psycopg2 as pg2
+		conn = pg2.connect(database='dbname', user='...', password='...')
+		cur = conn.cursor()
+		cur.execute('SELECT * FROM payment')
+		cur.fetchone()
+		curr.fetchmany(10)
+		data = curr.fetchall()
+		conn.close()
+	It's always best practice to put the whole query as one single string and to verify that it's a single string that you want. This is to avoid accidents from happening
+
+11.82 - Psycopg2 Resources
+	https://wiki.postgresql.org/wiki/Psycopg2_Tutorial
+
