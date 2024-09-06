@@ -1,0 +1,12 @@
+Ned Bellavance
+	@ned1313 | nedinthecloud.com
+Updated June 2023
+
+2.1 - Overview (What You Need to Know About Infrastructure as Code)
+
+2.2 - Infrastructure as Code Defined
+
+
+
+
+
