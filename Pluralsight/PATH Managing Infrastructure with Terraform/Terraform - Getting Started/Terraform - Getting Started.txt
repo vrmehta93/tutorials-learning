@@ -5,8 +5,670 @@ Updated June 2023
 2.1 - Overview (What You Need to Know About Infrastructure as Code)
 
 2.2 - Infrastructure as Code Defined
+	Infrastructure as Code (Iac) - provisioning infrastructure through software to achieve conssitent and predictable environments
+	Concepts
+		Defined as code whether it be JSON, YAML or Hashicorp config language
+		Version control
+		Declarative or Imperative
 
+2.3 - Declarative vs Imperative
+	Imperative - telling software what to do and how to do it
+		Procedural
+	Declarative - you declare what you want with a whole bunch of parameters and then you leave up to the software to figure out exactly how to implement it
+	Terraform is an example of a declarative approach deploying Iac
 
+2.4 - Idempotence and Consistency
+	Idempotence - check whether you already have what you want
+		In an non-idempotent world, the software creates what you want every time without checking if it's already there
+	Terraform attempts to be idempotent in the sense that if you haven't changed anything about your config and you apply it again to the same env, nothing will change because your defined config matches the reality of the infrastructure that exists. And that's what meant by idempotent
 
+2.5 - Push or Pull
+	Push - the software gives it to you when it's ready
+	Pull - You ask the software when it's ready
+	In the world of Iac, Terraform is a push type model. The config that Terraform has is getting pushed to target env
 
+2.6 - Benefits of Iac
 
+3.2 - What is Terraform? (Deploying Your First Terraform Configuration)
+	Terraform is simply a tool to automate the deployment and management of infrastructure
+	The core of Terraform is an open source project maintained by Hashicorp. There's a paid version - Terraform Cloud or Terraform Enterprise. We're NOT going to cover those services in this course. We're only sticking to open source
+	It's vendor agnostic
+	The core functionality of Terraform is packaged in a single binary file compiled from Go
+		Hashicorp offers compiled versions for multiple OSs, so chances are there is a Terraform binary that will work for you
+	It's declarative syntax - you're describing how you want the world to be and Terraform is in chanrge of handling the heavy lifting
+	The actual configuration is written in either Hashicorp Configuration Language (HCL) or in JSON directly. Unless you're using another programming language to create Terraform config files, I'd recommend sticking with HCL. It's much more human readable and writeable
+	Terraform uses a push style deployment to create infrastructure. Terraform is going to reach out to the API for any given service and tell it what to create. There's no agent to install or remote machine or central server running all the Terraform things
+	There are 4 core components
+		1. Executable - single binary file you invoke to run Terraform. It contains all the core Terraform functionality
+		2. Configuration files - files you're going to deploy. Typically have ".tf" extension
+			When Terraform sees one or more Terraform files within a directory, it takes all of those files and stitches a configuration together on the basis of the contents of those files
+		3. Provider Plugin - how Terraform talks to all the various services out there. The provider plugins are executables invoked by Terraform to interact with a service's APIs
+			The most common plugins are hosted on the public Terraform registry
+				https://registry.terraform.io/
+		4. State data - once resources have been created, Terraform likes to keep track of what's going on, so it maintains state data which contains the current info about your deployment. It's a mapping of what you've defined in your config to what exists in the target env
+			When you want to do an update on your env, Terraform essentially compares your updated config to what's in the state file, calculates the changes to make the state match config, and makes the changes in the target env, finally updating the state data
+
+3.3 - Installing Terraform
+	Download the executable for your platform
+	Add it to your PATH env var
+	Start using Terraform
+	It's also available in common package managers like apt, yum, homebrew and chocolatey. You can even grab it as a docker container
+	Repo - https://github.com/ned1313/Getting-Started-Terraform
+		Forked and cloned the repo in this folder
+	Download page for Terraform - https://developer.hashicorp.com/terraform/install
+	For help running Terraform CLI - "terraform -help" in terminal
+
+3.4 - Globomantics Scenario
+	Provision a new env - to turn existing product into SaaS product
+		Web front end and DB backend and a public DNS record
+		Deploy to AWS using Terraform
+		Deploy to us-east-1 region
+		Create VPC within the region with a single public subnet
+		Inside that subnet, create single EC2 instance
+		Running nginx as web server
+
+3.5 - Terraform Object Types
+	3 Terraform object types you need to know for this config are
+		Providers - define info about a provider plugin you want to use. If you want to use AWS provider plugin, that provider wants to know your credentials and region
+		Resources - things you want to create in a target env. They're the most imp component of Terraform. Each resource is associated with a provider and will require some additional info for its config.
+		Data sources - a way to query info from a provider. You aren't creating anything but simply asking for info you might want to use in your config. You can think of a data source as a read-only resource and just like resources, data sources are associated with a provider
+			A data source could be a current list of AZs in a region, an AMI to use for EC2 instance, etc
+
+3.6 - Configuration Block Syntax
+	HCL uses block syntax for everything in the file. It's a simplified version of JSON
+	Each block will start with "block_type" keyword that describes what type of object is being described in the block
+	Next will be a series of labels that are dependent on the type of object we're working with. The last label will usually be the name label which helps create a unique identifier you can use to reference the object in the rest of the config
+	Within the block, we're going to have one or more key-value pairs that make use of available args for the object type
+		block_type "label" "name_label" {
+			key = "value"
+			nested_block {
+				key = "value"
+			}
+		}
+	Each key will be a string and the value could be any of Terraform's different data type (covered later)
+	You can also have nested blocks inside of the main config block
+		Inside the nested block will be more key-value pairs
+		And yes, you can have nested blocks inside of nested blocks
+	For instance, let's see how the instance would be applied to an EC2 instance:
+		The object we're describing is going to be a resource that we want to create and manage
+		Based on AWS docs for AWS provider, use "aws_instance" for EC2 instance
+		Name label for our resource is "web_server" which comebined with the "resource" type label gives us a way to refer to it, especially if we've got multiple AWS instances in our config
+		Inside we can specify a name for our EC2 instance. This is the name we'll see in the AWS console
+		Finally, we can use a nested block to specify an EBS volume to attach to our EC2 instance
+			If we have multiple EBS volumes to attach, then we can repeat the EBS volume nested block multiple times
+		There are plenty more args available for an AWS instance resource, but this is a good start
+			resource "aws_instance" "web_server" {
+				name = "web-server"
+				ebs_volume {
+					size = 40
+				}
+			}
+	I've mentioned the ability to refer to other objects inside a Terraform config. HCL has a defined syntax for doing so. The general format is:
+		<resource_type>.<name_label>.<attribute>
+	If you want the whole resource, you can skip the <attribute> at the end
+	As an example, let's say we want to reference the name of our web server:
+		aws_instance.web_server.name
+	You can find the full list of attributes for each resource type in the Terraform docs
+
+3.7 - Reviewing the Base Configuration
+	Looking at main.tf in the repo. There's a provider block for AWS
+	It's not recommended to store your AWS credentials in a config file. Instead you should use env vars or a credentials file. I've included them purely for convenience
+
+3.8 - Terraform Workflows
+	Terraform has a workflow with 3 basic steps and an optional 4th step
+	First step
+		Terraform makes use of provider plugins to interact with services like AWS
+		Before it can use those, it needs to get them from somewhere. This is done as part of the initialization process
+		And the command to do so is "terraform init"
+		Terraform init looks for config files inside of current working directory and examines them to see if it needs any provider plugins
+		If it does, it will try and download the plugins from the public Terraform registry, unless you specify an alternate location
+		Terraform will also need to store state data about your config somewhere
+		Part of the initialization process is getting a state data backend ready
+		If you don't specify a backend, Terraform will create a state data file in the current working directory
+		Once the initialization is complete, Terraform is ready to deploy some infrastructure
+	Second step
+		The next  step in our workflow is to plan out your deployment using "terraform plan"
+		In this case, Terraform will take a look at your current config, the contents of your state data and determine the differences between the two and make a plan to update your target env to match the desired config
+		Terraform will print out the plan for you to look at and verify the changes Terraform wants to make
+		You don't have to run the "terraform plan" command, but Terraform will always generate an execution plan before it makes any changes
+		You can save the plan changes to a file and feed that into the Terraform command in the next step
+	Third step
+		It's now time to actually make the changes to the target env and you can do that by running "terraform apply"
+		Assuming you ran "terraform plan" and saved the changes to a file, Terraform will simply execute those changes using provider plugins
+		The resources will be created or modified in the target env and then the state data will be updated to reflect the changes
+		If we run "plan" or "apply" again without making any changes, Terraform will tell us no changes are necessary since the config and state data match
+	4th step
+		There's one more command I would like to bring up - "terraform destroy"
+		If you're done with an env, "destroy" will do exactly that, destroy everything in the target env that Terraform is managing based on what it sees in the state data
+		This is a dangerous command and Terraform will ask you if you're sure
+		We're going to use this command in the course to save money when we're done with a module, but in real world, please be careful
+
+3.9 - Deploying the Base Configuration
+	(Live demo) Running init command, it creates a .terraform directory and .terraform.lock.hcl file (covered later)
+	Inside .terraform directory, there's a sub-directory for providers. That's where it downloads and keeps the provider executable that will be used to talk to AWS
+	The actual path itself is very long because each provider plugin is specific to the version of the provider and OS you're running it from
+	Running plan command - "terraform plan -out <filename>.tfplan". "out" flag will write the execution plan out to a file. The file extension doesn't need to end in ".tfplan" but it's generally best practice
+	To apply our plan with file - "terraform apply <filename>.tfplan"
+	If we run apply without specifying a plan file, it will first run a fresh execution plan and show that plan on the screen with a prompt asking for confirmation of the changes that it's going to make
+	Because we supplied a .tfplan file, it doesn't have to confirm those changes because it assumes we've already reviewed that plan
+
+3.10 - Validating the Deployment
+	When you run destroy command, it generates an execution plan, just like the plan command and it details the changes it needs to make to destroy everything in your env. And then it asks for your confirmation
+
+4.2 - Working with Data in Terraform (Using Input Variables nad Outputs)
+	Terraform can accept values through input vars, transform values inside a config and return values as output
+	There are 3 concepts to consider when working with data in a Terraform config (TC)
+		1. Input vars or just vars for short. They're used to pass info to Terraform runtime, meaning when you're generating an execution plan
+			The vars are defined inside the config, values are supplied when Terraform is executed
+		2. Local values, sometimes just called locals, are computed values inside the config that ca nbe references throughout the config. In other languages, these would be called vars
+			The values for locals are not submitted directly from external inputs but can be computed based on input vas and internal references
+		3. Data is returned with Output values. Outputs are defined in the config, and the value of each output will depend on what it references within the config
+			Just like locals, the output value can be constructed from more than one element
+
+4.3 - Input Variable Syntax
+	An input variable block starts with the "variable" keyword followed by a single label, the name label. All other properties of the variable are defined inside the block and all of those other properties are optional
+		variable "name_label" {}
+	You can have a var with no args and that's acceptable, although not preferred
+	Common args inside the block
+		variable "name_label" {
+			type = value
+			description = "string"
+			default = value
+			sensitive = true | false
+		}
+	If "sensitive" is set to true, Terraform will NOT show the value of the var in its logging or terminal output. Default value is false
+	There are other args available for input vars but these are the most common and the ones we'll deal with in this course
+	To refer to the value stored in the variable, we use this syntax
+		var.<name_label>
+
+4.4 - Terraform Data Types
+	We can group the data types in 3 different categories
+		1. Primitive - String, number, bool
+		2. Collection - List, set map
+		3. Structural - Tuple, object
+		4. Any - list(any)
+			When you don't know what data type will be stored by the collection yet
+		5. Null
+	Examples:
+	List - [1,2,3,4] # All of the same data type
+	Map - {small = "a", medium = "b", large = "c"} # Keys must be unique and values must be of the same data type
+	To create a list variable:
+		variable "aws_regions" {
+			type = list(string)
+			description = "Regions to use for AWS resources"
+			default = ["us-east-1", "us-west-2"]
+		}
+	To reference values:
+		var.<name_label>[<element_number>] # Starting index is 0
+		var.aws_regions[0]
+	To create a map variable:
+		variable "aws_instance" {
+			type = map(string)
+			description = "Instance sizes to use in AWS"
+			default = {
+				small = "t3.micro"
+				medium = "m4.large"
+			}
+		}
+	To reference values
+		var.<name_label>.<key_name> OR var.<name_label>["key_name"]
+		var.aws_instance[small] OR var.aws_instance["small"]
+
+4.5 - Globomantics Configuration Updates
+
+4.6 - Adding Variables to the Configuration
+	Add variables.tf file for adding input variables
+	Because they're in the same directory, I'm able to directly access those variables in main.tf
+	Solution in m4_solution directory
+
+4.7 - Local Values Syntax
+	Local values are values computed inside of config. You can't submit values directly to them, unlike input vars
+	They're great for situations where you'll have to use the same value multiple times in your config. You can set the local value once, reference it throughout the config and if you need to change it, you only need to do so in one place
+	You can also use local values to transform data before using it elsewhere in your config
+	Syntax - it starts with the "locals" keyword and that's it for the labels on the block. The rest of info goes inside of the config block:
+		locals {
+			key = value
+		}
+	Example:
+		locals {
+			instance_prefix = "globo"
+			common_tags = {
+				company = "Globomantics"
+				project = var.project
+				billing_code = var.billing_code
+			}
+		}
+	To refer to value stored in a local:
+		local.<key> # "local" is singular here and NOT plural
+		local.instance_prefix
+
+4.8 - Adding Locals to the Configuration
+	String interpolation - Use "${<string var 1> - <string var 2>}"
+
+4.9 - Output Values Syntax
+	Outputs are how to get info from Terraform
+	Outputs are printed out to the terminal at the end of the config run
+	Terraform also stores output values in teh state data and they're used to expose values when a config is placed inside a module
+	Syntax:
+		output "name_label" {
+			value = value
+			description = "string"
+			sensitive = true | false
+		}
+	Inside the config block, the only required argument is the value of the output
+	Just like value of local, the value of output can be any supported data
+	Optional arguments include description, which is only seen when looking at the code for a config, unless you're creating a module for publishing to a registry
+
+4.10 - Adding Outputs to the Configuration
+
+4.11 - Validate the Configuration
+	Terraform has 2 commands that can help you with the linting of your code - "terraform fmt" and "terraform validate"
+	"fmt" is short for format and it works by updating all the code in the current working directory to match Hashicorp's preferred formatting style. It's a great way to make sure that your code is consistent, easy to read and parse when comparing different versions of your code
+	"fmt" has 2 useful flags you can add to the command
+		"-check" flag will check your code, but not alter the files. It will return a non-0 exit code if there are any formatting issues. So you can run this command as part of your CI/CD pipeline to make sure your code is properly formatted before it's accepted
+		"-recursive" which will check and fix the formatting of Terraform files in the curent working directory and any subdirectories. If you're using modules, the recursive flag will save you from having to run the same command in each module directory
+	The "fmt" command does NOT check the syntax or logic of your code unless there's something that prevents it from formatting properly, like a missing closing bracket
+	If you want to check the syntax and logic of your code, you can use the "validate" command
+	It will help you make sure your config is correct
+	Before you can run the "validate" command, you need to run "terraform init" command. That's because it's checking the syntax and args of resources and ata in the providers, and it needs the provider plugins to do so
+	You don't need to run "init" to use "fmt" since that's simply shifting text
+	"validate" doesn't check the current state of the deployment, just the contents of your config
+	It also carries no guarantee that the updated deployment of your config will be successful. Your syntax and logic might be right and the deployment could still fail for any number of reasons - insufficient capacity, incorrect instance size, etc. "validate" does what it can but it can't do everyting
+
+4.12 - Using the Validate Command
+
+4.13 - Supplying Variable Values
+	When it comes to setting the value for a variable, there are at least 6 ways of doing so. That's a lot
+		1. The easiest way is to supply a value in the default arg
+		2. You can also supply at the CLI when executing "run" with the "-var" flag followed by the name of the variable and the value you want to set it equal to
+			You can use this flag multiple times for as many variable values you'd like to set
+		3. You can also have all your variable values defined in a file and submit that file with the "-var-file" flag
+			Inside the file will be each var name as a key followed by an equal sign and the value for the var
+		There are 2 other ways to submit values from a file
+		4. If there's a file in the same directory as the config named "terraform.tfvars" or "terraform.tfvars.json" (which needs to be properly formatted JSON), Terraform will find that file automatically and use the values inside
+		5. Additionally, if there's a file in the same directory as the config ending in ".auto.tfvars" or ".auto.tfvars.json", Terraform wil find those and use those values as well
+		6. The final option is to use env vars to set values
+			Terraform will look for any env vars that start with "TF_VAR_" followed by the variable name, and capitalization DOES matter
+		If you don't submit a value in any of those ways and no default is set, Terraform will prompt you for a value at runtime
+			Remember, all input vars need a value at runtime
+		That's a lot of options. Can you combine them? Yes
+		And what if you set the same variable in multiple ways? There's an order of precedence and here's what it looks like from highest precedence to lowest:
+			TF_VAR_ env var
+			terraform.tfvars or terraform.tfvars.json
+			.auto.tfvars or .auto.tfvars.json
+			-var-file flag
+			-var flag
+			CLI
+
+4.14 - Deploying the Updated Configuration
+	Once you run "terraform apply", it will print output variables to terminal
+	If you ever need to see the output again, you can simply run the command "terraform output"
+
+5.1 - Overview (Updating Your Configuration with More Resources)
+	Add resiliency now. Currently, we have one EC2 instance, in one subnet, in one VPC, in one AZ
+
+5.2 - Globomantics Architecture Upates
+	Potential improvements:
+		Add a second AZ
+		Add a second EC2 instance
+		Add load balancing for instances
+		Maintain readability code
+	So now, we have:
+		2 subnets in one VPC, and each subnet has an EC2 instance (in each AZ)
+		And we're adding a LB
+
+5.3 - Adding New Resources to the Configuration
+	Rename main.tf to network.tf
+	Created loadbalancer.tf
+
+5.4 - Using the Documentation
+	To figure out args for load balancer
+	General docs - https://developer.hashicorp.com/terraform/docs
+	Docs for providers and resources is found in the terraform registry - https://registry.terraform.io/
+
+5.5 - Updating the Network and Instance Configuration
+
+5.6 - Adding the Load Balancer Resources
+
+5.7 - Working with State Data
+	State data contains entries for your resources, data sources and outputs
+	State data is what maps the resources and data sources in config to target env. It's how terraform knows about the objects it's managing, and it's also how terraform knows to destroy a resource when it's removed from the config
+	Terraform state data is stored in JSON format. You should NOT try to alter this JSON data by hand. Bad things can and will happen
+	State data stores imp info about your deployment, including mappings of resources and data sources from the object identifier in the config to a unique identifier in the target env
+	The unique identifier depends on the object type
+		For instance, AWS instance resource uses EC2 instance ID
+	Each time terraform generates an execution plan, it loads state data into memory and refreshes the values by querying the deployment env
+	Then it performs a diff between teh values in the state data and the values in the config. This is how terraform knows what needs to be changed, added or removed
+	The state data also contains metadata about the version of Terraform used, the version of the state data format and the serial number of the current state data
+	When Terraform is executing an operation that potentially alters state data, it tries to place a lock on teh state data so no other instance of Terraform can make changes. Imagine if the state data was in a shared location and 2 admins tried to make conflicting changes at the same time. That's no good
+		Locking helps prevent that situation from arising
+	You can store the state locally on your file system which is what Terraform does by default OR you can specify a remote back end for the state data
+		This could be S3 bucket, Azure, NFS, Terraform Cloud or Hashicorp's Terraform Cloud Service
+	A remote back end per state is useful when you're working on a team to collaborate and also to move state data off your local machine for safety's sake
+		We're NOT going to cover remote state data storage in this course
+	Another feature supported by Terraform state is workspaces, which enables you to use the same config to spin up multiple instances of a deployment, each with their own separate state data
+
+5.8 - State Data Scenarios
+	Scenario #1 - new resource block in the config
+		Resource will be created in the cloud and state data will be updated
+	Scenario #2 - Missing instance in AWS (exists in Terraform state data but not in cloud)
+		Terraform will see the instance ID no longer exists when it refreshes the state data
+		And so it will plan to create the instance in the target env, and then it will update the state data with the new instance ID
+		Terraform's goal, after all, is to make reality match what's in our config
+	Scenario #3 - Removed instance resource from config
+		Terraform will  see a resource entry in state data that no longer has a corresponding entry in config
+		It will plan to destroy the resource in target env and then remove entry from state data
+	Scenario #4 - Removed entry from state data (entry exists in config, no state data exists but there's an AWS instance)
+		Terraform will see that we hvae an AWS instance with no entry in state data
+		So it will plan to create a new instance in the target and then add an entry to the state file
+		Depending on platform and resource type, you might end up with 2 instances, as is the case with EC2 or get an error back from the provider saying the resource already exists
+
+5.9 - Terraform State Content and Commands
+	Exploring terraform.tfstate file
+	"mode": "data" is a data source and "managed" is a resource
+	Some commands to work with the state data:
+		terraform state list # list all state resources
+		terraform state show ADDRESS # show a specific address (<resource_type>.<name_label>)
+		
+		# Move an item in state to a different address in teh same state file. This can be useful for renaming resources or moving them into modules. You also have to make the same change in the config file
+		terraform state mv SOURCE DESTINATION
+
+		# To purge something from state. You might want to remove a resource from Terraform management without actually destroying it. You could remove the resource block from the config and then remove the entry from state. Otherwise, if you simply remove it from config, the next time you run "apply" it will attempt to destroy the deployed resource
+		terraform state rm ADDRESS
+	First rule of Terraform:
+		MAKE ALL CHANGES WITH TERRAFORM
+		Don't try to manually edit state data and please don't make changes to managed resources with the cloud console or CLI
+		Make and apply config changes through Terraform
+
+5.10 - Deploying the Updated Architecture
+
+5.11 - Updating the Outputs
+	To see attributes of a resource, you see docs but you can also grab it from state data:
+		terraform state list # See all of the resources and data sources that are part of my state data
+		terraform state show ADDRESS
+			e.g. terraform state show aws_lb.nginx # shows the values along with the attributes
+
+6.2 - Globomantics Architecture Overview (Adding a New Provider to Your Configuration)
+	Improvements:
+		Copy website content at startup
+		Log traffic to an S3 bucket
+		Use specific provider versions
+		Properly format files
+	We will:
+		Add S3 bucket and add website content to it
+		We will assign EC2 instance a profile that has access to copy the info from S3 bucket
+		LB config logging to S3 bucket, so we can use the same bucket and grant the lb principal access to write files
+		S3 buckets need to have globally unique names, something we can generate wtih random provider for Terraform
+
+6.3 - Terraform Providers
+	Terraform provider plugins are available in the public registry but you can also get from other public registries, privately hosted registries or even your own local file system
+	There are 3 tiers of provider plugins available on the terraform hosted registry:
+		Official - maintained by folks at Hashicorp. If you run into issues, you'll get support from Hashicorp crew
+		Partner - maintained by third party org that has a direct relationship with Hashicorp and is part of their Hashicorp tech partner program
+		Community - written and maintained by individuals in the community
+	One thing all the providers on the registry have in common is they're all open source and written in Go
+	If you have inclination to inspect or contribute to a provider, the code is readily available for you to do so
+	Providers themselves are a collection of data sources and resources, as we've seen in docs
+	Providers are versioned using semantic version numbering, by which I mean they have a major, minor and patch number separated by dots
+	You can control what version of a provider plugin you use in your configs, so you can avoid a situation where a provider is updated a major version and it breaks something in your deployment. You do that through version constraints
+	Within your config, you can invoke multiple instances of a provider and refer to each instance by an alias
+		Why would you want more than one instance of a provider?
+		An instance of an AWS provider is limited to one region. If you wanted to use more than one region in your config, you could do so with multiple instances, each with a unique alias
+
+6.4 - Terraform and Provider Block Syntax
+	We've already seen how to create a provider block in your config. However, that's not the place to specify more info about provider like version and source
+	Provider info is defined in the Terraform config block using a nested block "required_providers". Now we haven't seen the "terraform" block before. It's used to configure general settings about Terraform configuration including version of Terraform, required backend settings for state data, required provider plugins, provider metadata and experimental language features
+	For this course, we will use terraform lbock to define our required providers and version of Terraform
+		terraform {
+			required_version = "version_constraints"
+			required_providers {
+				provider_name = {
+					source = "address_to_provider"
+					version = "version_constraints"
+				}
+			}
+		}
+	Each key in the required_providers block will be name reference for a provider plugin. The convention is to use the standard provider name unless you're going to have multiple instances of the same plugin name with different sources
+	The value for the provider key will be a map defining the source of the plugin and the version of the plugin to use
+	By default, Terraform assumes you're getting your plugin from the public Terraform registry, and it provides a simple shorthand for the address value
+	There is an expanded form of the address for alternate location
+	An example:
+		terraform {
+			required_version = ">= 1.0, < 2.0"
+			required_providers {
+				aws = {
+					source = "hashicorp/aws"
+					version = "~>4.0" # Stay on version 4 but don't care about minor version. Simpler shorthand for above. This means stay on version 4.x
+				}
+			}
+		}
+	When you initlize terraform, it writes both the version constraint and the specific version of the provider to a dependency lock file called ".terraform.lock.hcl" in the current working directory
+	Unless you tell terraform to use a newer version of the provider, it will use the version specified in the lock file. This is a good way to ensure that everyone on your team is using the same version of the provider
+	You might be wondering that we never specified a version or source for AWS provider when we got started. Terraform tries to make things easy for you
+		So if you have a config block, provider or resource or data source, that refers to a provider plugin you haven't specified in the required_providers block, Terraform will try to find the latest version of the provider from the public regsitry
+		It uses either the name of the provider from the provider block or the first portion of the resource or data source type as the name of the provider
+		If it can't find a matching provider on the public registry, it'll throw an error
+		While this behavior is convenient when getting started, it's always best practice to include all provides in the required_providers block so you can explicitly control the version and source of the provider
+	Once we've defined our required_providers, we can reference them in a provider block
+	Syntax:
+		provider "provider_name" {
+			alias = "alias_name"
+			...
+		}
+	If you're going to create more than one instance of a provider, you can add an "alias" arg inside the block
+	The rest of the args in the provider block will be specific to that provider plugin
+	Assuming we've gone with the standard convention and used AWS as the provider name for the AWS provider, our provider block stays the same with "aws" as the name label
+	To use the aliased instance of the provider with a resource or a data source, we would add the provider arg to the config block
+		provider "aws" {
+			alias = "west"
+			...
+		}
+		resource "aws_instance" "web_server"{
+			provider = aws.west
+		}
+	The value would be <provider_name>.<alias_name>
+	If no provider argument is specified, Terraform will default to the provider instance with no alias set
+
+6.5 - Specifying Required Providers
+	Created "terraform.tf" to add the required_providers block
+	People also call this file "versions.tf" OR "providers.tf"
+	Added version for terraform
+	Going back to docs, the latest version is 5.66.0. But when they come out with newer minor version, our version constraint will allow us to upgrade. If version 6 comes out, we will have to change our version constraint before running "terraform init upgrade". And that's how we want it
+	Looking at docs on authentication. Preferred method is env vars
+
+6.6 - Adding the Random Provider
+	Add S3 bucket to config. S3 bucket names need to be globally unique. Easiest way would be add a unique ID at the end of your bucket
+	We'll use random provider and the random integer resource in the provider to help generate the unique ID for our S3 bucket
+	Note on random provider - https://registry.terraform.io/providers/hashicorp/random/latest/docs
+		One thing I want to point out about the random provider is that it doesn't have any config options for the provider block which means you don't need to include a provider block in your config since there's nothing to configure
+		With that in mind, expand "Resources"
+
+6.7 - Creating IAM and S3 Resources
+
+6.8 - Viewing the Updated Configuration
+
+6.9 - Planning and Dependencies
+	When Terraform is trying to make the deployment match your config, it has to run through a planning process
+	Terraform goes through this process whenever you generate an execution plan
+	As part of the planning process, it needs to figure out the order in which to create, update or delete objects
+	To calculate an execution plan, Terraform will first load the state data into memory and refresh the attributes of resources and data sources from the target env
+	Then it will parse the config and build a dependency graph based on the data sources and resources defined in the code
+	Comparing the graph to the state data, Terraform will make a list of additions, updates and deletions
+	Ideally, Terraform would like to make the updates in parallel, so it tries to figure out which changes are dependent on other changes
+	Changes that are not dependent on other changes can be made at the same time, while changes that are dependent will be done in a serial fashion
+	How does Terraform figure out the order in which changes need to happen? By references
+	Sometimes a dependency is non-obvious and you must explicitly tell Terraform about it
+		e.g. "aws_instance" needs to wait for "aws_iam_role_policy"
+	The solution is to add what's called a "meta-argument" to the configuration. Specifically the "depends_on" arg
+	With that explicit dependency, Terraform will wait until the IAM policy creation is complete to move onto creating the AWS instances
+	A meta-argument is an argument in a resource or data source that instructs Terraform on managing the object and is not used by the provider to configure the target object
+
+6.10 - Updating the Load Balancer and Instances
+
+6.11 - Post Deployment Configuration
+	After a resource is created, sometimes you need to perform some post deployment config. It could be loading an app onto a VM, configuring a DB cluster, or generating files on an NFS share based on resources created
+	If you want to stay in the Terraform ecosystem, there are many providers and resources that can help you with post deployment activities
+		If you need to create a file, there's a local file resource
+		To configure a MySQL DB cluster, there's a MySQL provider
+		To configure a K8 cluster, there's a K8 and Helm provider
+	Using native Terraform resources will often be the answer
+	Another option specific to servers is to pass data as a startup script to the server OS. All major cloud providers offer a way to pass a script, although the name of the arg changes
+		The downside of passing a script is that Terraform has no way to track if the intent of the script is successful or not
+		As long as it exits with a code of 0, Terraform is happy
+	Because Terraform doesn't know the desired state of the machine, it will try to recreate the machine if you change the startup script at all, even if the current instance wouldn't be affected by the change
+	For better management of OS and app configuration, you can go outside of Terraform and leverage config management software
+	There are many options out there which Terraform can hand off for post deployment configuration - Ansible, Chef, Puppet are 3 well-known examples
+	A common practice is to bake the config management software into the base image for a machine and have Terraform use that base image when it creates the instance
+	If all else fails and none of the other options are feasible, you can use Terraform provisioners. You're likely to encounter these out in the wild as you ramp up on Terraform
+
+6.12 - Provisioner Syntax
+	Provisioners are defined as part of a resource and they are executed during resource creation or deletion
+	A single resource can have multiple provisioners defined with each provisioner being executed in the order they appear in the config
+	This is one of the few times that Terraform actually cares about the order of the blocks in something
+	If you need to run a provisioner without a resource, you can use the "null_resource" or starting in Terraform 1.4, the built in "terraform_data" resource
+	If a provisioner fails, you can tell Terraform to either fail the entire resource action or continue on merrily. Which one you choose will depend on what the provisioner is doing
+	Hashicorp considers provisioners a last resort when all other options have been considered and found lacking. Provisioners are not objects with an API and a provider framework that Terraform can fully understand and manage, which puts the onus on you and your team to ensure things like error checking, idempotents and consistency are handled properly
+	There are 3 provisioner types:
+		File provisioner - create files and directories on a remote system
+		Local-exec - allows you to run script on the local machine that is executing the Terraform run
+			It's used as a workaround for functionality that is not yet in a provider, and it's probably the provisioner you'll see used most often
+		Remote-exec - allows you to run a script on a remote system
+	Most of the time, file provisioner and remote-exec can be easily replaced with a startup script, pass through something like user data
+	There used to be more types that were specific to configuration management products like Chef or Puppet, but all of those have been deprecated
+	In case you encounter provisioners out in the wild, here's how they're configured:
+		Remember provisioner block is a nested block inside of a resource block
+		In the file provisioner example, we're first defining how the provisioner can connect to the remote machine
+		It's also possible to define a connection block for all provisioners used in a resource
+			provisioner "file" {
+				connection {
+					type = "ssh"
+					user = "root"
+					private_key = var.private_key
+					host = self.public_ip
+				}
+				source = "/path/..."
+				destination = "/path/..."
+			}
+		A provisioner can refer to the attributes of the resource it lives in using the "self" object
+		The local-exec provisioner does NOT need a connection block. You can pass it a command to execute and specify which interpreter is executing the command
+			provisioner "local-exec" {
+				command = "some command"
+			}
+		The remote-exec provisioner will need connection info. It can execute an inline script, a script stored in a file or a list of paths of local scripts that are executed in the order provided
+			provisioner "remote-exec" {
+				scripts = ["list", "of", "scripts"]
+			}
+
+6.13 - Updating the Startup Script
+
+6.14 - Formatting and Deploying the Updated Configuration
+	The first step in our process is to run "terraform init" again. The reason is because we added a provider to our config, and Terraform needs to download the provider plugin from the Terraform registry
+	If you try to run validate, plan or apply, you'll get an error. And the error should say to run init
+	(Added a user script but plan command didn't show that the instance is going to get recreated) We need to force a re-creation of this instance so that it will get the new user data and the updated config of our website. In CLI, we're going to add new flags:
+		terraform plan -replace aws_instance.nginx1 -replace aws_instance.nginx2 -out m6.tfplan
+	The "replace" flag allows you to mark a particular resource in your config for replacement, regardless of its status
+
+7.2 - Globomantics Updates (Using Functions and Looping in Your Configuration)
+	Potential improvements:
+		Dynamically increase instances
+		Use a template for startup script
+		Simplify networking input
+		Add consistent naming prefix
+	No change to deployment architecture
+	Goal is ot keep our deployment the same while improving our Iac
+
+7.3 - Loops in Terraform
+	Terraform has several different ways to create multiple instances of an object:
+		Count meta-arguments for modules and resources
+			Create multiple instances of a resource module when the instances are almost identical in nature
+			The value for a count argument is a positive integer or 0
+		for_each meta-argument for modules and resources
+			Takes a set or a map as a value and is used when you want to create multiple instances of a resource or a module where each instance of resource or module will be significantly different than the others
+			You have full access to the values stored in the set or map when configuring each instance of the resource
+		Dynamic blocks (not covered in this course)
+			Used to create multiple instances of a nested block inside a parent object
+			They accept a map or a set for a value to construct the blocks
+
+7.4 - Count Syntax
+	The count argument goes inside the resource block and accepts an integer as a value
+		resource "aws_instance" "web_servers" {
+			count = 3
+		}
+	The integer determines how many of the resources should be created
+	When the count argument is used, a special new expression is available called "count.index"
+	As terraform loops through the creation of each index, count.index will resolve to the current iteration
+		resource "aws_instance" "web_servers" {
+			count = 3
+			tags = {
+				Name = "globo-web-${count.index}"
+			}
+		}
+	You can use this value anywhere in the resource configuration block
+	Using a count argument is going to create a list of resources. Each element of the resource list can be referenced by number
+	The syntax is similar to the standard resource address:
+		<resource_type>.<name_label>[element].<attribute>
+	If we want to refer to the name attribute of the first AWS instance, the syntax would be:
+		aws_instance.web_servers[0].name # Single instance
+	To get an attribute of ALL instances, you can use asterisk. This will return a list containing the attribute value for each intance
+		aws_instance.web_servers[*].name # All instance
+
+7.5 - For_each syntax
+	The value for the for_each argument will be either a set or a map
+	You cannot use a list or a tuple directly since both are ordered collections and don't guarantee that the elements are unique but you can transform a list or tuple to a set using the "toset" function
+	In our example, we're using a map
+		resource "aws_s3_object" "taco_toppings" {
+			for_each = {
+				cheese = "cheese.png"
+				lettuce = "lettuce.png"
+			}
+		}
+	Terraform will look at the number of elements in the map or set and create a corresponding number of instances
+	In this example, we have 2 entries in the map, so Terraform will create 2 S3 buckets objects
+	In the for_each loop, there are 2 special expressions - "each.key" and "each.value"
+	During the looping process, "each.value" will be set to the value of the map item currently being iterated over. "each.key" will correspond to the key
+		resource "aws_s3_object" "taco_toppings" {
+			for_each = {
+				cheese = "cheese.png"
+				lettuce = "lettuce.png"
+			}
+
+			key = each.value
+			source = "./${each.value}"
+			tags = {
+				Name = each.key
+			}
+		}
+	If you're iterating over a set instead of map, then each.key and each.value will equal to the same thing
+	Values in map/set do not have to be primitive data type. It could be a complex object
+	Using a for_each argument is going to create a map of resources. Each entry in the map can be referenced by the key name
+	The syntax:
+		<resource_type>.<name_label>[key].<attribute>
+	For example, to get the ID of the cheese instance:
+		aws_s3_object.taco_toppings["cheese"].id # single instance
+	Unlike the count syntax, if we want to get the ID attribute for all instances, we cannot simply use a "*"
+	We would need to use a "for" expression
+
+7.6 - Looping Targets
+
+7.7 - Updating the VPC and Instances
+
+7.8 - Updating the S3 Bucket Objects
+
+7.9 - Path Expressions
+	Path expressions lets you dynamically reference a full path based on the configuration you're working with
+
+7.10 - Terraform Expressions and Functions
+
+7.11 - Common Function Categories
+
+7.12 - Functions for the Configuration
+
+7.13 - Testing Functions with Terraform Console
+
+7.14 - Using the Templatefile Functions
+
+7.15 - Using the Cidrsubnet Function
+
+7.16 - Adding a Naming Prefix
+
+7.17 - Validating and Deploying the Updated Configuration
