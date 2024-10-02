@@ -1,0 +1,255 @@
+
+2.2 - Docker and the Kernel (Understanding Docker and Jenkins)
+	The fundamental difference between a virtual machine (VM) and a container - kernel. Each VM has it's own kernel and containers all share one. Yes, there are other differences as well but sharing a kernel in a resource-isolated mode is the fundamental truth of a container
+	What do you mean by kernel?
+
+2.4 - What is a Kernel?
+	Kernel can be a slippery thing to define. Typical def - a privileged layer of abstraction that exists between applications and hardware
+	Different kernels do different things
+	3 types of kernels
+		1. Linux - Monokernel, one kernel for all processes
+		2. Minx - Microkernel, kernel per user space
+		3. Windows - Hybrid of both approaches
+	If you have kernel level access, you've got access to everything
+
+2.5 - Why this Matters: Running Linux Containers on Windows
+	One example - Linux container running in Hyper-V Linux VM on Windows host
+	VMs have their own kernel and containers share a common kernel
+	Container considerations
+		- Performance - containers result in equal or better perforamnce than VMs in almost all cases
+		- Security - the security considerations of our container are tied up in the vulnerability or lack thereof in the kernel and OS. If you've got a secure and currently patched OS, then you should be good. An attack on guest VM of a compromised host is called hyperjacking
+		- Portability - you can take a container setup and run it on top of another window 10 instance (at least one set up to run linux containers) or on top of a linux image proper, which is ultimately the best way to make things work with a linux container
+	What's the point of this? By answering this relatively academic question, you now have a strong grasp of where the boundaries between your builds, Jenkins app, your container, kernel and the resources that the kernel accesses are. Without this understanding, you're not going to be able to make good security and performance decisions in the long run
+
+2.6 - The Vision and the Why: Jenkins on Docker
+	[comparison to Azure DevOps] Jenkins can operate in this main agent configuration where the build makes label demands in the same way to Jenkins agents. And we could just install 3 jenkins agents and clear that queue out in parallel or more likely run 3 dedicated VMs. But, each VM has it's own kernel and its own copy of non-kernel OS, and with this model, all of those resources are going to be consumed all the time, whether they are consumed all the time whether there's a build executing or not. This underperforms containers is obviously suboptimal
+	We want our system to sit at a min idle state when nothing has happened, spin up to an appropriate level of resource usage during low-build usage, and blow up to a max to get our work done in parallel when that level of load occurs. We need Jenkins to coordinate all of this and shut down our resources when they're not needed anymore
+	The really good news is that all this can be implemented as a first-class planned artifact via Docker plugin
+	When we're done, you'll have a Jenkins master system running in Linux Docker container, in my case, on top of Windows. But, like we talked about, it doesn't really matter what the host is. We're going to attach some Docker containers running Linux running Jenkins agents to that main and assign different labels to them
+
+2.7 - Demo: The Basics of Running Jenkins in a Container
+	The image we're going to work with here is "jenkins/jenkins". If we pull this image as is, we'll get the weekly release from Jenkins. What we want instead is the LTS release.
+		docker pull jenkins/jenkins:lts
+	"docker image ls" - list images we've got pulled down
+	"docker run -p 8080:8080 jenkins/jenkins:lts" - run container
+		In browser, enter "localhost:8080" and it will show Jenkins install page
+		the -p flag is publish or port mapping. Jenkins by default runs on port 8080. What If you want/need to run on a different port? If you were running a native install or a VM, you're going to manage Jenkins and you'd change that port. You'd be changing the content of the configuration file that drives Jenkins in the file system. As you can image, that's a pain for a Docker image; that would necessitate a new layer. So, what we do instead is tweak the way the container is going to interface with our actual physical networking system. So, if we needed to run on port 2112, Jenkins is still going to run on port 8080, but we're going to bind our container networking layer to port 2112 and redirect that traffic to port 8080 inside, more or less, the container where Jenkins LTS is listening and can respond to it. By managing this internally, the stuff is all outside of the images, and it can be changed instantly
+	"docker ps" - list images
+	"docker exec -it [container_name] [path]" - execute shell command
+
+2.8 - Maintaining State Outside the Container
+	One of the principles of working with containers is that you want isolation of state of container
+	Containers consists of layers: OS > App >Config and on up
+		These layers are read-only; they can't be changed. On top of these read-only layers is a file system layer which obviously can be changed. The difference between the image we downloaded, Jenkins LTS, and our container that we're running now is that read-write file layer
+	So, what we want to do is take control of that top layer and have it managed and accessible outside the container. We don't want to mess with it too much or we risk corrupting it. But, we want it outside where it can be monitored, backed-up and portable in a way where if we need to spin up a new container instance, it's independent
+	More essential form of storing your state outside your containers with pipeline scripts in Jenkinsfile. When you work with freestyle build, the build config and steps are all stored in a config.xml on Jenkins file system under the jobs directory. This aspect of the state is tied to the file system whether that's a container or VM or whatever. If you work with Jenkinsfile instead, you can store your build defs in a version control and pull them dynamically as the first step of your build
+		This is the most important aspect of keeping state outside of your container
+		Build history, plugins and dependencies can be rebuilt but your build defs are your most important assets
+	Keep your builds in version control with pipeline scripts
+
+2.9 - The Docker File System
+	2 ways to represent
+		1. containers have their own set of layer copies; they have their own independent writable top layers and they differ
+		2. Partial dependent copies - read-only layers are shared between containers and only top writable layers are different. In effect, the container is the top writable layer. Containers - (minus) Image = top writable layer. This is how docker actually works. So, in terms of us isolating state from the container, all we have to do is take control of that top layer
+
+2.10 - Understanding Copy on Write
+	 2 ways of creating top writable layers (TWL)
+		1. 2 full copies of the file system
+			- Or maybe a writable subset
+			- Stored independently
+		2. Single copy of file system
+			- Only the deltas are stored. Meaning when the file changes, we find it, copy it to TWL and then persist the changes
+			- This is how it works
+			- Jenkins example
+				- Modify config file, a file that already exists in container, the storage driver is going to search the layers of the image to find where that file comes from then make a copy of that file to TWL
+				- We take control of TWL, we have full representation of the state of the container
+	Take care of your container files. Take care means backups, mirror, raid, whatever your disaster recovery strategy is
+	But more fundamentally, we can take control of this with volumes in our container, mounting storage that doesn't participate in this copy and write strategy but rather exists in a first class form on the host machine
+
+2.11 - Demo: Mounting a Volume to your Container
+	Mapping files outside of the container onto the host system
+
+2.12 - Wrapping up Jenkins State
+	While Jenkins state is nota database, it's useful to think of it as a database and pursue the same sort of strategies that you would for availability and backup
+	I want to reiterate that the first ahd most important step of getting state out of your container and where it belongs is moving to pipelines. Having yoru ubild in this volume is better than having it in container, but it's still a distant second to having it in version control
+
+3.2 - Demo: Provisioning Containerized Agents (Creating a Jenkins Build Farm with Docker)
+	What we're going to do is to require that our Jenkins instance be able to drive our docker host, so that it can fire up container instances that it can talk to. To make this happen, our host's remote API has to be accessible to our Jenkins container on port 2375
+	The first step on Windows is to go to your Docker desktop settings and check "Expose daemon on tcp... without TLS"
+	Something I discovered by experimentation is that Hyper-V service reserves port 2375 (if it's unable to reserve this port, check out issue 3546 which has detailed steps to solve this problem)
+	Now, you can open browser and go to "localhost:2375/container/json" - you'll see remote API respond
+	Install Docker plugin in Jenkins
+	Configure Jenkins > Manage Nodes and Clouds > Configure Clouds; Add new cloud "Docker"
+	For Docker Host URI, this is the IP that is mapped to our host machine from inside the container. Localhost or loop back, for example, would not work because that would refer to the localhost inside the container context. Docker provides a named address for this purpose "host.docker.internal". This will correspond to whatever the host address is within the container. So, you'll use "tcp://host.docker.internal:2375"
+	You can click "Test Connection" to verify
+	Select "Enabled" checkbox to enable it
+	Select "Expose DOCKER_HOST"
+	To create Docker agent templates,
+		Labels - Agent
+		Enabled - yes
+		Name - Jenkins agent
+		Docker Image - jenkins/jenkins:lts
+		Instance capacity - 10
+		Remote file system root - /var/jenkins_home
+	Click Save
+	Now, we have a cloud with a single image in it that is labelled "Agent"
+	Go to job > Configure Job; select "Restrict where this project can be run" and add "Agent" as label expression
+	If you run the job, you'll notice in Jenkins logs (localhost:2119/log/all) that a container is being created
+	You can look in Docker desktop which is handy for reviewing the status of your containers as they go up and down
+
+3.3 - What's Going on here with Cloud Agents?
+	What happens when we trigger the build?
+		1. Jenkins resolves the label or no label if the build is able to run on anything, first on its attached nodes. We obviously don't have any, and then it looks to its cloud for that label, finding our matching agent template
+		2. Jenkins instance phones home to the Docker host via REST calls. It tells the Docker host to create a new container with the instance parameters that have been specified for the agent
+		3. Jenkins provisions this running container as an agent node, communicates with it via the Jenkins remoting technology and initiates the build
+		4. Build succeeds or fails and then Jenkins tears down the container and the process is complete
+	This is cool but let's talk about 2 big ways that is suboptimal
+		- Our Jenkins agent doesn't have anything installed on it. If we're going to actually do some real work on our build instead of a hello world situation, our simple image wouldn't work
+		- If we create our own image that has the dependencies and installs we need, to make it work with the current situation, we have to stick it up in a public registry in Docker hub
+	We're going to look at different ways to mitigate #1 so that we have images to push to a private registry with number 2
+	This is your first strategy for getting a build agent that is able to build your content - go find an image with the pre-requisites you need. If you search Docker hub, you'll quickly find Jenkins Maven and Jenkins Python images
+
+3.4 - Understanding Docker Images and Trust
+	Do not take these images for granted
+	If you're not comfortable with Docker, it might be tempting to simply download an image and fire it up on your build system and most of the time this would probably be fine. But, one of the principles of working with Docker, indeed a principle of all electronic security, is that we want to trust as little as possible and be very careful about whom precisely do we trust
+	We trust "Jenkins". Of course, we can't really trust a piece of software because it has no volition. When we say we trust "Jenkins", we mean that we trust the people and process that create Jenkins
+	So, when we pull jenkins/jenkins, this is no more trust in those people and that org than we've already committed to. But, if you elect to download a docker image from Docker hub, one that, for example, purports to have the right pre-requisites for a build tech and nothing else, you're trusting both the integrity and much more importantly, the competence of the image creator
+	"Never attribute to malice that which is adequately explained by stupidity" - Hanlon's Razor
+		Explicit attacks or malware on Docker images are rare. But the far greater risk for your images and your enterprise is that more and necessary has been made part of your image
+	(Snyk's Graph of open source vulnerabilities - Number of OS vulnerabilities by docker image; Node having highest) If you need node, you need Node. That's a risk you just have to live with. But, this leads to a security principle: Prefer minimal base images
+	https://snyk.io/blog/10-docker-image-security-best-practices
+	If we elect to trust another image, we can use that, but this is only going to take us so far. We'll eventually need an image that doesn't exist, one that has the very particular build requirements that our enterprise has. And even if we can find an image that works for us, it's better that we have as much control over that as possible. To that end, let's take a look at creating our own image using our Jenkins image as a base
+
+3.7 - Wrapping up with your DotNetCore Agent
+	Jenkins file build was very durable and most builds of that type will actually survive a reboot
+	Most importantly, we troubleshoot the agent provisioning by looking at the Jenkins log
+	We didn't mount any volumes for our agent. That means our workspaces goes away
+	On creating your own-ish Dockerfile to build a customer agent image
+		This can take you a very long way
+		If you design them correctly, they'll pretty much keep themselves up-to-date. You will need to continually build your images however bug fixes and new additions of tools are released every day. So you're going to need a standard repeatable automated process to make this happen
+		A standard repeatable automated process to create predictable output is the def of what a build is. What we're going to do next is to create a build that will build our image and push it to Docker Hub where it can be pulled as our build agent with the matching label in Jenkins
+	We're going to skip the truly meta application of this build, that is to build the Jenkins Docker image with the Jenkins Docker image, though you could totally do that. But, this is not going to be the application that gives you the biggest bang for the buck
+
+3.8 - Demo: Creating a Docker Image Meta-build
+	Use Dockerfile on create and host an image that has jenkins and docker installed
+	Run that container and inside that container, create another docker image and push that to Docker hub
+
+3.9 - Considering the Meta-build
+	Let's consider the basic implication of what we've just created
+	If you scheduled this to run nightly, this will keep your images patched to the LTS version of jenkins and because that image is based on open JDK image which is running on Stretch version 9 of Debian, your JDK will be patched. And because that JDK relies on a continuously patched image, and on...
+	If you're experienced, you'll realize that these new images need to be tested. Here's a sequence that could validate that
+		- Build new agent
+		- Run the new container
+		- Execute Sample build against it, maybe that latest code. If this succeeds, build the image again and mark it with a stable or LTS tag
+	With this in place, you modify your agent templates to a point at that stable version. This process, of course, can all be autoamted as well aside, probably from modifying your agent templates
+	If stability test fails, you track down exactly what the problem is and modify your dockerfile to fix it
+	It's only tip of the iceberg of what you can do with this. Our Jenkinsfile is 90% generic. The only specifics here are the repo name and path. And of course, you could make the path generic and you could make the repo generic so that if you had a generic docker.build build (not a typo), that you could point at any repo that follows your convention. With that in place, you can setup continuous integration that would take Docker file to an image in your repo in minutes
+	Building images is not all you can do with your container. We can run images as well. You can use this approach to achieve the holy grail of integration testing. Pull your code, build it, unit test, run a test container, copy your code there, and run integration tests against it with actual live code and a live DB, at least live within the container
+
+3.10 - Understanding Container Connect Methods
+	One of the core aspects to our agents is how Jenkins attaches to it, how it gives commands
+	The method we're using, attach container, essentially means that we're using the Docker host capability ot pass commands and data back forth between Jenkins main and agent image
+	JNLP refers to the Java Network Launch Protocol - more common term "web start" term in reference to Java, this is what's happening here
+	SSH - secure shell commands
+	When to use each? That's difficult because I've never seen any reason to not use the attach container method. The one basis I can image for not simply using attach docker container would be if you were concerned about interception of traffic between the Jenkins master container nd agent container. We're running without TLS on port 2375. So, if something can sniff that port and read the content, a man in the middle attack would be able to read that data since it would be in plain text. This would argue for the SSH approach. While JNLP communication is binary, it is not encrypted. Any security you have there would be mere security by obscurity
+	Pre-requisites (all should have Java installed duh; you can't run Jenkins without Java)
+		- JNLP and SSH require that the main be accessible over the network to the agent while attach container does not. This is because, as we said earlier, the docker host is acting as a go between for all of this stuff. 
+		- So, the difference between these 2 classes of option is this; in the attach method, the communications between the main and agent are enabled by the host, and in JNLP and SSH method, the agents communicate directly with the main
+	Note - the communication between the main and agents is secured. If you're concerned about the security of your intern-container communication that someone is going to compromise that, you've got much bigger security troubles than this. If you're using an insecure network link between your Jenkins master and your Docker host, for example, fix that problem. In my security opinion, all this should be so deep inside the walls that you're not terribly concerned with it. If that's not the case, fix that problem instead
+
+3.11 - Working with Private Registries
+	It's not going to be practical/possible for all your Docker images to be out there for the world to see. Whether we're running a private registry in Docker Hub or running a truly private registry inside our firewall, we're going to need to interact with this stuff and work with credentials. I went ahead and tackled the issue of connecting to Docker Hub with credentials in our pipeline. We simply created a credential set and referenced taht by ID in the Docker with registry command. This means that our credentials will be communicated to our Docker build agent from the Jenkins master image using the unencrypted channel over port 2375. Note, this is exactly the kind of traffic that you might want to consider keeping encrypted if your build network was open like it probably shouldn't be. But, when an agent needs credentials, that might be a good reason to pivot to attaching to it via SSH
+	Docker Hub is only special in one way - it's the default and it's what get used when no registry URL is specified in most of our commands
+	One Docker registry supports the Docker registry protocols should be the same as another, so, We'll focus on working with a private registry in DockerHub itself
+	Specific problems we need to explore
+		1. Pushing to a private repo via a build
+		2. Pulling an image from a private repo for our build agent
+
+3.12 - Demo: Authenticating a Custom Registry URL
+	First parameter of docker.withRegistry() {dockerImage.push();} is link to registry
+	On the issue of credentials, I want to drill into the console output here and note a message "WARNING! Your password will be stored unencrypted ... Configure a credential helper to remove this warning. See <link>". It's worth noting that the build space doesn't exist for very long but if your image is compromised in some way, these credentials would be at risk. So, you might consider digging into that link and use a configuration store to work with this stuff. As long we're talking about this, it's worth taking a really close look at the console output here. Remeber that our jenkinsfile code to push the image is this (previous line). If we look in the output for that console, we see this item here (unix sh commands). What's going on here is that our helper object called docker.withRegistry is getting expanded into this lower-level Groovy code which tells us that if we simply want to bypass this stuff and work on that lower level and issue direct Docker commands to our container, that will be fine. So, if we copied the line here (docker commands in console output) and pasted that into our Jenkinsfile, that would be fine though we would need to invoke a credential helper in the file to keep our credentails out of the code
+	You can add credentials to agent template
+	(Modifying the agent template to get the image from private registry) The way you target a custom registry is by prepending it to the image name. Example instead of "chrisbehrens/agent-dns:v1", it would be "docker.io/chrisbehrens/agent-dns:v1". No protocol, no subdomain
+
+3.13 - Installing Dependencies Dynamically
+	One approach I want to explore to mostly to wave you away from it - dynamically provisioning our dependencies directly in our Jenkinsfile. Doing this means that you can have an extremely generic agent. We could just reuse our agent template
+	This can come in handy when you need a tool for a build and you don't have ready access to modify an image that is customized for your tool. The problem with this approach is that the kind of thing we did in our Dockerfile, where we installed this, configured that, piped this to there and made all kinds of configuration changes to our image, the Jenkins user in the LTS image is not going to have the permissions necessary to do that (it would require root permissions)
+	The Jenkins user doesn't have any business executing a bunch of installs to the box it's running on. That's not how jenkins is supposed to work. There are couple of alternatives to get around this
+		1. Pretty ugly - store your tools in version control. This is less desirable for couple of reasons
+			- Your tools likely binaries and binaries are bad for restores in general. They don't belong in version control
+			- Those tools are going to drift out of sync pretty quickly unless you commit to keeping the latest updates in version control
+		2. Access your tools via volumes and copy operations. If we mount a volume htat maps to an external tools directory and Jenkins has the right permissions to access, we can simply suck those tools over into the agent and use them the same way
+		3. The last approach is to build the tool from version control as part of the build. This sounds crazy but it can come into play with custom build tools create inside the organization
+	I want to point out an approach that we never talked about - making changes to a container and committing them. If you come from a VM perspective, and pretty much everyone who is new to Docker does, commit can look like getting the same functionality that you do for VMs. But VMs and containers solve essentially different problems. VMs are not stacks of app layers that can be updated. If you need to update Windows on your VM, you run the install. Containers are essentially different. If you commit, then you're turning what was a very transparent structure into that structure with a big black box, on top of it, the layer with your changes. If the developer before me created a custom image with a Docker file on top of Jenkins LTS, it's crystal clear to me what's on it and what's happening with it. If, instead, he shelled into it and ran a bunch of commands to change things around and execute installs as root, then who knows, aside from digging through the image manually
+	These Dockerfiles function as a powerful form of documentation as well as functioning as code
+	So my guideline for working with Docker commit in context of all this stuff - Don't ever do it
+
+3.14 - Working with Ephemeral Agents
+	Most of the time, you want to do something with the output. I usually take the results and stick them somewehre as the final step of the build, maybe into an artifact repo or to a deployment server on its way to staging or production. But we might want something simpler than that, just a way to get at the results in the meantime and that's what artifacting in Jenkins is for
+
+3.15 - Demo: Working with Artifacts
+	When you archive, it normally stores the file from the last successful build. In spite of the argument you will see the archive artifacts helper step, if the build breaks before you get to the step, it won't fire. To fix it, you can wrap your build step in try finally blocks
+
+4.1 - Understanding Multi-architecture (Working with Multi-architecture Containers in Jenkins)
+	So far, we've focused on using Jenkins and Docker to get typical work done
+	Now we're shifting focus to creating Docker images
+	If you decide you want to deliver images for more than a single OS, you're faced with building separate images. If you're targeting different processor platforms, the number of images multiplies even further
+	If we're delivering in terms of Docker images, then we'll need one image. We're not at a place where you can have a single layer or even a single Dockerfile that can build a cross-platform image yet
+	So, we'll figure out how to create an image with our simple console app that is multi-arch
+	We need something that can cross-build these images
+
+4.2 - And Now, a Warning
+	The support for multi-arch is experimental, so experimental that you access it with a "buildx" command, the x being a bright red flag telling you to be careful with it
+	Specifically, from the Docker documentation page, this command is experimental on Docker client. It should not be used in production environments. That is to say, don't use buildx on your Jenkins agents. It's not stable yet
+	Let's talk about how multi-arch images are implemented. One of the key artifacts involved in a multi-arch image is the "manifest", a list of all the configurations supported. That's part of what buildx generates. The manifest lives in the registry along with the images. So, when you fire up docker pull on your Linux platform, your local docker daemon negotiates with the registry, and it pulls the right image for your platform
+
+4.4 - How BuildX Builds for Platforms You Don't Have
+	ARM Emulator
+	QEMU - hardware virtualizer. You can use the emulation layer to simulate the instruction set and behavior of a processor you're not actually running
+
+4.5 - Demo: Building Your Docker Images for Multi-arch
+	To enable buildx, in docker client, Settings > Command Line; Toggle "Enable experimental features"
+	You can use buildx stuff to configure your own real physical build farm
+	This may be better or worse than the emulation, depending on your device, but it definitely opens up possibilities
+
+4.6 - Build with BuildKit
+	BuildKit is a new engine for building Docker images. It processes as much as possible in parallel
+	Caching is entirely different
+	Plan is "x" will go away, and then BuildKit will be the base engine that Docker uses to create images
+	Sharpen warning from before: While I don't suggest that you execute buildx commands via Jenkins in prod, I think it's totally find to use the output of buildx build jobs. There's no indication that there are any problems with that
+	Like I said, technology is a moving target, and in not too long, it will be useful and safe to be executing these multi-arch builds in Jenkins. So we're going to take a look at how to do exactly what I don't recommend you do just yet with buildx in Jenkins
+
+5.2 - Upgrading Jenkins (Maintaining Your Build Farm)
+	It's very easy to find yourself 6-7 versions behind the Jenkins version head in no time and then you're faced with the possiblity of upgrading and suddenly your build server doesn't work. This creates a downward spiral in the frequency of your upgrades where you don't upgrade often enough, which makes each indiv upgrade more painful, which in turn necessitates delaying later upgrades which makes it more painful, etc
+	If something hurts, do it often. This is a foundational principle of DevOps. If you're doing something everyday, the value of automating the whole or parts of it become much more compelling. When procedures move from ad hoc to being routinized and standardized, they become predictable and optimizable faster, cheaper, better. The good news is that the way we're running Jenkins gives us a huge portion of this for free
+
+5.4 - Upgrading Plugins
+	Another thing you get for free, along with the Jenkins upgrade, is an upgrade to the standard plugins that are part of the LTS.
+	If, however, you have manually upgraded any of those plugins from the version that composed the previous LTS, the Jenkins upgrade engine will detect this and leave those plugins alone. To get them upgraded to the latest version, you have 2 options:
+		- Manually upgrade them to the LTS version - this is a bit of a pain because plugin version that is consistent with the LTS is not necessarily the latest version
+		- Execute your Docker container run with an env variable, "PLUGINS_FORCE_UPGRADE" set to true. This approach has additional benefit that manual upgrade flag gets taken off and future LTS updates will upgrade the plugins
+	This does nothing for plugins which you've installed and are not part of the LTS image. Particularly, if your enterprise has written its own plugins. For those, you're on your own and you'll need to update those manually
+	Restart your Jenkins container when you're ready to upgrade and not before then. In general, you want to avoid restar ting your containers. That's a Docker principle that has nothing to do with Jenkins, but this is one case where restarting your Jenkins container has a compelling use case. If you're familiar with Docker live restore, this is a different thing. You'll really have to restart this container to upgrade it. Even if you went down the road of executing the upgrade within the container, it's the same deal. Jenkins is going to have to restart, so just restart the container
+	Risks with Upgrading
+		Upgrading entails risk
+		Broken plugins will break Production
+		Test your upgrades in a test env, just like anything else mission-critical
+		Back up your volumes!
+
+5.5 - Jenkins in Git?
+	I don't have personal experience with this so I can't go as far as recommending it outright 
+	Storing Jenkins in Git, not the whole container but jenkins_home that we've extracted from a container in a volume
+	There are a bunch of files that are good candidates for version control
+	Create a strong .gitignore
+	Exercise for viewer if you decide to try and store your jenkins_home in git
+		I would set up a nightly job which copied my production's jenkins_home to another box, maybe another container for that matter and then checked it all into a git repo, excluding the binaries and volatiles. That would give me a nice version history of what was going on or at least a 24 hour backup of anything that could go wrong
+		Of course, traditional backup gives you the same thing without the fine detail that version control gives you
+	Remaining solutions I want to steer you away from is storing your volume inside a container and then committing that container continually to keep a running version history
+	I want to steer you away from Docker commit. Commit is a low-level and opaque solution for managing stuff. With commit, if you want detail, you end up lost in diffing tarballs. You're much better off with version control or traditional backup solution
+
+5.6 - Things to Think About
+	DO NOT EVER DO THIS - giving access to the host's docker socket is equivalent to giving a container unrestricted root access to your host
+		However, needed to make docker in docker work
+		Point here is mostly doing this one with containers you mount wild off the internet not knowing their provenance or exactly what's in them
+	I think We can trust Jenkins LTS image to not be compromised. As long as we're working with minimal Docker files, this is a practice which, though not ideal, is probably one that we can live with as long as we remember the implications for any of our Cloud Jenkins agent that are going to be using Docker
+	Jenkins principle - minimum set of plugins. If you don't need it, you don't want it

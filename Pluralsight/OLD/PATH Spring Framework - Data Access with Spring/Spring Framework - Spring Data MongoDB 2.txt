@@ -1,0 +1,647 @@
+Dan Geabunea
+Feb 19, 2020
+
+2.1 - Version Check (Connecting to MongoDB)
+	MongoDB 2.1.9
+	SpringBoot 2.2.1
+
+2.2 - Course Introduction
+	5 Steps to create a spring application that can talk to a mongo server
+		Prepare development environment
+		Create an emtpy spring boot application
+		Add the spring data MongoDB starter dependency
+		Define the connection properties
+		Apply Mongo data annotations to control persistence
+	Java 8
+	If you have a MongoDB server, you can surely execute commands using the command prompt or terminal. But I think it's more practical to have a GUI to execute commands and see the outcomes. There are 2 GUIs that I love
+		Mongo Compass - https://www.mongodb.com/products/compass
+		Robo 3T - https://robomongo.org/
+	Both have free versions that you can use right away
+
+2.3 - Basic MongoDB Concepts
+	(comparison to relational database) When we're dealing with NoSQL and Mongo, things change a little bit
+	We no longer have a tabular representation of data. In fact, in MongoDB, data is stored like this (JSON objects). If you look closely at it, you'll notice that it kind of resembles JSON, and in fact, MongoDB stores documents in a format called Binary JSON
+	Comparison of terminology Relational vs Mongo
+		We have databases both in Mongo and in relational databases
+		However, NoSQL databases, and Mongo as well, don't store information in tables. They store information in collections
+		Entities are not stored in rows. Instead, entities are stored in documents
+		And of course, documents don't have columns; documents have fields
+		We also have a special purpose field, which we call Id, which acts kind of like a primary key, so these concepts are kind of similar
+	So, to recap, Mongo databases can contain collections, collections can contain zero or more documents, documents can contain one or more fields, and of course, documents should have an Id field, which is the primary key
+
+2.4 - Spring Mongo Dependencies
+	In pom.xml, dependency
+		groupId - org.springframework.boot
+		artifactId - spring-boot-starter
+	Now that you have spring-boot-starter, you can go ahead and bring in the Spring Data MongoDB dependency
+		groupId - org.springframework.boot
+		artifactId - spring-boot-starter-data-mongodb
+	But wait a minute. Let's look more closely at the spring-boot-starter-data-mongodb because, in fact, this dependency is what you call an umbrella dependency, meaning it brings in more dependencies behind the scenes
+	So, when you bring in spring-boot-starter-data-mongodb in your pom.xml file, it'll also bring
+		mongodb-driver
+			And this will bring in mongodb-driver:bson dependency
+			And mongodb-driver:driver-core dependency
+		spring-data-mongodb
+			which in turn will bring spring-data-commons and the story goes on
+	What I want to emphasize is that you can bring in these dependencies manually, but that's a lot of work
+
+2.5 - Spring Mongo Data Annotations
+	Data annotations are metadata that we can add to our classes or fields to let spring data know how to control the persistence in a Mongo database
+	If you've ever worked with JPA before, then these annotations will feel very familiar and that's because the people working on the spring framework have done a great job in keeping the learning curve to a minimal
+	The most important annotations
+		@Document
+		@Id
+		@Field
+		@Transient
+		@Indexed
+		@TextIndexed
+		@CompoundIndex
+		@DBRef
+	@Document is one of the most used annotations when working with	MongoDB. We can usese it on classess, and it lets the mongo driver know that it can save objects of class type as Mongo documents in a particular collection
+	In fact, it's very similar with the @Entity annotation used by JPA when you're working with relational databases
+	But what's the name of the collection that these documents will be saved into? If you use @Document, then the name of the collection is deduced from the classname
+	However, we can also specify the collection name by using the "collection" attribute on this annotation
+	Every document in a Mongo collection should have an Id (@Id) field. This Id field is unique, and it is indexed. It's very similar to primary key in relational databases. In fact, in JPA, we have the exact same annotations on entities, @Id
+	Now these Id fields in a Mongo database are usually stored as an object ID type, and this type resembles a GUID. So, when you're serializing and deserializing objects from a Mongo database, your Id fields will probably be GUIDs
+	Now that we have defined an Id, what other fields in the class? They'll automatically get serialized. However, if you want to control that serialization, we can use the @Field annotation
+	@Field is very similar to @Document but that works on the property level. It instructs the framework on how to persist properties in our objects as  fields in Mongo documents
+	We can use the "name" attribute on @Field annotation to control the name of the field in which this property is going to get stored
+	But what if we want to exclude a particular property from being persisted at all? Then we can use the @Transient annotation
+	We most certainly want to execute filters and queries against our Mongo documents and to speed things up, we will definitely need to use indexes. Well, in order to define indexes, you can use the @Indexed annotation on the field that you want to index
+	@Indexed can be customized with attributes such as "direction" and "unique"
+	There's also @TextIndexed. We'll discuss more later but just know that if you want to include fields in full text search, then you need to annotate them with @TextIndexed
+	@CompoundIndex allows us to create an index from multiple fields within our document. Instead of creating an index for each field, we have a single index, which is linked to multiple properties. This is great for optimizations
+	Finally, we have @DBRef. If you're familiar with relational databases, @DBRef acts somewhat like a join. In our case, @DBRef is used to link multiple documents together
+
+2.6 - Mongo Connection Properties
+	Connection properties are the last piece of puzzle on our journey to connect a spring application to a mongo server
+	There are couple of important mongo parameters that you need to know in order to connect to a MongoDB server
+		Mongo server IP address
+		Mongo server port
+		Database name
+		Credentials (optional)
+	Where do we define these connection parameters? There are multiple ways
+	In application.properties
+		spring.data.mongodb.host=host
+		spring.data.mongodb.port=27017
+		spring.data.mongodb.database=airportmanagement
+		spring.data.mongodb.username=admin
+		spring.data.mongodb.password==admin1234
+	Alternatively, we can use a shorthand version
+		spring.data.mongodb.uri=mongodb://admin:pass123@localhost:27017/airportdb
+	We can also specify this connection during runtime
+		java -jar ./my-app.jar --spring.data.mongodb.uri=mongodb://localhost:27017/airportdb
+	The runtime parameters will override the parameters defined in application.properties
+
+2.7 - Demo: Connecting a Spring Application to a Mongo Database
+
+3.1 - Mongo Query Object (Implementing Queries)
+	I'd like to take a note and talk a little bit about query execution
+	You can execute queries or fetch data in 2 ways
+		with indexes
+		without indexes
+	Both have pros and cons but when we're not using indexes, you're basically forcing mongo to perform a collection scan. Each document is evaluated, and if it passes your criteria, it is returned
+	This results in slow searches
+	However, you get fast insers and updates
+	On the other hand, when you use indexes, mongo is not forced to scan every document in a collection so a collection scan is not performed, which results in fast searches, but decreases your performance for inserts and updates
+	There's no magic bullet or magic recipe on how you should prepare your queries for execution
+	My advice is to try out various combinations of indexes and see which one works best for your particular application
+	The query object is the most powerful and flexibile component for Mongo CRUD operations
+	To understand better, let's take a look at the query components. And there are 3 components that make up a query
+		First of all, you have the criteria for filtering data
+		Then you have the sorting definition for ordering data
+		And you have paging definition for splitting data
+	Obviously, the last 2 are optional. The first one is kind of mandatory
+	Query class with query() and with(), Criteria class with where() and gt()
+	We have multiple operators
+		is/ne ("ne" means not equals)
+		lt/lte (less than)
+		gt/gte (greater than)
+		in (value in list)
+		exists (has value)
+		regex (patterns)
+	The query object is pretty useful for defining the query
+	You can look at it as the metadata of the query, but how do we execute this query against a mongo database in spring? That's where the MongoTemplate comes in
+	MongoTemplate is the class or component that executes requests to a Mongo database
+	MongoTemplate is a simple injectable class following the standard template pattern in spring. It allows us to perform CRUD operations on data, it allows us to execute commands against a mongo database
+	And last, but not least, it's very, very powerful but also a little bit low level
+	So even though it might take you a while to get used to it, it is extremely powerful and it allows you to perform almost anything on any mongo database
+
+3.2 - Creating and Executing Queries
+	find() in MongoTemplate class
+	Fetching data with MongoTemplate usually involves 3 steps
+		You definitely need the query definition that contains the criteria and optionally sorting and pagination
+		Then, you need to decide the outcome of the query. Do you want to retrieve a single document? Many documents? Do you want to count the documents that match the query?
+		And last, but not least, you need the class type that contains the Mongo annotations. Those annotations are pretty important because they give you the collection name, so spring knows in which collection to query data and they also give you information about fields, which impact serialization and deserialization
+	There are many methods that we can use to retrieve information (from MongoTemplate class)
+		findAll()
+		find()
+		findOne()
+		count()
+		findById()
+
+3.3 - Implementing Full Text Search
+	I cannot think of any web application that doesn't have a giant input text box where you can type in something and then the application tries to give you results that are useful to you
+	We start our discussion around text indexes. Text indexes are bits and pieces that make full text search possible
+	A text index is similar to a normal index, but it works only on properties of type string or on array of strings
+	You can text index properties across the whole object graph, so you're not limited to the root object. You can dig into your object graph and apply text indexes on any string property
+	And last, but not least, you should pay attention to the text index weight because it's going to be extremely important in how your results are ordered
+	It all begins with annotations. We have this simple job profile class over here
+		@Document
+		class Profile {
+			@Id private String id;
+			private String name;
+			@TextIndexed private String title;
+			@TextIndexed private String aboutMe;
+		}
+	Notice that we don't add any weights so they are both equally weighted
+	How does it work?
+		First of all, each document is scanned, then a score is computed internally based on the text index weights. So mongo keeps track of that score internally
+		And then the outcome, the results are sorted by that score and presented to the user
+	That's why I said that the text index weight matter
+	In our example, title and aboutMe had the same weight. You change the the weight with the "weight" attribute
+	We discussed about indexes, but how do we actually execute this free text query? Well, again, we have to define the query and then pass it to the MongoTemplate, but things are a little bit different
+	First of all, we will use a particular type of criteria called TextCriteria
+	Now, when performing full text searches, the language is important. So we have forDefaultLanguage() method over here to specify the language, in our case, we'll use the default machine language
+	Then we're calling this matching() method, and we're passing in the text that you want to search
+		TextCriteria textCriteria = TextCriteria.forDefaultLanguage().matching(text);
+	After we have this text criteria, we can start to build a query. However, notice that we're using different static factory methods
+		Query byFreeText = TextCriteria.queryText(textCriteria).sortbyScore().with(PageRequest.of(0,3));
+		return mongoTemplate.find(byFreeText,FlightInformation.class);
+	So things look a little bit different, byt overall, the recipe is the same
+
+3.4 - Demo: Implementing and Executing Mongo Queries in Spring Applications
+
+4.1 - Inserting New Documents (Inserting, Updating and Deleting Documents)
+	Insert process
+		Let's assume you have a document that you want to store, that you want to persist
+		If the collection doesn't exist, Mongo will automatically create that collection for us
+		Then, if our document doesn't have an ID, Mongo will also generate a random ID for us. If not, it would use the one that it has
+		And then it will save that single document atomically
+	What does "atomic" mean? MongoDB by default, supports single document transactions
+	So, an operation on a single document is atomic. Because relationships are embedded in a single document, this mostly eliminates the need for multi-document transactions
+	However, what's neat is that starting version 4, MongoDB also supports multi-document transaction, and this is something very rare in the NoSQL world
+	But just because we have them doesn't mean we have to overuse them. So this is my advice to you. Don't overuse Mongo multi-document transactions
+	You can do that, but NoSQL was not designed with this in mind, so you should really try to make your documents as embedded as possible and try to limit the use of relationships between documents
+	MongoTemplate insert() to create a new entry, insertAll() for batch insert (one round-trip to the database)
+
+4.2 - Updating Documents
+	 In Mongo and spring we have 2 types of updates
+		Update single documents
+		Update multiple documents - aka batch update
+	MongoTemplate save() - a way to update single documents in MongoDB and spring
+	But save does more than that. Save scans the entire collection and tries to find a document with a matching ID
+	If no document is found for that provided ID, then save acts like insert, a new document is created with the provided ID
+	If a document is found, then it is completely replaced with the provided one
+	I would argue that the save method should really be called InsertOrUpdate because the name is misleading. It doesn't just do updates, it does a lot more than that and this can get you into subtle problems
+	My advice to you based on my experience is to use insert() for new documents and save for updates
+	Do not use save for inserts and updates just because it feels easier, because you can get into subtle problems and you'll have a hard time trying to understand what's going on
+	Also, you're making things more explici. If you're using insert for inserts and save for updates, you're making a clear distinction between these 2 operations and that's always a good thing in programming
+	What about batch updates? We mentioned earlier that save doesn't offer a batch support. Luckily for us, there are other methods on MongoTemplate that we can use to perform batch updates. Let's talk about the process
+		We have to retrieve the documents that we want to update using the query object
+		Then, we have to define the fields that we want to update and provide new values for those particular fields
+		After that, we can update those fields using the updateMulti() method on the MongoTemplate class
+	When you're using updateMulti or updateFirst, only the fields defined in the update object are affected, not the whole document. It's a pretty important distinction
+
+4.3 - Deleting Documents
+	Deletion has many facets
+		Delete a single document
+		Delete multiple documents
+		Delete the entire collection
+	remove(), findAllAndRemove(), dropCollection() in MongoTemplate
+
+4.4 - Using Mongo Custom Converters
+	A Mongo converter is a feature used to map all java types to and from the corresponding mongo database objects
+	So, it's all about mapping java types to mongo database types
+	By default, spring is very smart. It knows how to map most of the java types for us
+		UUID/String = Object ID
+		String = String
+		int = Number
+		double = Number
+		boolean = Boolean
+		Object = Object (embedded)
+	If spring is so smart, then why are we having this conversation? Because sometimes you might want to change the way that this conversion is taking place
+	You might want to change how a particular java type is mapped to its corresponding Mongo type, and that's where converters come into play
+	Luckily for us, it's extremely easy to create a custom converter
+		The first step is to create a write converter, so from the java type to the mongo type
+		Then you have to create the opposite converter, the read converter, from a Mongo type to the java type
+		And last but not least, you have to register these converters as a spring bean, and this will allow your spring application to pick these up and use them when performing these types of conversions
+	Like I said, we have 2 converters - WriteConverter and ReadConverter
+	When you're creating a custom Mongo converter, you have to implement the Converter interface
+	The Converter interface needs two types, the source and the destination
+	When we're creating a WriteConverter, the source is the type in java and the destination is the type in Mongo. Then we have this convert() method, which converts an Address to a String
+		public class AddrWriteConverter implements Converter<Address, String> {
+			
+			@Override
+			public String convert(Address address) {
+				...
+			}
+		}
+	Now in ReadConverter, the source is the String because that's what saved in Mongo and the destination is the address because that's what we have defined in our java class. Again, we have this convert() method, and this time we're splitting the string and then we're creating a new address object and returning it
+		public class AddrReadConverter implements Converter<String, Address> {
+			
+			@Override
+			public Address convert(String s) {
+				...
+			}
+		}
+	We have defined the converters, and now we need to register them. We have to register this MongoCustomConversions type
+		@Bean public MongoCustomConversions customConversions(){
+			List<Converter<?, ?>> converters = new ArrayList<>();
+			converters.add(new AddrReadConverter());
+			converters.add(new AddrWriteConverter());
+			
+			return new MongoCustomConversions(converters);
+		}
+	So we annotate it with @Bean and here we're creating an empty list of converters and adding the read and write converters, and then we're returning a new instance of MongoCustomConversions and we're passing in the converters that we just created
+	Now we can register this bean in any class which is annotated with @Configuration. If you're using Spring boot, then it can be the main application class. Else, no any class annotated with that @Configuration can support this bean definition
+
+4.5 - Demo: Implementing Inserts, Updates, and Deletes
+	To allow us to see how method calls on MongoTemplate get translated into MongoDB queries - in application.properties
+		logging.level.org.springframework.data.mongodb.core.MongoTemplate=DEBUG
+
+4.6 - Recap
+	MongoTemplate is amazing because it has a lot of flexibility
+	But great flexibility usually comes at a price, and for MongoTemplate, that price is type safety
+	I bet you noticed that we're defining our queries, the name of the fields are plain old strings. That's very, very error prone
+	Luckily for us, there's a better way to write most of our queries using Mongo repositories
+
+5.1 - Discover Spring Mongo Repositories (Making the Data Persistence Layer Cleaner with Repositories)
+	Spring (Mongo) Repository is just an abstraction that significantly reduces the amount of boilerplate code needed to implement the data access layer
+	And when I mean abstraction, I mean an interface
+	Mongo repositories are injectable interfaces that can be used in our spring applications, they provide basic CRUD operations out of the box, and they can be expanded with these to meet all of our querying needs
+	Before we move on, let's take a look at how the repository interfaces are structured in spring framework
+		It all starts with the Repository<T, ID> interface. T is the type of class you're trying to persist and ID is the type of ID
+		Then we have CrudRepository<T, ID> which extends Repository. CrudRepository gives us some pretty useful capabilities
+		On top of CrudRepository, we have PagingAndSortingRepository<T, ID>
+		And after this, we finally have MongoRepository<T, ID>. MongoRepository just implements variation methods, mostly insert and batch insert
+	It's also worth pointing out that the base interfaces are all defined in Spring Data. The only Mongo-specific interface is actually our MongoRepository interface
+	And this is a pretty important statement because it means that regardless of our persistence technology, we're mostly using the interfaces defined in Spring data
+	We have a common set of interfaces regardless of the persistence technology. In fact, if you've ever worked with JPA repositories before, so with a relational database, you'll find most of these interfaces and methods to be pretty familiar
+	That's because you're using the same abstractions and this is very powerful because it means if you switch to mongo, your application will almost look identical and I think that's a pretty cool thing that the people working on the spring framework have done, to create this uniformity across a lot of different persistent technologies
+	(Example)
+		Let's say we have Airport class
+			@Document
+			public class Airport{
+				@Id String id;
+				String country;
+				...
+			}
+		And now, how do we implement the repository?
+			@Repository
+			public interface AirportRepository extends MongoRepository<Airport, String> {
+			}
+		In controller
+			List<Airport> airports = repository.findAll();
+			
+			Airport a = new Airport(...);
+			repository.insert(a)
+			
+			repository.deleteAll();
+	You might be asking, but where is the actual implementation for that interface? Spring does the magic behind the scenes. For each repository interface, spring registers the technology specific factory bean to create the appropriate proxy implementations
+
+5.2 - Query Methods
+	Query methods are a declarative way to add functionality to a spring repository
+	Spring framework knows how to create a proxy (based on the query method signatures) and the correct implementation based on the query method signatures
+	There are a lot of conventions which are being used under the hood, but in the end, spring manages to create our desired outcome
+	There are 4 things that you need to consider when declaring query methods
+		You need to know the return type
+		Then you have the method prefox. This is usually "findBy", but there are also other alternatives available
+		After that, you can specify a property name
+		And you can add filters on that property name
+	I want to highlight the convention - return type prefix (findBy), property name, filters, values for those filters
+	We can chain together multiple properties and multiple filters
+	However, is this approach good for all the cases? What about more complex queries? For those cases, we can use the @Query annotation, and we can specify the exact custom query that Mongo should use when executing our method
+	This approach is a little more complex because you need to know how to create queries using the Mongo query language. But for complex queries, it's absolutely wonderful
+	I would encourage you to use the @Query annotation only in situations where you cannot create the query method using the conventions discussed earlier
+	Sure, they're great to know but they force you to know database specific details, so don't overuse them
+
+5.3 - Insert, Update and Delete Documents
+	The repository interfaces take care of inserts, updates and deletes. So there's not much we can do besides calling the appropriate methods
+	The 4 methods that you'll use to perform these operations are insert(), save(), delete(), deleteAll()
+	It's worth mentioning that save() functions as an insert or update, so it scans the collection and tries to find the document with a matching ID. If no document is found for that particular ID, then save acts like insert. A new document is created
+	If a document is found, then it is completely replaced with the provided one. This is very similar to the behavior of the MongoTemplate class, and my recommendation remains the same - use insert() when creating new documents and save when updating them
+	I also want to highlight that you cannot do partial updates using repositories. So the update capabilities of the MongoTemplate are a little bit more complex that what you have for repositories
+	But in most cases, this is not going to be problem
+	deleteById() and deleteAll()
+
+5.4 - Demo: Implement Mongo Operations Using Repositories
+
+5.5 - Recap
+	I want to make distinction between Repositories and MongoTemplate
+	Both are great ways to handle persistence using spring and MongoDB. However, these 2 technologies, or these 2 approaches are better suited for some scenarios and not so good for others
+	For example, repositories are great at abstracting the persistence layer. They have improved type safety because they don't realy so much on strings, but for example, they're not very suitable for complex queries, projections or bulk updates
+	MongoTemplate on the other hand, is more flexible. You can tackle almost any database operation, including creating and deletion of collections, but they heavily rely on strings and are more error prone, not to mention you have to write more low-level, boilerplate code to get the job done
+	That being said, I want to highlight the best use cases for both approaches
+		You should use spring mongo repositories for inserting and deleting data. They're very easy to use for most queries, especially when you can use query methods. In fact, I would argue that they work great for 80-90% of use cases
+		MongoTemplate on the other hand, is more powerful. It provides exhaustive support for batch updates and partial updates. You can build extremely complex queries, you can access low-level database APIs. However, it is more error prone, and you have to rely on strings and write more code
+	They're both great pieces of technology. However, my advice to you is to use the best tool for the job	
+
+6.1 - Mongo Document References Explained (Understanding Document References, Lifecycle, and Cascading)
+	A document reference is just a way to link together multiple documents that are related
+	MongoDB is a NoSQL database; therefore, for most cases, the denormalized model where data is stored in a single document is optimal
+	The idea is that you should try to minimize the number of relationships between your documents
+	Enterprise applications tend to be complex, and sometimes it's pretty difficult to achieve this
+	In MongoDB, we have 2 types of relationships between documents
+		Manual references - We are using the "_id" field of a document in another document
+		DBRefs - You can think of DBRefs as manual references on steroids. You can link documents together by using the _id field, collection name and database name
+	DBRef can link documents across collections or even across databases, something that we cannot achieve using manual references
+	To resolve DBRefs, the application must perform additional queries. The MongoDB drivers don't do that automatically for you
+	Luckily for us, spring data MongoDB handles this scenario and fetch their little document for us
+	Also, be aware that cascading is not supported using DBRefs. If you have a relational database background, you might be tempted to think that DBRef is some kind of foreign key and you can perform join with it
+	Well, DBRef is a very simple construct, and the relationship capabilities that MongoDB offers us are nowhere near as powerful as what we can get from relational counterparts
+	That's not the reason why we have NoSQL databases, but it's good to know that we can use references to link documents where appropriate
+	A DBRef is not something very special. It's just a subdocument with some specific fields
+		The first one is $ref. This contains the name of the collection where the linked document resides
+		Another one is $id. That's the value of the _id field of the referenced document
+		And optionally, we can also have $db, the name of the database where the referenced document resides
+	Be aware that the order of these fields in the subdocument is very, very important. In order to have a DBRef from a MongoDB perspective, those fields need to be in a particular order - $ref, $id, $db
+	If you mix the order, you won't get a document reference
+	And last but not least, be aware that DBRefs rae not "smart". Don't expect relational database capabilities out of a DBRef
+	Instead, think of it as a manual reference with some benefits
+
+6.2 - Creating Document rReferences in Spring Using @DBRef
+	Example
+		@Document
+		public class Aircraft{
+			@Id private String id;
+			private String model;
+			private int maxPassengers;
+			private Engine engine;	// embedded document
+		}
+	If you want to make a link between aircraft and engine using document references, there are a couple of changes that need to take place
+		@Document
+		public class Aircraft{
+			@Id private String id;
+			private String model;
+			private int maxPassengers;
+			@DBRef private Engine engine;	// embedded document
+		}
+	In Engine class. The engine is also a document, so we need to add the corresponding annotations to it, in our case, @Document and @Id
+		@Document
+		public class Engine {
+			@Id private String id;
+			private String type;
+			private int maxPower;
+		}
+	If you remember, MongoDB doesn't prefetch document references for you. In MongoDB, a document reference is just a subdocument with a Ref id, and DB properties
+	Luckily for us, spring data MongoDB does some things for us and the most important one is that it fetches documents annotated with @DBRef automatically. This means that each time you create a query for aircraft, the engine property is going to be populated with actual engine values. So not ref, id and db but the actual documents
+	So the framework is going to do that document fetching for you, which is a great thing
+	Let's discuss inserts
+		Aircraft a = new Aircraft(...)
+		a.setEngine(new Engine(...))
+		
+		aircraftRepository.insert(a)
+	If you've been using relational databases, you would expect that at this stage, both the aircraft and the engine documents should be inserted in the database, but it is not the case in Mongo
+	You won't get an error after executing this code, which is a good thing. However, engine is not getting saved in the Engine collection
+	What I'm trying to say here is that cascading doesn't with DBRefs on save by default, so you have to do things differently
+	The easiest fix is to actually save the engine first
+		Engine e = new Engine(...)
+		engineRepository.insert(e)
+		
+		Aircraft a = new Aircraft(...)
+		a.setEngine(e)
+		
+		aircraftRepository.insert(a)
+	So you need to save the reference document first and the parent document after that
+	The @DBRef annotation can also be customized in order to let the framework know how to fetch teh documents for us. It can use either eager loading or lazy loading
+	Now by default, @DBRef instructs the framework to perform an eager load
+	You can change that by modifying the lazy property of the @DBRef annotation and set it to true
+	In this case, the subdocument is loaded only when one of its fields or methods is accessed
+	Now, this is something you normally use by default, but it's pretty useful for bi-directional references in order to avoid cyclic dependencies
+	Let's list some of the capabilities that we get in spring when using @DBRef
+		First of all, @DBRef creates document references
+		It uses eager loading by default but this can be changed by modifying the lazy property. The spring framework fetches the referenced document fro you and populates the POJO. You don't have to do anything in this regard
+		Cascading on save is not available by default, but luckily for us, you can hook into Mongo lifecycle events and implement cascading yourself, and this is what we'll discuss in a few moments
+	I also want to highlight that you should pay attention to queries when using related documents
+	(demo) As you saw, document referencing in spring has both pros and cons
+
+6.3 - Spring Mongo Lifecycle Events
+	Lifecycle events are underrated but they're extremely powerful ways to implement custom logic in key moments
+	Lifecycle events are hooks that your application can respond to by registering special beans in the spring application context
+	You have many lifecycle events to which you can respond to
+		First of all, we have the "before" events as I call them - onBeforeConvert, onBeforeSave and onBeforeDelete
+		Then you also have the "after" events - onAfterConvert, onAfterSave, onAfterLoad and onAfterDelete
+	Let's look at the process at how these events are called
+		When you want to save or update a document, usually call insert or save in a MongoTemplate or a MongoRepository
+		In this case, the first event that gets called is onBeforeConvert and this is called before your java object is converted to a document by a Mongo converter
+		Then onBeforeSave is called before inserting or saving the document in the database
+		Lastly, onAfterSave, which is called after the document was inserted or saved in the database
+	If you want to load a document
+		You call a find() method on a MongoTemplate or MongoRepository
+		The first event that gets triggered is onAfterLoad which is called after the document has been retrieved from the database
+		Then we have onAfterConvert, which is called after the document has been converted into a java object
+	There are also events when you're deleting documents
+		Each time you call remove() on a MongoTemplate
+		onBeforeDelete is called just before the document gets deleted, and onAfterDelete is called just after the document has been deleted from the database
+	I think it's also worth mentioning the lifecycle events are emitted only for root level types
+	Subdocuments are not subject to event publication unless they're annotated with @DBRef
+	Also, it is all happening in an asynchronous fashion. We have no guarantee to when an event is processed. It's surely going to get processed, but we don't know exactly when that's going to happen
+	At this point you might be wondering, why would I ever want to hook into these events? Let me give you some real use cases
+		First of all, if you're trying to implement cascading on save, lifecycle events are the way to go
+		If you want to trigger some job or action in different systems when some persistence is happening in your system like you're saving a document or you have removed the document, then again, lifecycle events are great
+		And last but not least, if you want to implement security auditing, then there's no better way than implementing it using lifecycle events
+	How can I hook into these events and execue my own custom logic?
+	It all starts with the AbstractMongoEventListner class. This class exposes methods, which we can override to implement our custom logic
+	In order to implement our own custom logic, we need to extend the AbstractMongoEventListner class and then we want to override the methods
+	Last but not least, we also need to register this bean. You can do that using annotations with @Component or you can just create a bean in a configuration class. Either way, it's going to work fine
+	One piece of advice - try to create an event listner per feature. Don't create these generic or global Mongo lifecycle listners where you override all the methods and add custom logic in there because they become a maintenance nightmare
+	Instead, think about the feature you are trying to implement
+
+6.4 - Demo: Implementing Document References
+
+6.5 - Recap
+	I want to nuance a couple of things
+	In the mongo documentation, it states that for nearly every use case where you want to store a relationship between 2 documents, use manual references
+	The application can then resolve those references as needed
+	Also, in the mongo documentation, it states that if you need to reference documents from multiple collections or multiple databases, then you should consider using DBRefs
+	It seems like mongo documentation doesn't want us to tie ourselves with relationships a lot
+	Instead, they want to us to use the NoSQL approach where we embed documents into one another
+	Now based on my experience, I kind of have this recipe
+		First of all, start by designing your data without relationships. Stay true to the NoSQL philosophy. This should be your number one goal
+		If this can't be achieved, then I would recommend that you use DBRef, but only if you implement cascading on save and you don't create bi-directional references
+		That's because spring offers some features out of the box. You ahve population of the related documents, and if you implement cascading, you also get that, so it will make your life working with the application a lot easier
+		And last but not least, you should consider manual references
+
+7.1 - Data Migrations (Applying Migrations to Existing Data Stores)
+	Universal truth - data changes over time, period. No matter on what project you're working on, no matter what technology you use, the data is going to change if you're planning to host an application in production for a given amount of time
+	And the changes are gradual
+	Why are we discussing about data migrations? Didn't we pick MongoDB because it has no schema enforcements? Well, that's right. A NoSQL database has no schema, so data migrations are easier to apply
+	However, you're also working on a spring application on a java application, so you always have to take into account that you need to reconciliate between your Mongo Documents and your java objects
+	The structure of your mongo documents needs to be reflected in your java objects
+	And when you migrate data, these things tend to be out of sync
+	A change in a mongo document will impact the serialization and deserialization process
+	A change in the mongo document will also impact some queries
+	You saw that when you were working with MongoTemplates, you're basically using strings to define property names. Well, if you're documenting Mongo changes, then those queries will be affected
+	Last but not least, when you change collections, this also impacts the queries, so you really need to keep the Mongo structure and your java structure in sync
+	That's why we're talking about Mongo migrations. Not because MongoDB can't handle them, because it can, but because your application needs to handle them gracefully
+	There are a couple of triggers that will signal when you need to implement a data migration
+		Document changes are the most frequent
+		Collection changes come second
+		And sometimes, you might have to do a complete database migration, but that's not happening very often
+	Most of the time documents change
+	So, if that's the case, how do you implement this migration? We have a couple of options
+		You can use manual migrations using scripts and modify the database directly
+		Or you might create a migration component yourself using java or any other technology
+		Or you can use an existing framework
+	I highly discourage you to use scripts as a way to implement migrations. I've been there and done that and trust me, that's not a road that you want to walk upon. You'll end up having multiple versions of the application deployed at various customers, and then you have to figure out how to migrate data from version A to version B, from version B to version D, and the list goes on. It's a nightmare
+	What you want to do is you want to have a component that does this for you automatically
+	Doesn't matter if you're using a framework or if you're creating it yourself
+	And if you're using a component, there are couple of characteristics that you need to look at
+		First of all, the component should have a version detection. It should detect an existing database version and upgrade to the newest version automatically
+		It should also be easy to configure and to set up ordered data changes
+		And last but not least, you should have extensive logging because you want to audit all the migrations that have been applied
+	Now the most important feature I think, is automatic version detection and it's kind of the most important one to have because you have your application, which is at version 1, your database is in sync with your application, but then you're upgrading your application to version 2 and you want to deploy it to that particular customer
+	Your application will try to connect to the existing database, which is version 1
+	However, this is not going to be possible, so that component needs to trigger a data migration on the database
+	After the migration completes, you'll have a new database upgraded to match with your application version
+	So then your application can swiftly communicate with the updated data structures
+	That's how automatic database version mechanisms work, and your component should definitely have this feature
+
+7.2 - Creating Mongo Migrations in Spring Applications
+	Since manual migrations are not an option, we are left with 2 choices
+		We can either create our own migration framework or components
+		Or we can use an existing framework
+	They both have pros and cons, so let's explore them
+	Earlier in the demo, I've used the CommandLineRunner as a way to see data. I call this the poor man's migration component
+		I created a class, I injected a MongoTemplate and implemented the CommandLineRunner interface. This ensured me that each time the spring application began, then this run() method here would execute before the application started
+	This approach got the job done, but it's a pretty simplistic migration tool because it leaves us with a lot of questions. For example
+		How is our migration component going to scale when we have to do plenty of changes, when we have lot of changes accumulated over time?
+		Then, how will we execute only the needed migrations based on the difference between the application version and the database version?
+		Even more, how are we going to keep track of the application and database version in the first place?
+	These are all questions that you need to think about when you're building your own migration component
+	Now, I'm not saying you should not do this. There are plenty of scenarios when creating your own tooling is beneficial but keep in mind that implementing a migration is not trivial, so take your time and do it right
+	The other approach is to use a framework. When you use a framework, you save a lot of time, which is a good thing. You can also increase focus on your application domain, which is another good thing. However, it's not under your control, so you might love some flexibility
+	Now, depending on your application requirements, you can go with either one of these approaches. However, for the rest of the module, I'm going to be using a library called Mongobee
+	Mongobee is a tool which helps your manage changes in your Mongo database and to synchronize them with your application
+	If you come from a relational background and you used the LiquidBase or Flyway, then Mongobee will feel very familiar
+	To implement in spring, in pom.xml
+		groupId - com.github.mongobee
+		artifactId - mongobee
+		version - 0.13
+	Step 2 is configuring the Mongo bean. We can do thta by creating a method and annotating it with the @Bean annotation and placing it in a configuration class
+		@Bean
+		public Mongobee mongobee(){
+			Mongobee runner = new Mongobee(mongoUri)
+			runner.setEnabled(true);
+			runner.setChangeLogsScanPackage("pluralsight.*")
+			runner.setMongoTemplate(this.mongoTemplate)
+			
+			return runner
+		}
+	And last but not least, we can create a data migration class. The Mongobee terminology is a little bit different
+	Mongobee has change logs and change sets
+		A change log is a class which contains a bunch of migration operations called change sets
+		So we have change log, and then a change log can contain one or more change sets
+		Change log and change sets are both ordered
+	(example of using @ChangeLog and @ChangeSet)
+	I think it's worth mentioning that Mongobee supports automatic database version detection, which means that if your application is currently at version 10 and your database is at version 5 in this example, then the framework is going to execute migrations from 6 to 10 automatically
+	It won't execute migrations from 1 to 5 because the frameworks knows it doesn't have to, and this is a pretty cool feature to have in any migration framework
+
+7.3 - Demo: Implementing Mongo Migrations in Spring Applications
+
+7.4 - Recap
+	At this point, you might be asking yourself if you should use an existing framework or create your own migration tooling
+	And the answer is, it depends
+	If you create your own migration components, then you have complete control over the functionality.You can meet every aspect of your migration requirements. However, you do need more time to develop it, and you saw that it's not very trivial
+	If you choose an existing framework, you'll save time, you'll focus on the business logic instead of infrastructure code, but some applications might need more features than any given framework can offer. So, we have limited control on the migration process itself
+	In the end, it's your choice. Either option works fine for certain scenarios
+	And you don't have to use mongobee as a framework, you can research and find other frameworks that might be better suited for your own particular needs
+	I've chosen mongobee because I've used it in some production applications and I was happy with the outcome
+
+8.1 - Integration Testing for the DAL (Testing the Data Access Layer)
+	(Image of testing pyramid)
+		E2E
+		Integration Tests
+		Unit Tests
+	When we're testing the DAL spring applicatoins, we'll focus on integration tests
+	Integration testing is the type of testing where individual pieces of software are combined and executed as a group
+	That makes sense but you might be wondering, why would I ever want to test the data access layer? After all, we have mocking frameworks for that right?
+	You can certainly use mocks to replace the components that handle data persistence, but I think there's a lot of value in testing the DAL in spring applications
+	First of all, data is at the core of most enterprise software applications. So it pays off to test those components that are dealing with data
+	Then, you might want to make sure that your application gracefully handles edge cases or exceptions
+	And last but not least, it's pretty easy to perform data access and integration testsing in spring, so you really have no execute for not doing it
+	Let's look at the anatomy of an integration test for the data access layer
+		First of all, you create a test, then you need to setup the data in your database
+		You can then execute a test, which usually involves a database operation
+		You assert the result
+		And last but not least, you empty the database
+	This process goes on and on for every test that you write
+	It's very important to set up teh database in every test and clear the database after each test because tests should be predictable
+	If the data in your database is volatile, your tests will be flaky
+	If you're using the same database and not resetting it to an initial state after each test execution, the data operations performed in one test are going to interfere wtih the assertions in other tests
+	This is certainly not something that you want. So make sure that every test starts from a pretty well-known state
+	Do we have to test every piece of code that calls the database? I'm glad you asked
+		You should definitely test methods that are prone to errors (example of using MongoTemplate.findAll() vs @Query - you don't need to test MongoTemplate.findAll() but you do need to test @Query since it's a string and more error prone)
+	Now, let's generalize what you should test
+		You should always test complex queries. Watch out for strings, complex criteria and projections
+		You should also test object to document mappings, especially if you create custom mongo mappings in your application
+		And last but not least, you should also test lifecycle events. If you implement cascading for example, it's a good practice to test that when you save the parent document, the child document also gets saved
+
+8.2 - Mongo Integration Tests in Spring Applications
+	The first choice that we have to make is whether you're going to use an embedded mongo database or a standalone mongo database
+	They both have pros and cons; however, if you opt for the embedded approach, you will have no dependencies whatsoever. This means that you can set up your local environment easily, and you can also integrate with CI/CD pipelines very fast. You also get faster tests. However, this is not an official mongo product, and therefore it's not quite integration testing because you're not targeting an actual mongo database, but rather a custom implementation of it that runs in memory
+	If you opt for a standalone approach, you need a dedicated mongo database for testing purposes, you increase complexity of your CI/CD environment in your local environment, tests will tend to run a little bit slower, but you will discover how your application behaves in production-like environment, and this is pretty important
+	All right then, if both have pros and cons, what should you choose?
+	Based on my experience, I would recommend that you start with an embedded database first and gradually progress to a standalone database before shipping your application to production
+	I recommend this approach because it worked pretty well in the projects where I was involved
+	Before we look at an actual test, I want to talk about @DataMongoTest annotation
+	This annotation can be used on classes that will contain your MongoDB integration tests
+	Using this annotation will disable full auto-configuration, but apply partial auto-configuration for the mongo-related components, like repositories, MongoTemplate and scanning of classes annotated with @Document
+	We start with running tests using an embedded database. The first thing, in pom.xml
+		groupId - de.flapdoodle.embed
+		artifactId - de.flapdoodle.embed.mongo
+		scope - test
+	We can now create our first test class
+		@DataMongoTest
+		@ExtendWith(SpringExtension.class)	// this instructs the JUnit 5 runner to use the Spring TestContext
+		@Category("integration")	// Optional
+		class DatabaseIntegrationTests {
+			@Autowired MongoTemplate mongoTemplate;
+			
+			...
+			
+			@BeforeEach public void beforeEach(){
+				this.mongoTemplate.insertAll(aircraft)
+			}
+			
+			@AfterEach public void afterEach(){
+				this.mongoTemplate.dropCollection(Aircraft.class);
+			}
+			
+			@Test
+			public void findByMinAircraftNbSeatsShouldWork(){
+				...
+				assert(...)
+			}
+		}
+	So, what just happened? The process is the following
+		You first up the test, this in turn starts the embedded mongo database in memory, you populate collections with some test data, in our case aircraft, you execute and assert this, and finally, you clear the embedded Mongo database
+	It's worth mentioning that the embedded mongo server is started only once when the first test is executed
+	Now let's see how we can run tests using standalone database
+	First of all, we have no dependency on the embedded database model, so we can just go ahead and write our test. Before we do that, we still need a way to specify what database we're going to use for our tests. And that's why we have this @TestConfiguration annotation
+	Here, we can declare beans that are going to be available for autowiring in our tests only
+		@TestConfiguration
+		public class TestConfiguration{
+			@Bean public MongoDbFactory mongoDbFactory() throws Exception{
+				return new SimpleMongoClientDbFactory("<test-db-mongouri>")
+			}
+			
+			@Bean public MongoTemplate mongoTemplate(MongoDbFactory factory){
+				return new MongoTemplate(factory)
+			}
+		}
+	The DatabaseIntegrationTests class is almost identical. The only difference is the @Import annotation where we are importing the beans defined in our TestConfiguration.class
+		@DataMongoTest
+		@ExtendWith(SpringExtension.class)
+		@Category"integration")
+		@Import(TestConfiguration.class)
+		class DatabaseIntegrationTests{
+			@Autowired MongoTemplate mongoTemplate;	// points to provided DB
+			
+			// rest is the same
+		}
+
+8.3 - Implementing Mongo Integration Tests in Spring
+
+8.4 - Recap and Course Summary

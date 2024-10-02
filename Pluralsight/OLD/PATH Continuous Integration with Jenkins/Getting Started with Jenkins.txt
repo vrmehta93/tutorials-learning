@@ -1,0 +1,108 @@
+
+2.2 - Should I use the LTS or Weekly Jenkins Release? (Setting up a jenkins learning env)
+	jenkins.io
+	LTS - for prod env where you need somethign that's hardened, tested, secure. If it does have problems, it will receive bug fixes quickly
+	Weekly/Regular releases - latest and greatest. I will use Weekly throughout the course
+	From weekly releases, after 12 of these weekly releases, one of them is selected to serve as the next baseline for a series of LTS releases or stream of LTS releases. So, we have 2 parallel streams being developed. The weekly continues and then there's the patch release candidates
+	You could think of LTS releases as little branches that fork off the trunk of a giant tree that keeps growing taller and taller
+
+2.3 - Understanding high level installation routes and downloading jenkins.war file
+	.war file, installer or docker
+
+2.4 - Installing AdoptOpenJDK
+	https://www.jenkins.io/doc/administration/requirements/java/
+	Doc lists openjdk java
+	I'm going to use the AdoptOpenJDK distribution (OpenJDK binaries)
+
+2.5 - java -jar jenkins.war - Then unlock the protected setup wizard with initialadminpassword
+	in cmd - "java -jar jenkins.war"
+	That generates an initial password. You'll need that for the next step
+	Open browser on "localhost:8080" and use the admin password
+
+2.7 - Setup wizard - creating the first admin user
+	Once plugins are installed, create first admin user - this gives you your chance to lock down Jenkins
+	Keep in mind that by default Jenkins is running on port 8080 and if you look through the terminal output, you'll even see that it is listening, in this case, on all interfaces (0.0.0.0:8080). So, that means somebody could access Jenkins from the outside world. So, keep in mind when you choose a username and pwd. It should be secure for the context within which you are running jenkins. So, whatever marchine you're running on and the level of network access others have to that machine
+
+2.8 - Setup wizard - what is the jenkins URL?
+	This is used for building out your URLs that might be sent out in an email giving a status notification of a build process
+	If you don't know the URL, click "Not now" and move on. If you choose "Not now", then that URL will be generated based on the requests that come into the jenkins instance. So, it'll be dynamic
+	And the reason it's nice to make it set in stone is, so that it's not dynamic, so you're not using something like localhost. But, for learning purposes localhost is fine
+	
+2.9 - Manage Jenkins: Changing configuration after setup - for example - creating a user	
+	Manage Jenkins - a lot of features
+		Authorization strategies
+	Speaking of securtiy, jenkins is very pluggable, so there are going to be additional strategies you can use to authorize users. Those will come in the form of pulgins that will augment the security systems insdie jenkins and give you other aspects to configure security if you're not happy with these particular choices of authorization
+	Same thing for authentication
+
+2.10 - Spelunking JENKINS_HOME: how to reset your jenkins install and back it up
+	If you kill the java the process running jenkins, what would happen if you want to run jenkins again. Are you going to lose your configuration?
+		No. In ther terminal, you'll see the "webroot" which is the Jenkins home directory
+	Jenkins stores pretty much everything on disk. If you want to reset your state, you need to delete everything in that folder. Conversely, this is going to be the bassi of soemthing you want to back up if you want DO NOT want to lose your configuration and data in Jenkins
+
+2.11 - Docker rocks on learnings jenkins thanks to the official jenkins/jenkins images - setup is effortless
+	Easier approach and what I think is really the future of running most software and definitely software in the Jenkins ecosystem and that's using docker image, an official docker image inside of which all of the bits of jenkins and its dependencies, notably java, those are installed for you by the same people that work on the Jenkins project itself. All you have to do is put on an image and spin it up into a container and you can have jenkins up and running within a few seconds and not need to worry about all this dependency nonsense. You can just jump right into using Jenkins
+	(Docker hub)
+	
+2.12 - Using docker-compose to Spin up jenkins and a MailHog Test Email Server
+
+2.13 - Clean up and recreation is a breeze with docker-compose
+	Stopping the containers keeps your entire env, even though it's containerized, keeps it around until you're ready to pick up your learning later on or whatever experiment you're doing later on. And the nice thing is you're not using any system resources, so you're not bogging down your machine with extra processes tha don't need to run
+	Another huge reason why I'm a fan of docker compose
+
+3.1 - Aantomy of the build (Building Applications iwth Freestyle Jobs)
+	"cron" - automation tool
+
+3.13 - Capturing app build artifacts: In this case a Jar file
+	Workspaces are temporary
+	If you want to "save" the artifact from the build, In Post-build actions, select "Archive the artifacts"
+
+3.18 - Visualizing Common Build Triggers - Push, Pull and Scheduled
+	When to run/trigger your job? Most likely, we would want to run when somebody pushes new changes out to a git repo. How do we do that?
+		- We could havea  polling process that's continuously checking to see if there are any new changes out in git repo. Aka polling trigger
+		- Push trigger - wherer if somebody pushes changes to a git repo, some sort of mechanism notifies our build process that it should run. That mechanism is typically a web hook
+		- Some prefer nightly builds of their app - scheduled trigger
+
+4.1 - Reflecting on Freestyle Project aka the Toilet Paper form(Automating Jobs Configured with Code)
+	Version 2 of jenkins addresses this "toilet paper form" with pipeline-type project. That's what we'll look at in this module
+
+4.4 - Jobs are backed by XML Config files
+	Most notable feature of pipeline project - script section
+	config.xml - XML version of the long scrolling form UI
+	You can copy these config files to create duplicates of jobs, to back up, share with people etc
+	
+4.5 - Changing config.xml on disk then reloading configuration from disk
+	If you edit/update the config.xml and come over to UI, the changes will NOT be reflected. You need to reload the configuration. You can restart jenkins or "Reload Configuration from Disk" in manage jenkins page
+	
+4.9 - Using the Built-in pipeline syntax generator to fix our git clone failure
+	Click "Pipeline syntax" and select "Snipper Generator"
+
+4.11 - Pipeline Output is Granular to pinpoint failures and a function of pipeline durability
+	"Pipeline Steps" page - breakdown of each step
+	Pipelines can be stopped at any point in time. They're durable, so if your jenkins instace were to restart, for example, your pipeline would resume
+	If you look at the pipeline script, between every step, the entire step of the running pipeline is captured and serialized to disk and then restored in the event of failure. It's expensive to do that but it gives us durability
+	There's "Pipeline speed/durability override" in the configure jobs page - allows you to change durability
+
+4.14 - A plugin to convert freestyle and a side by side XML comparison
+	There's a plugin to convert freestyle to pipeline project (since they're just xml files on disk)
+
+5.1 - Freestyle, pipeline, Jenkinsfile (Colocating Jobs and Source Code with Jenkinsfile)
+	In this module, we're going to take a look at how we could take that pipeline and extract the pipeline script out and upload it as a Jenkinsfile
+
+5.2 - What if you could develop pipeline scripts outside Jenkins, in VSCode?
+	In VS Code, you can download "Jenkins Runner" plugin. In settings.json, define job and host config info. Then, you can run and see output of jenkins in VS Code
+
+5.3 - Adding Triggers to the Pipeline
+	You can add triggers with "triggers { ... }" (look at doc)
+
+5.11 - Pivoting to a Jenkinsfile and Communicating via SCM
+	In this module, we've been focusing on how we can use an external tool like VS Code, for example, to take down a copy of our pipeline script, use groovy editing capabilities in VSCode to make changes to pipeline and then how we can use the Jenkins runner extension, as an example, to copy that file back up when we're ready to test it out
+	Secondarily, we could back up the code that we've created here in pipeline script into a git repo, maybe push that out to github, similar to a backup
+	Last thing I want to pivot to - Jenkinsfile approach. So instead of communicating directly with Jenkins, we'll throw out some of the tooling we have and instead look at a different example. Let's say we have a git repo with our spc app source code. So, the Jenkinsfile approach, the only difference is, we're still going to use tool like VSCode, but now we're going to checkout from our repo and we're going to make our changes inside a Jenkinsfile, a marker file if you will, that Jenkins can find. And then we're going to push those changes up into our repo and from there those changes will likely be pushed by a webhook or potentially pulled, maybe in some testing scenarios
+	End of day, Jenkins will load the script from git repo instead of direct communication from our editor
+
+5.12 - A Jenkinsfile approach for our spring petclinic pipeline
+	We can use the repo as our source of truth
+	That also means that if somebody new joins our team, all they have to do is clone our repo and they can help us out with our build process by making modifications to Jenkinsfile without ever needing to know anything about where Jenkins is at and how it finds this exact Jenkinsfile
+
+5.13 - Creating a pipeline with a pointer to our git repo
+	Jenkinsfile is a marker file. So Jenkinsfile as a name itself is just a default. You could choose to use a different name if you want

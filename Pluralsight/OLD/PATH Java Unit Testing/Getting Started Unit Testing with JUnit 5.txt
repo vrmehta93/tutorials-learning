@@ -1,0 +1,111 @@
+Jim Weaver
+Nov 7, 2018
+
+2.1 - Version Check (Writing Your First Test)
+	Version 5.2.0
+
+2.2 - Module Overview
+
+2.3 - The Benefits of Unit Testing
+	A unit test is just code, so to write a JUnit 5 test, we'll be writing a java test class
+	The test class will execute the target code, the code we're trying to make sure works correctly
+	Code that's hard to test cna be an early indicator of a design problem that needs to be addressed
+
+2.4 - Demo: Setting up JUnit 5 in an IDE
+	IntelliJ and Eclipse
+	In IntelliJ
+		Go to your class, right click inside java file > Go To > Test
+		And since there isn't a test yet, IntelliJ asks if we want to create one
+		You'll get a popup to create a test class for the production class we started from
+		JUnit5 is the test library selected already but it's telling us we don't hve the JUnit5 JARs in our module as a dependency yet. Click on "Fix" button
+		Now IntelliJ searches the internet for JUnit's released versions
+		The JUnit team releases through the build system Maven, so IntelliJ is actually searching Maven central for the JARs
+		Pick your version
+		Now JUnit has created a test class for us and added Junit5 to our IntelliJ project's dependencies
+	In Eclipse
+		Just like IntelliJ, the fastest way to add JUnit5 to a java project in Eclipse that isn't using Gradle or Maven is to just start writing a test and let Eclipse do the work for you
+		Right click on java file in Package explorer > New > JUnit Test Case
+		You'll get a dialog similar to IntelliJ
+	https://junit.org/junit5/
+	For maven, couple of dependencies are needed for maven itself (plugins) so that it can run the tests and then the library that provides the API we use when we write JUnit5 tests
+
+2.5 - Your Sample System
+
+2.6 - Demo: Writing Your First JUnit 5 Test
+	@Test annotation above method declaration indicates to JUnit that this is a test method for it to execute
+
+2.7 - Demo: Executing Your Test and Interpreting Results
+	assertNotNull()
+	assertEquals()
+
+3.1 - Module Overview (Writing More Complex Tests)
+	https://github.com/weaverj/gettingstartedjunit5
+
+3.2 - Demo: Applying Assertions
+	assertSame() will verify that the two variables being compared point to literally the same object in memory
+	assertIterableEquals()
+
+3.3 - Demo: Setting up and Tearing Down Tests
+	@BeforeAll, @BeforeEach, @AfterEach, @AfterAll
+
+3.4 - Demo: Testing Exceptions
+	assertThrows() - 2 parameters - class reference and lambda expression for code that we're calling that should throw the exception
+	To verify the message inside the exception
+		Throwable error = assertThrows(...)
+		assertEquals("text", error.getMessage())
+
+3.5 - Demo: Customizing Test Messages and Reporting
+	@DisplayName
+	JUnit5 allows us to create nested tests inside a test class by using the @Nested annotation, wrapping an inner class that has the desired test methods
+
+3.6 - Demo: Controlling Test Method Execution
+	@Disabled - temporarily disable a test
+	One thing we haven't mentioned so far in this class is that JUnit assertions short circuit. The very first assertion failure encountered ends a test method
+	When you have a situation like this, a series of assertions in one test method that are collectively all really testing one assumption, Junit5 provides an assertAll() method that prevents short circuiting of any assertions it wraps
+	Each of the parameters needs to be lambda expression
+		assertAll(
+			() -> assertEquals(...),
+			() -> assertEquals(...),
+			() -> assertEquals(...),
+			() -> assertEquals(...));
+	There are couple of other techniques for individual test method execution, but I don't see them used very often. They're parameterized test methods and repeating test methods (not covered here)
+
+3.7 - Demo: Running Groups of Tests
+	Let's take a look at an easy mechanism Junit5 provides the ability to tag test classes and test methods and execute tests by tag expressions
+	@Tag
+	In IntelliJ, add run configuration to run tests for tags
+
+4.1 - Module Overview (Making Existing Code Testable)
+
+4.2 - Understanding Single R esponsibility
+	Code that tries to solve different parts of a puzzle at once rather than focusing on a single thing, such code can often be difficult to test
+
+4.3 - Demo: Extracting Code to Make It Testable
+
+4.4 - Understanding Dependencies
+	Another challenge regularly encountered when unit testing existing code is dependencies
+	The code we're trying to test may call out to other code, and sometimes that's fine and we want our test to flow through that other code as well but sometimes it causes a testing problem
+	Dependencies can take a variety of forms. They might be calls into library code, even a java library dependency like a date or more commonly, they're just dependencies from one part of your application to another
+	These dependencies can cause testing probelms in a variety of ways as well. If the dependency that's called has side effects, talks to external services or databases that aren't present when you're testing or causes unpredictable behavior, then it may make a unit test for the target code challenging
+	A common way of handling this problem is to provide a double of the dependency to the code we're trying to test
+	The unit test creates the test double and provides it to the target code rather than the target code creating the dependency itself
+	The test double doesn't have the harmful side effects or external dependencies of the real dependency, but looks just like the real dependency of the target code
+	Allowing code to be provided with dependencies instead of creating them itself is called dependency injection of inversion of control
+
+4.5 - Demo: Using a Test Double
+	Create an interface and make the existing class extend that interface
+	Create a new implementation of the interface for the double
+	In the original class, just use the interface method (somewhat modeling a dependency injection)
+	Now in your test file, you can provide a different implementation (the double) 
+	Test doubles can be created using mock libraries to complement JUnit. Mockito is a popular one
+ 
+5.1 - Module Overview (Writing Tests First)
+
+5.2 - Understanding Test-driven Development
+	Test-driven development (TDD) was first described by Kent Beck in his book "Test-driven Development by Example" in 2002
+	The basic idea is that rather than implementing a feature first and then writing a unit test for the various parts of that feature, instead drive development from the test
+	State in the test the next thing that the feature should do, then implement that, and then go back to the test for the next bit
+
+5.3 - Demo: Building a Feature Test First
+
+6.1 - Additional Learning Resources (Expanding Your Knowledge)

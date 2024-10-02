@@ -1,0 +1,417 @@
+Zoran Horvat
+Nov 5, 2019
+
+2.1 - Why Objects (Turning Everything into Objects)
+
+2.2 - What Follows in This Course
+
+2.3 - Setting the Design Goals
+
+3.1 - Seeing the Loop as the Problem (Staying Focused on Domain Logic with Streams)
+	Desired coding style
+		Avoid explicit loops
+		Let the sequence operate on elements
+
+3.2 - Outlining the Desired Solution
+	Streams - objects appear one after another
+
+3.3 - Understanding Aggregation Functions
+	Aggregate functions - it picks a sequence of objects and returns just one object
+	Streams API help in reducing verbosity of these operations by supplying predefined aggregation functions like that min function
+
+3.4 - Improving the Design
+
+3.5 - Improving Readability
+	We need a stream, which is specific to our business domain
+	We need a class or an interface which implements the stream of painter and then that could become home for all concrete domain-related functions
+		public class PainterStream implements Stream<Painter> {...}
+	Alas, it won't go so easy. To implement the Stream interface, you must provide body for a total of 40 methods. Taht is too much knowing that all we need is only one custom method
+	Lucky for us, there is a simple trick which removes this obstacle. You will see people implementing an abstract class, which only transparently forwards all calls to the underlying stream
+		public abstract class ForwardingStream<T> implements Stream<T> {
+			public abstract Stream<T> getStream();
+		}
+	Inheritors would have to provide the concrete stream object. The base class that's forwarding stream class would then conveniently implement all functions of the stream interface so that the inheritors won't have to deal with them
+	Java 8 has also brought default method implementations and interfaces, which are one wonderully simple, yet a very powerful language feature
+	That feature helps implement the forwarding stream as it can now become an interface
+		public interface ForwardingStream<T> extends Stream<T> {
+			Stream<T> getStream();
+		}
+	We can simply provide default implementations for all 40 methods from the stream. Observe that all default implementations are only forwarding the call to the contain stream
+		public interface ForwardingStream<T> extends Stream<T> {
+			Stream<T> getStream();
+			default Stream<T> filter(Predicate<? super T> predicate) { return this.getStream().filter(predicate); }
+			default <R> Stream<R> map(Function<? super T, ? extends R> mapper) { return this.getStream().map(mapper); }
+			....
+		}
+	That is why this interface is called ForwardingStream
+	Now you'll push this ugly interface under some rug, hide it in some common package, some place where you never look, and then implmeent a nice and simple concrete stream which you always want to have
+		public class PainterStream implements ForwardingStream<Painter> {
+			private Stream<Painter> stream;
+			
+			public PainterStream(Stream<Painter> stream) {
+				this.stream = stream;
+			}
+			
+			@Override
+			public Stream<Painter> getStream() { return this.stream; }
+		}
+	Instead of implementing the general stream, this custom stream would implement the ForwardingStream. Now i don't have to implement any of those 40 methods, but I do have to wrap around a stream object
+	That completes the scaffolding for my customer domain-related stream
+	We need a way to convert an array of painters into a concrete Painter.stream
+	In this, before java 8, it would usually create a companion class which stands side by side with an interface, usually named as the interface only in plural and implementing utility functions for that interface
+	(all in Painter.java)
+		public interface Painter{
+			boolean isAvailable();
+			Duration estimateTimeToPain(double sqMeters);
+			Money estimateCompensation(double sqMeters);
+			String getName();
+		}
+		
+		class Painters {
+			public static PainterStream stream(List<Painter> painters) {
+				return new PainterStream(painters.stream());
+			}
+		}
+	Starting with java 8 and thanks to static methods and interfaces, the recommendations have changed. Now you can define utility functions directly on the interface to which they apply. That makes it one class less to worry about
+		public interface Painter {
+			boolean isAvailable();
+			Duration estimateTimeToPain(double sqMeters);
+			Money estimateCompensation(double sqMeters);
+			String getName();
+			
+			static PainterStream stream(List<Painter> painters) {
+				return new PainterStream(painters.stream());
+			}
+		}
+	Back at the consumer, we have finally got our Painter.stream instance which is our concrete domain class, rather than a general purpose class we got from a library
+		public class Demo {
+			...
+			private static Optional<Painter> findCheapest2(double sqMeters, List<Painter> painters) {
+				return Painter.stream(painters).available()
+			}
+		}
+		
+	(in PainterStream.java)
+		public class PainterStream ... {
+			...
+			public PainterStream available() {
+				return PainterStream(this.getStream().filter(Painter::isAvailable));
+			}
+		}
+	Now I go to the custom stream and add any domain-related stream functions we need
+	That cryptic call to the general purpose filter method is not encapsulated, and callers will not have to make it themselves
+	We can also encapsulate that process of selecting the cheapest painter too
+		public class PainterStream ... {
+			...
+			
+			public Optional<Painter> cheapest(double sqMeters) {
+				return this.getStream().min(Comparator.comparing(painter -> painter.estimateCompensation(sqMeters)));
+			}
+		}
+	The whole implementation is now wrapped here and the consumer of our business objects will never have to know the intrinsic details of comparing cost estimates
+	With these 2 functions in place, the consumer suddenly becomes trivial
+		public class Demo {
+			...
+			findCheapest2(...) {
+				return Painter.stream(painters).available().cheapest(sqMeters);
+			}
+		}
+	This function is almost reading like a plain English language, which it is implementing
+	We can try again that exercise of fixing a bug where we had to seek a cause for an incorrect application behavior
+	After look at this line of code (inside findCheapest2), we can say with absolute certainty that the bug is not located here. Whatever the bug is, it's not located here. That is the beauty of querying streams
+	Loops and branching instructions are infrastructural code. We don't deal with the infrastructure. We only deal with functional requirements
+	And those are, to repeat them again, to pick the available painter, which is also cheapest
+	Beyond these few words, there are only a couple of additinal key strokes we had to make to complete the syntax of this entire domain method
+
+3.6 - Generalizing the Selection of a Single Object
+	All of our programming lives, we work with objects and with collections of objects. And every time we meet the collection of objects, we have to give it a moment of thinking. How is the collection organized? Can they just walk through the elements or is there something else we have to do as well?
+	What if turned the table and said, collections of objects are just objects? Objects they contain are just their internal content
+	The structure which holds that content together is encapsulated, invisible implementation of the collection
+	There is this stream of abstract painters. I'm saying stream not collection because we don't really see a collection
+	Is it a list? Is it a dictionary? is it a cache table? We don't know that
+	If we must work with multitude of objects, then we better work with them in the form of a stream. The stream comes with the least obligations for both sides, the collection and its consumer
+
+3.7 - Generalizing the Stream of Objects
+	Now, that is a mind bending idea. what I just told you is that the whole group of painters can behave the way one single painter did
+	That brings us to one of the most important ideas of all the object oriented programming. Multitudes of objects sharing the same interface can be observed as a single object with that interface
+	A group of painters can be observed as a single painter
+	So right now, we have 2 specific principle of approaching a stream of objects
+		One principle is to select a single object fromt a stream and then continue talking to that object, selecting the cheapest or the fastest painter from a group is an example of this principle
+		The other principle is less obvious. It is based on the idea that we can somehow map a sequence of objects into a single object implementing the same interface (composition)
+
+4.1 - Introducing Composite Objects (Untangling Operations from Structure on Business Data)
+	In this module, I will demonstrate a powerful technique which helps hide entire collections of objects behind a simple object interface
+	I have added some useful demo code (added new class ProportionalPainter that implements Painter) This is the only concrete kind of a painter. I named it proportional because it models a person who spends time proportional to the area painted and costs money proportional to time
+	If we wanted to represent these painters (List of Painters of size 3) with a single object, then that object would take this much time to complete 200 sqaure meters and it could cost the sum of the 3 separate costs
+	With that, we could synthesize a virtual painter. Think of this idea, painter implementations could be real people, but also syntactic objects that are hiding real people
+	That is the power of programmatic types. They don't necessarily have to correspond to real physical concepts
+	For this virtual imaginary painter, I will invent a class and name it CompositePainter. It will implement the Painter interface. This will be a facade hiding a group of painter objects but we will only see the object implementing the abstract Painter interface. Isn't that beautiful?
+		public class CompositePainter implements Painter {
+			private List<Painter> paitners;
+			
+			public CompositePainter(List<Painter> painters) {
+				this.painters - painters;
+			}
+			
+			@Override
+			...
+		}
+	On a related note, when naming classes, try to give them names that are more concrete than their interface names
+	Composite here emphasizes that it is compositing estimates from many other painters
+	Also note that it is not wrapping ProportionalPainter. This class doesn't care about any concrete kind of a painter. It could be a group of painters or a group of groups of painters when said that way
+	Now comes the real work of implementing painter methods
+
+4.2 - Understanding the Limitations of Composite Objects
+	That is the power of composite objects. YOu can let them use their subordinate objects and only depend on top level behavior of a single object interface
+	(demo) From this exercise, you can see that composites are a double edged sword. They do bring great simplification to the consumer, but composite make assumptions will sooner or later turn wrong, which is not to say that we will give up the composite pattern
+	Composites are powerful
+	(IMPORTANT - go through source code files of this
+
+4.3 - Designing Functions that Support Composite
+	(Handle empty list case with Optional and minor enhancements)
+	Do you see how unifying designs of related classes can be of great help to the overall design?
+	I have just had a revelation, and my understanding of the business domain has become deeper than it used to be. When a painter is asked to tell an estimate, he or she will shout out an estimate
+	That doesn't relate to availability because we're still not even certain whether we will ask that painter to work for us or not
+	But then, look at this isAvailable method. It always bothered me. If you watched the first course Making Your Code More object-oriented, then you must have noticed how fierce I was in respect to methods returning boolean
+	A method returning true or false is literally telling its caller that any operation they had in mind is their own business. That is not object-oriented at all
+	In OOP, this object should do the work. It should expose a service, a behavior to callers
+	What if I added a function named available(), which returns an Optional painter?
+	The mistake is that I forgot that the resulting list might be empty
+	That is a second revelation. Composite objects are not mandatory. They might not exist. They are optional by their very nature
+	That corresponds to lists, which may exist, but they don't guarantee to contain any objects
+
+4.4 - Fixing the Composite Design
+	I should've never been allowed to construct a composite painter from an empty list
+	To conclude, not every attempt should result in really constructing a composite
+	I might attack the problem with a so-called smart constructor, a static factory function, which returns an optional result of this class
+	This newly established fact that composite objects might or might not be constructed given the circumstances will magically clean up the entire domain model
+	The true value of the redesign, which I have just completed, is that the CompositePainter has become so powerful that even the specialized stream can do nothing more. Start thinking about that. That will twist your mind
+
+4.5 - Making the Composite Algorithm Explicit
+	We see that some calculations tend to vary in time. How can we vary a piece of analytical code that is buried deep inside a class? We will turn it into a separate object. We can always vary objects by substitution
+	When you notice that there is a word in your language which doesn't correspond to any type in the model, then take a break to define it
+	I will always suggest you organize operations into well defined private methods where each method is performing exactly one transformation. That will help keep their consumers simple
+	Through encapsulation also guarantees that the right combination of objects will be subdued to the right behavior. You can only guarantee that if your abstraction is exposing the entry point, a function, which triggers the sensitive behavior
+
+4.6 - Turning an Algorithm into an Object
+	One of the less obvious aspects of wrapping algorithms into their own methods is that they can easily be turned into objects
+	You won't turn every algorithm into an object though. That is too complicated to be exercised routinely, but if you must vary the algorithm depending on context, then you surely have to do something
+	There you will find 2 general approaches
+		One is to derive a class and then override and specialize the method. That is too rigid though. Think of a problem with several algorithm details that can vary. That would lead to combinatory explosion of derived classes
+		The other approach is better and more flexible. You can accept an object representing an algorithm
+	This idea is called the strategy pattern
+	The scheduler here is a strategy, and consumer is using it for a special part of work
+	It becomes easy to substitue behavior with strategies
+	The immediate benefit is that you can remove the entire hard-coded implementation of the varying behavior from the consumer
+	CompositePainter has become simpler than it ever was
+
+5.1 - Introducing Domain-specific Language (Advancing to a Domain-Specific Language)
+	In this module, I'll show you how domain models and domain behavior can be unified into a powerful domain model, which begins to speak the same language used by business experts
+	Book - Domain-Specific Languages by Martin Fowler
+	What is domain-specific language (DSL) then? That is a design method which aims at composing elements of code, the same way we compose sentences in a spoken language. "Compose" is the word
+	Internal DSL vs External DSL
+		Internal DSL - direct code; for programmers
+		External DSL - plain text, need an engine to map to methods; non programmers
+
+5.2 - Varying the Strategy Implementation
+
+5.3 - Understanding the Need for a Domain-specific Language
+	When you read code, it usually looks like the language of the main experts has been translated to idios of the programming language
+
+5.4 - Designing the Domain-specific Language
+
+5.5 - Riding on the Wave of the Deep Domain Model
+	One of the strongest points regarding DSLs is that the code they produce is self evident
+	Should there be a defect in code, you would be 100% certain that it is not in this function
+	Compare that to the traditional loop with branching coding style, and you will see that programmers intention will be completely lost in the syntax
+	To develop intention revealing code and ultimately the DSL, we had to replace explicit control structure with decorative calls and give a meaningful name to each call
+	The critical element here is developing a rich or so-called deep domain model
+	Every element in our thinking, our speech has a corresponding programmatic type which models it
+	Lesson learned from this exercise is that most of the methods in a domain model can be turned into one liners once you reach the deep and detailed domain model
+	Code which was hard to understand will migrate to specialized classes, each of hwich alone will be easier to understand
+
+5.6 - Towards the Grand Unified Design
+
+6.1 - Defining Requirements (Increasing Flexibility by Removing Enums and Switch Statements)
+
+6.2 - Introducing Multiway Branching
+	In this demo, I'll show you how state can be modeled outside the article object and then attached to the object it relates to. That is a perfectly valid design decision too
+	That is where many programmers decide to declare an enumeration. Enums look attractive when modeling a selection of discrete outcomes
+	Enums are deceptively simply, but as it will soon turn out, they're an expensive liability
+
+6.3 - Sustaining the Explosion of Multiway Branching
+	Enums are a separte problem in their own right. Similar to boolena flags, when you see an enum, you know already that there is a whole lot of switch statements spread across the code base
+	And there is one, not so obvious, issue, which is organically bound to enums
+	(example of enums that can have multiple states) In fact, if your enum is of this kind, then you will have to define an exhaustive list of combinations of all discrete flags
+	The simplest way to prevent this effect is to avoid multiway branching in the first place
+
+6.4 - Sustaining the State Explosion
+
+6.5 - Encapsulating State Representation into an Object
+	(reference to demo method that uses enum) Primary problelm with this design is that it is constructed aroudn the state representation. That is precisely where we lost objects
+	Representation should always be encapsulated in an object. Only behavior should be accessible for the object reference
+	If the state representation is not encapsulated, you will have to do all the manipulation yourself. All the complexity and all the bugs will be yours. And all the maintenance hell will be unleashed upon you too
+	The problem with representation is that it comes iwth too many details. It should be closed into a specialized object if we ever plan to survive writing code in the long run
+	We start improving the design by removing enums with no remorse. Just like in previous modules, I will apply that cold turkey? refactoring style
+	Just make your claim and break the build. Fear not because compiler is there to navigate your actions
+	The same instance I have turned enum into a class. Everything has turned red, but that will not be hard to fix
+	All enum values are, in fact, static final class instances
+	(from)
+		public enum DeviceStatus {
+			ALL_FINE(0),
+			NOT_OPERATIONAL(1),
+			VISIBLY_DAMAGED(2),
+			...
+			NOT_OPERATIONAL_DAMAGED(NOT_OPERATIONAL.id | VISIBLY_DAMAGED.id),	// combinations
+			...
+			
+			private final int id;
+			
+			private DeviceStatus(int id) {
+				this.id = id
+			}
+			
+			public DeviceStatus add(DeviceStatus status {
+				return Arrays.stream(DeviceStatus.class.getEnumConstants())
+					.filter(val -> val.id == (this.id | status.id))
+					.findFirst()
+					.get();
+			}
+		}
+	(to)
+		public class DeviceStatus {
+			public static final DeviceStatus ALL_FINE = new DeviceStatus(0);
+			public static final DeviceStatus NOT_OPERATIONAL = new DeviceStatus(1);
+			public static final DeviceStatus VISIBLY_DAMAGED = new DeviceStatus(2);
+			...
+			public static final DeviceStatus NOT_OPERATIONAL_DAMAGED = combine(NOT_OPERATIONAL, VISIBLY_DAMAGED);
+			...
+			
+			private static DeviceStatus combine(DeviceStatus... statuses) {
+				return DeviceStatus(Arrays.stream(statuses)
+					.mapToInt(status -> status.id)
+					.reduce(0, (a,b) -> a | b));
+			}
+			
+			private final int id;
+			
+			private DeviceStatus(...
+			
+			public DeviceStatus add(DeviceStatus status){
+				return Stream.of(ALL_FINE, NOT_OPERATIONAL, VISIBLY_DAMAGED,
+				...
+				NOT_OPERATIONAL_DAMAGED, ...)
+					.filter(val -> val.id == (this.id | status.id))
+					.findFirst()
+					.get();
+			}
+		}
+	In the method where state is being checked (in Demo.java)
+		private void claimWarranty(..., DeviceStatus status, ...)
+		{
+			if(status == DeviceStatus.ALL_FINE) {...}
+			else if(status == DeviceStatus.NOT_OPERATIONAL) {...}
+			else if(status == DeviceStatus.VISIBLY_DAMAGED) {...}
+			...
+		}
+	This refactoring still hasn't turned it into an object-oriented solution, but the first step in that direction has been made
+
+6.6 - Using Encapsulated Representation as the Key
+	This method is still lacking object orientation. The principle traits of non object-oriented solutions are rigidity and logic implemented on the consuming end
+	A new criterion added to the model would cause more if branches to be hard coded here (in claimWarranty)
+	And what if similar analysis was required in a different scenario? This entire branching structure would have to be replicated in another place in the code base. Any bugs would be replicated too
+	The answer to this challenge, as in before, is in moving responsibilities into objects
+	Static final fields are not the right place to contain responsibilities.
+	DeviceStatus class has grown in this strange way because it has evolved from an enumeration. Let's fix that by turning simple flags into proper factory functions
+		public class DeviceStatus {
+			public static final DeviceStatus allFine() (return new DeviceStatus(0); }
+			public static final DeviceStatus notOperational = {return new DeviceStatus(1);}
+			public static final DeviceStatus visiblyDamaged = {return new DeviceStatus(2);}
+			...
+			// remove combination of simple flags
+			
+			private final int representation;
+			
+			private DeviceStatus(...
+			
+			public DeviceStatus add(DeviceStatus status){
+				return new DeviceStatus(this.representation | status.representation)
+			}
+		}
+	It is a general rule that your object-oriented code should not depend on reference equality. Instead, use the equals() method
+	(in Demo.java)
+		private void claimWarranty(...) {
+			
+			if(status.equals(DeviceStatus.allFind())} {...}
+			else if (status.equsls(DeviceStatus.notOperational())) {...}
+			else if (status.equsls(DeviceStatus.visiblyDamaged())) {...}
+			...
+			// combinations
+			else if (status.equsls(DeviceStatus.notOperational().add(DeviceStatus.visiblyDamaged()))) {...}
+		}
+	To make this design complete, the DeviceStatus class will have to support equivalence relation
+	In a series of small steps, we have turned the central element, the DeviceStatus indicator, into an object
+	That opens up the possibility to apply any object-oriented design principles we find fit
+	We're left with a terrible situation in which the class must change even if nothing within its responsibilities has changed
+	The next big leap will be to turn each of these branching segments (in claimWarranty) into a single object
+
+7.1 - Turning a Block of Code into an Action (Turning Chained Branching into the Chain of Rule Objects)
+	In this module, I'll show you how actions can be turned into active rules
+	An action is a function which doesn't produce a result (returns nothing). It mutates the state internally, but nothing comes out of it
+	What if I convert that action into Runnable
+		claimWarranty(...) {
+			Runnable allFineAction = () -> ...
+			
+			if(status.equals(DeviceStatus.allFine())) {
+				allFineAction.run()
+			}
+			...
+		}
+	Wrapping the whole body into a runnable object to hide its argument is a mind bending idea
+	So the design idea is to start by turning each block of code into a runnable object. That will let us grow rule objects naturally so that the entire program continues to work correctly all the time
+	By the end of this module, you'll see both approaches solved using the rules design pattern
+
+7.2 - Turning an Action into the Rule Object
+	I will start by defining the abstract rule, and then we will try to design its members
+	(code modification)
+
+7.3 - Chaning the Rule Objects
+	The problem we're facing is how to chain rules before filtering and applying them
+	Using orElse in chaining
+	I still want to observe only one rule object at a consuming end. That object will hide that chain of rules. The chain must resolve the request and yield an action for a given device status if any rule was applicable
+	Meet the chaining rule (in ChainedRule class, have head and tail) 
+	Complicated? Yes, but powerful and recursive. Imagine the tail is also a chained rule, and you will immediately see a potentially infinite chain of rules which are tested and applied in order of appearance
+	It takes time and it takes skill to embrace and ingest the concept of Optional objects
+	But once you get there, you won't be thinking to return to the world of booleans, nulls and other abominations
+	On the other hand, observe that this class ChainRule is not part of the domain. It is used by my mini framework to transparently chain rules. Therfore, it could be packaged together with a ClaimingRule and remain obscured for the rest of the project development
+	Implement technical details once, expose them via a convenient factory function and be done with them
+
+7.4 - Consolidating the State
+	In object-oriented design, your task is to construct the method signatures which are absolutely correct in that they behave correctly in all usages that pass the build
+	That is an immensely important principle in strongly-typed languages. If your code builds, it must be correct
+	Accepting an optional object is not always a smart idea
+
+7.5 - Modeling System State
+
+7.6 - Implementating Composable Rules
+
+7.7 - Implementating the Rules Builder
+	(IMPORTANT - go through code and see how switch/if-else statements were replaced with simple lines of code)
+
+8.1 - Introducing an Example Algorithm (Refactoring to Bind It All Together)
+	(demo code that implements a math operation)
+
+8.2 - Analyzing the Procedural Implementation
+
+8.3 - Encapsulating Infrastructural Code Inside Objects
+	(demo code) The problem with this code is that it's mixing infrastructural code with domain-related code
+	Some features are lacking in Java 8. Switched to Java 12
+
+8.4 - Modeling the Domain
+
+8.5 - Completing the Implementation
+
+8.6 - Supporting Change
+
+8.7 - Consuming the Parameterized Algorithm
+	Too much flexibility can hurt the design

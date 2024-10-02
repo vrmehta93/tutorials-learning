@@ -1,0 +1,291 @@
+Bryan Hansen
+Nov 6, 2019
+
+2.1 - Version Check (What Is Spring?)
+	Spring 5
+
+2.2 - Introduction
+
+2.3 - What Is Spring?
+	Dependency Injection is very simply removing hard-coded wiring in your app and using a framework to inject dependency resources where they are needed
+
+2.4 - Update
+	So again, what is Spring? It's a framework around reducing the complexities around enterprise java development and later also providing enterprise development without EJBs
+	Spring can essentially be used with or without java beans and primary now is used without them
+	This is an important point because spring enabled us to do enterprise development without using an application server
+	A lot of people don't realize that Tomcat really isn't an application server, and it's just a web server
+	This is one of the reasons that Tomcat has taken over for java developments as a standard container
+	It's very easy to use, it's lightweight, and until Spring, you either weren't using enterprise features or you had to use a more complex, harder to use application server
+	I should also mention that it is completely POJO based
+	
+
+2.5 - The Problem
+
+2.6 - Business Focus
+
+2.7 - The Solution
+
+2.8 - Business Focus Revisited
+
+2.9 - How It Works
+	As I mentioned earlier, everything in Spring is a simple POJO
+	Spring itself can be thought of as a glorified HashMap. It's actually called the application context
+	The application context is the configured Spring container with all of the dependencies wired up in it
+	Spring can also be used as a registry
+
+2.10 - Demo: What We Are Building
+
+3.1 - Sample App Intro (Architecture and Project Setup)
+
+3.2 - Arhictecture
+
+3.3 - Prerequisites
+	Java 11
+	Maven
+	Spring no longer offers up a way to just download the jars and you're forced to use Maven or Gradle to download those dependencies
+	IntelliJ
+	Tomcat
+
+3.4 - Sample App Setup
+
+3.5 - Demo: Sample App pom.xml
+	In pom.xml of a newly project created (through IntelliJ new project console), add the following
+		<build>
+			<plugins>
+				<plugin>
+					<groupId>org.apache.maven.plugins
+					<version>
+					<configuration>
+						<source>11
+						<target>11
+	If you don't do this the first time you go to run your application, it will come back and tell you that it doesn't support java 5
+	Now one thing that I think IntelliJ doesn't do a very job of is warning you of that
+	Some of the other IDEs will tell you that this is compiling it down to a java 5 version, and that's because IntelliJ will compile code as you go using their internal IDE compiler and not the Maven compiler
+	So they're going through and checking code as you go, and it's compiling it to Java 11, but when you go to run the application, it will run it with what the default is in maven, which, by default, is java 5
+	So this is how you override it to tell it to use java 11
+
+3.6 - Demo: Sample App Add Model
+
+3.7 - Demo: Sample App Add Repository
+
+3.8 - Demo: Sample App Add Service
+
+3.9 - Demo: Sample App Run Application
+
+3.10 - Configuration
+
+3.11 - Demo: Pain Points Walkthrough
+
+3.12 - Spring Download
+
+3.13 - Demo: Spring Download Maven
+	To add spring to project, update pom.xml
+		<dependencies>
+			<dependency>
+				<groupId>org.springframework
+				<artifactId>spring-context
+				<version>...
+
+4.1 - Java Configuration Introduction
+	We're going to take that sample application we created in previous module and wire it up using the java annotations and java configuration loader
+	Java configuration is the latest and most preferred method available now in spring for wiring up your applications
+	It was introduced simply because some people don't like mixing XML and source code together for a configuration
+	So let's talk about the key point of the java configuration
+	The first think you'll notice about it is there's no XML. There's no applicationContext.xml file
+	If you've done any spring development in earlier versions, you'll have an XML file that contains all of your configuration
+	With that java configuration, we have no applicationContext.xml
+	We still have a context, it's just not configured in XML
+	Earlier Spring development got pushed back for having too much XML
+	Later versions of Spring included namespaces to aid in development but developers still wanted less or no XML. So enter java configuration
+	Almost everything in spring can be configured with just pure java configuration
+
+4.2 - Demo: Copy Project
+
+4.3 - Demo: App Configuration
+	To begin configuring our application, we want to create a file where we can bootstrap everything at
+	I'm going to create a new class. It's a very simple class to start with. We're just going to call this AppConfig
+	Now it doesn't need to named this. This is kind of a default standard or a norm. You could call it whatever you like
+	If you've used any other versions of sprinng where you did XML configuration, this would be the start of your application context, so this is where you start configuring the context of your application
+	All of your configuration starts at this point and trickles throughout your application here
+
+4.4 - @Configuration
+	To start the configuration of our application, we're going to use an @Configuration annotation
+	The java files that have the @Configuration annotation replace any XML files that we could've used historically
+	@Configuration is a class-level annotation and looks something like the annotation in this snippet
+		@Configuration
+		public class AppConfig {
+		
+			@Bean(name = "customerRepository")
+			public CustomerRepository getCustomerRepository() {
+				return new HibernateCustomerRepositoryImpl();
+			}
+		}
+	Classes and method names can be anything. Spring really doesn't care
+
+4.5 - Setter Injection
+	Setter injection using the java configuration approach is really as simple as a method call
+	Setter injection is simply a matter of calling a setter on a bean
+	We're not just going to call an instance we create. We're going to call and get an instance of the bean from the Spring configuration file
+
+4.6 - Demo: Setter Injection
+	In main method
+		ApplicationContext appContext = new AnnotationConfigApplicationContext(AppConfig.class);
+		SpeakerService service = appContext.getBean("speakerService", SpeakerService.class)
+
+4.7 - Constructor Injection
+	Constructor injection is just like setter injection. We go through and create our bean instance just like we had before
+	Instead of calling the setter, we call the defined constructor
+
+5.1 - Bean Scope Introduction (Spring Scopes and Autowiring
+	The scopes inside of our application usually are associated with patterns but they're not really the same thing. They go hand in hand, but a scope doesn't equal a pattern
+
+5.2 - Scopes
+	There are 5 scopes available inside of Spring for us to configure a bean inside of our application
+		Valid in any configuration is a singleton, which is actually the default
+		Prototype scope - a new bean per request. You typically do want the singleton over the prototype
+	The other configurations that are available for beans that are only valid in web-aware Spring projects are
+		Request
+		Session
+		Global
+	So if you're implementing Spring MVC or even doing a single-page model application to where you're doing microservices to your front end, those scopes are only available in that context
+
+5.3 - Singleton Java Config
+	The singleton design pattern restricts the instantiation of a class to just one object
+	A singleton is the default bean scope inside of Spring. So if you don't give a scope, it will automatically be assigned the default scope of singleton, which means that there is one instance per Spring container or context
+	The configuration for adding scope using java configuration is quite simple. We simply add the @Scope annotation to our code as you
+	It requires AOP jar. Since we're using Maven, this is just a transitive dependency
+	In code
+		@Bean(...)
+		@Scope(value = BeanDefinition.SCOPE_SINGLETON)
+		...
+
+5.4 - Prototype Java Config
+	The prototype design pattern guarantees a unique instance per request, and thus, the scope inside of a Spring container mimics that design pattern
+	Each time you request a bean from the container, you're guaranteed a unique instance
+	It's essentially the opposite of a singleton
+	In code - BeanDefinition.SCOPE_PROTOTYPE
+
+5.5 - Web Scopes
+	Web scopes are beyond what we're going to cover in this course since it's just a basic spring fundamentals course
+	The 3 other scopes that are available
+		Request scope - which returns a bean per HTTP request, which sounds a lot like prototype except it's for lifecycle of a bean request, which is faily short, but longer than prototype where it's one instance every time I ask the container for a bean
+		Session - just returns a single bean per HTTP session, and that will live aas long as that user session is alive, so 10, 20, 30 minutes, however long they're alive on that website a bean of scope session will stick around
+		Global session - return a single bean per application, so once I access it, it's alive for the duration of that application, not just my visit to that application. You could think of it as singleton but it's really the entire life of that application on the server until it gets undeployed or the server gets rebooted
+
+5.6 - Autowired
+	Autowiring is where I would say that most people start to think that there is some magic that's taking place inside of Spring
+	Autowiring is a great technique used to reduce the wiring up and configuration of code
+	If you've ever head the term "convention over configuration", this is it
+	To autowire our applications using the java configuration, we just simply need to add @ComponentScan to our configuration file with an annotation that looks somehting like this
+		@ComponentScan({"com.pluralsight"})
+	To use autowiring, you just mark whatever bean you want as autowired
+	You can choose by name,, and that uses the @Bean name or by type, and that uses the instance type
+
+5.7 - Demo: Autowired
+	@Autowired on method example
+
+5.8 - Stereotype Annotations
+	To fully autowire our applications and not just do a hybrid like we did in the previous demo, we need to talk about stereotype annotations
+	Our last example we had beans still configured in the AppConfig file and then had some things autowired
+	To remove the need for those bean definitions in the AppConfig, let's discuss the stereotypes
+		@Component - It is actually the same thing as @Bean
+		@Repository - it's used to denote a class that's being used as a repository object. Nothing else changes with these. They're just nice to label beans as such. You could technically just label everything as a bean or a component but you could use a filter to look for specific types of annotations. That's beyond the scope
+		@Service - this is often confusing to people because a service does not mean a web service or a microservice. It rather means where you would put your business logic.
+	There's another annotation @Controller for Spring MVC but that's outside of this course
+	@Bean annotation is only applicable at a method level. I cannot use the bean annotation at a class level
+	(demo) So I've effectively removed all of this configuration code inside of AppConfig by just having hte component scanner and defining our beans the right way
+
+6.1 - XML Config Introduction (Spring Configuration Using XML)
+	Compare and contract xml vs java
+
+6.2 - Demo: Copy Project
+	We don't want to try and mix the java configuration with the xml configuration
+
+6.3 - applicationContext.xml
+	The applicationContext really is the root of an application configured with spring. And just like we had in our java configured spring app, the AppConfig is the same thing
+	It doesn't have to named applicationContext.xml just like our AppConfig.java file doesn't need to be named that, but it's more of a loose standard
+	By default though, spring will look for a file named applicationContext.xml without any extra configuration
+	A simple view of spring is that it's just a HashMap of objects, and we define that HashMap inside of our applicationContext.xml or our AppConfig.java
+	The objects that we have inside of here are pretty much just name value pairs
+	Although it's not the intention of spring, it can be used as a simple registry, and we can look up those beans out of our context
+	All of our XML configurations begin here
+	There are some namespaces that the Spring developers have put together that help us in our configuration and validation of our files and really make things a lot eaiser
+	Add applicationContext.xml in src/main/resource
+
+6.4 - Bean Definition
+	I believe that the misunderstanding of namespaces is one of the reasons that people are afraid of XML and using XML configuration
+	(sample xml) Spring has created this namespace that simply acts like a dictionary for the properties that we can use to create a bean inside of our application
+	So our XML declaration allows us to define a bean in XML
+	The beans are essentially just classes. The XML configuration is composed of beans just like our AppConfig was as well and they're just POJOs that we use inside of our application context
+	Defining beans can be thought of as replacing the keyword "new". Wherever we're using that keyword "new", that's something that should be thought about being put in your xml or java configuration
+	Lastly, we always want to define the class, but use the interface
+
+6.5 - Demo: Add Bean
+
+6.6 - Demo: Setter Injection
+
+6.7 - Constructor Injection
+	Something to keep in mind though is that you can use both setter injection and constructor injection together
+	I just want to point out that I feel that setter injection is often better for existing code
+	Constructor injection guarantees a contract for us
+	There's a few nice things about doing that, but namely it's that we have our code and our contract defined when we create that object instance because of the constructor
+	A positive and a negative though is that I need to have a constructor defined for each situation that I want to guarantee
+	One other slight difference is that constructor injection is index based and not named based like setter injection is
+
+6.8 - Autowiring
+	There are 4 types of autowiring that you can do on a bean
+		byType
+		byName
+		constructor
+		no
+
+6.9 - Demo: Autowired
+	"autowire" attribute in bean tag in xml file
+
+7.1 - Advanced Bean Configuration Introduction (Advanced Bean Configuration)
+
+7.2 - Bean Lifecycle
+	The bean lifecycle is more of an advanced topic but it's worth showing to you even in the fundamentals course
+	It starts off with instantiation and then it moves onto populate properties. These are read from either a properties file or injected in from other resources
+	Then the framework sets the bean name and makes it aware to other resources
+	We can then set that as a BeanFactoryAware context
+	Next, we do pre-initialization utilizing BeanPostProcessors
+	From here, we can initialize the bean utilizing properties that were just set
+	Now we can call an initMethod, and this is actually the piece that we're going to demonstrate, and then you wrap up that entire initialization process with another BeanPostProcessors
+	We need to add a dependency in pom.xml because java EE has now assumed an annotation for post contruct API calls
+		groupId - javax.annotation
+		artifactId - javax.annotation-api
+		version - 1.3.2
+	(example of using @PostConstract) Now one thing I would caution here is I personally would not put things like obtaining connections to a database in here - that should be handled by spring
+	They should be used for configuration things that you just want to run after all of your constructors
+
+7.3 - FactoryBean
+	FactoryBean configuration is very similar to the initMethod configuration we just did
+	It actually builds on the factory method design pattern, and at least functionality is build to work the same way
+	It's actually one of the strengths of doing this with spring. The code doesn't actually have to written as a factory to be utilized in spring as a factory
+	It's also a great way to integrate legacy code into your application
+	Using this pattern enables us to establish a contract without modifying that code
+	Lastly, it's how you can also work with static methods inside of a class
+
+7.4 - SpEL
+	SpEL - spring expression language is a powerful language from the spring framework
+	From my experience, it's typically used in libraries but it can also be used to do some convenient changes to your code
+	Using it, you can manipulate the object graph. This simply means that once an object is created, you can use the expression language to manipulate that object
+		@Value("#{ T(java.lang.Math).random() * 100.0 }")
+		private double seedNum;
+	You can also used it to evaluate values at runtime and change behavior of your code accordingly
+	It can also be used to evaluate and manipulate your configuration
+
+7.5 - Proxies
+	Spring often utilizes AOP proxies for its code base
+	Proxies are a great way to inject behavior into the code base without modifying the underlying code
+	When should you use this? You probably shouldn't be looking for opportunities to use it. It's usually when you are doing something framework or library based
+	One of the most used cases in the code base is when dealing with databases and using the annotation @Transactional
+
+7.6 - Bean Profiles
+	Bean profiles were implemented later in the spring code base to help you adapt to environments
+	They allow  you to set up specific code that gets ran only in a specifc environment, so we can swap out configurations at runtime
+	It's a great way for us to have effective runtime configurations
+	@Profiles annotation and give a name
+	In run configuration > Under configuration tab > VM Options -Dspring.profiles.active=dev
+	Don't make the mistake of putting it in the environment variables or in one of the other fields. It won't work. It needs to be a VM option

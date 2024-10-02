@@ -1,0 +1,404 @@
+Richard Monson-Haefel
+Oct 13, 2019
+
+2.1 - Overview and Setup (Overview and Setup)
+	The JDBC API is used to create, read, update, deleate data in a relational database using the java programming language
+	JDBC is database agnostic, which means it works the same way whether you're using MySQL, SQL server, Oracle or some other relational database
+	JDBC is the first enterprise API ever developed for the java platform
+	Every JPA implementation, including Hibernate, uses JDBC under the covers to enable fast and reliable access to relational data
+	The examples throughout this course will be using Java 11. The JDBC version we're using is 4.3. However, many of examples will work with earlier versions as well
+
+2.2 - Installing MySQL and Example Database
+	Install MySQL Community Edition
+	When you setup the database, it's going to prompt you for username and password. Use username "root" and password "pluralsight"
+	Check to see MySQL workbrench is installed
+	You can google MySQL workbrench for installation instructions
+	For this course, we're using MySQL ConnectJ JDBC driver
+	In pom.xml dependency
+		<dependency>
+			<groupId>mysql</groupId>
+			<artifactId>mysql-connector-java</artifactId>
+			<version>8.0.17</version>
+		</dependency>
+
+2.3 - Install Java
+	OpenJDK 11
+
+2.4 - Using IntelliJ wiht JDBC
+	There's been some problems with IntelliJ lately. So if you get an error like this one (Could not find or load main class or ClassNotFoundException) or this one (release version 5 not supported), it means that IntelliJ is not using the correct JDK
+	In the last video we set up JDK 11, we need to make sure that that's reflected in the IntelliJ settings
+	Preferences > Build, Execution, Deployment > Compiler > Java Compiler
+	In this window make sure the "Project bytecode version" is set to 11
+	If there's no module shown, click on the "+" sign and select a module. If there's nothing to select then just leave it. If there is a module, make sure that the target byte code is set to 11. Click apply & close
+	Next right click on project > "Open Module settings" > make sure the language level set to 11 and click apply
+	Go the SDK and make sure that's set to 11 as well
+
+2.5 - Using Eclipse with JDBC
+	Preferences > Compiler > Select 11 (for Compliance level)
+
+2.6 - Using Command Line with JDBC
+	Install maven
+	mvn install (add clean if you update any files)
+	There are 2 ways to run examples. You could use the command line and specify the entire package and classname
+		java -cp target/corejdbc.jar com.pluralsight.corejdbc.m2c1.Main
+	But this could get cumbersome after a while. So I prepared a demo class that is much easier. Just run the demo in the default package
+		java -cp target/corejdbc.jar Demo m2c1
+
+3.1 - Using the Driver Manager and Services (Connecting JDBC to the Relational Database)
+	JDBC exemplifies the facade pattern in which the real workings of the specific implementation are hidden behind the standard JDBC API
+	Keep in mind as you learn about JDBC at runtime the JDBC API is always backed by vendor specific code, generally called the driver
+	There are several JDBC classes and interfaces that are used by most JDBC applications. These include
+		DriverManager - maintains a registry of Drivers which are vendors implementation of JDBC
+		Connection - represents the actual connection to relational database
+		Statement and PreparedStatement - encapsule the SQL command you want to execute
+		ResultSet - data returned by your SQL command
+	When you create a JDBC connection, you do so by giving JDBC a set of properties which consists of URI identifying the specific driver needed as well as the username and password and other vendor specific properties
+		Connection connection = DriverManager.getConnection("...");
+	This operation is performed by the driver manager when calling the connection method
+	Since we're using the MySQL database, we'll use the driver provided by MySQL, which is called ConnectJ
+	We can tell JDBC to use ConnectJ by passing in a URI specific to that driver like this
+		Connection connection = DriverManager.getConnection("jdbc:mysql://localhost:3306/classmodels?user=root&password=pluralsight&serverTimezone=UTC");
+	The driver documentation will tell you what this URI should be. But in most cases, it follows the pattern of JDBC schema, which is "jdbc:<driver>:<host>/<database-name> username password"
+	If we want to use an Oracle database, the URI might look like this
+		Connection connection = DriverManager.getConnection("jdbc:oracle:thin:@myhost:1521:orcl, "root", "pluralsight");
+	Of if we wanted to use Microsoft SQL server like this
+		Connection connection = DriverManager.getConnection("jdbc:sqlserver://localhost;user=root;password=pluralsight");
+	So you can change the vendor in the database you are connected to by simply changing the URI of the connection call
+	Assuming that is the vendors driver is registered
+	To test if a connection is valid
+		boolean isValid = connection.isValid(2);
+	It's important that you always close a database connection
+		connection.close()
+	If you don't close the database connection, your application may hold onto the database, and that could be expensive in terms of memory network socket connections and threads
+	Each relational database vendor provides their own version of the JDBC driver but all of them must conform with the interfaces and abstract classes defiend by JDBC. At runtime, the JRE will load the vendor specific driver so that the JDBC API calls you make will be carrier out by the underlying driver
+	The JRE will look at all the registered JDBC drivers to determine which one matches the URI
+	The question you might ask is "How do I register the vendor drivers at runtime?"
+	At runtime, the JRE will into the jar files corejdbc.jar/META-INF/services and look for a file named java.sql.Driver which lists the vendor specific JDBC drivers that will be available at runtime
+	IntelliJ doesn't generate the distribution jar corejdbc.jar automatically. To get it to generate one, click on View > Tool windows > Maven to open the lifecycle node and double click on the install item
+	For eclipse IDE in the project explorer, fidn pom.xml. Right click on that and select "run as maven" > maven install
+	Open your finder window again and navigate down to thte target directory. Unzip/unarchive the corejdbc.jar file and look in META-INF/services folder. There you will see the java.sql.Driver file. If you open that file, you'll see MySQL Connector J driver list
+	When you do your maven build and generate an executable jar, any JDBC drivers listed as dependencies will be automatically added to the build jars META-INF/services java.sql.Driver file
+
+3.2 - Using Class.fforName() with Legacy Applications
+	Prior to JDBC 4 which was introduced with Java SE 6, there was an extra step that was required when creating a JDBC connection. The vendor's driver had to be explicitly loaded prior to being used
+	This was done using the Class.forName() method
+		Class.forName("com.mysql.cj.jdbc.Driver").newInstance();
+	Until JDBC 4.0, you had to do this if you wanted to load a specifc JDBC driver. When the Class.forName method was executed, it would trigger the class loader to look for that driver and load it. In the process, a static cold block in the driver class was executed that registered the driver with the driver manager. It was clunky
+	Class.forName was dropped in Java SE 6 in favor of listing drivers in the java.sql.Driver file
+
+3.3 - Using the JDBC DataSource
+	In this video, we'll be looking at 3 ways of obtaining a JDBC connection using the JDBC DataSource object. These include
+		J2EE JNDI
+		Java EE / Jakarta EE @Resource
+		CDI @Inject
+	If you're doing development in java EE, then you'll probably be using the JDBC DataSource object instead of the driver manager to get your connections
+	The DataSource type was introduced in JDBC 2.0 and first employed in the Java 2 EE, the precursor to Java EE 6
+	The purpose of the DataSource object was to further abstract and encapsulate the process of obtaining a database connection. Instead of setting the JDBC driver URI and properties directly in the application code, they were declared in J2EE XML configuration files. At runtime, the J2EE container would read the JDBC XML configuration file and load the drivers it declared, configuring them with the URI and properties defined in the configuration file
+	The developer would then access the DataSource from a context object provided by the J2EE component using JNDI, a directory services API
+	If you're working with a really old J2EE code base, you'll probably see code like the following
+		InitialContext ctx = new InitialContext();
+		DataSource dataSource = (DataSource) ctx.lookup("jdbc/mysql");
+		Connection connection = dataSource.getConnection("genius","abracadabra");
+		...
+	The DataSource object and the use of JNDI lookup slved a number of problems that were apparent with the use of driver manager class. Namely, it allowed the database connection to be created without having ot say anything about the vendor or the database in the application code, that made the code more portable and a little easier to look at
+	If you're doing enterprise development using the Java 2 EE or any version of java EE, you're going to encounter the use of JNDI lookup or dependency injection of the JDBC DataSource
+	When Java EE 6 was released and included Dependency Injection (DI), which spelled the end of the use of JNDI to obtain JDBC connection and replaced it with the @Resource annotation
+		@Resource(name="jdbc/mysql")
+		DataSource dataSource;
+		
+		public boolean getProductCount() {
+			Connection connection = dataSource.getConnection()
+			...
+		}
+	Using DI made it very simple to access JDBC DataSource object. It was simply there when it was needed
+	DI of the data sources also used non java EE applications that employed the CDI, the context and dependency injection framework
+	CDI is a standard dependency injection framework that can be used in conjunction with or separate from java EE 6 and on
+	In some cases, such as developing micro services, you won't be using Java ee or Jakarta EE. Their @Resource annotation in Java EE type will not be available. In these cases, you'll use the Java SE @Inject annotation as well as your own annotations to indicate what is to be injected
+		@Inject
+		@MySqlDataSource
+		DataSource dataSource;
+		
+		public boolean getProductCount(){
+			Connection connection = dataSource.getConnection();
+			...
+		}
+	You'll also create a producer which creates the data source behind the scenes, which is then injected by the CDI container into your component
+	We could've used a real java IDE server or CDI container but that would be outside the scope of the course. Instead, I mocked the injection process for each example
+	When using a CDI container, the use of the data source iwth your own custom annotations and a producer is not required but it is considered a good practice when using JDBC connection pooling, as explained later in the course
+
+4.1 - Using the Statement and ResultSet Types (Using JDBC to Query Databases)
+	The connection object allows us to create what is called a statement object, which is simply a mechanism by which we can send SQL request to the database
+	The connection object creates the statement object, which in turn executes a query shown below
+		Connection connection = DriverManager.getConnection(...);
+		Statement statement = connection.createStatement();
+		ResultSet resultSet = statement.executeQuery("SELECT * FROM projects");
+	If we want to see the actuall data that we need is what is called ResultSet so that we can peruse the data record by record. Each of the JDBC types manufactured here - Connection, Statement, ResultSet - must be closed when you're finished using them as shown below
+		resultSet.close();
+		statement.close();
+		connection.close();
+	Resources that can be closed should be closed in the reverse order they were created
+	The ResultSet type behaves in many likes like a Java collections Iterator. It allows you to review the contents of each record returned by the query one record at a time
+	The key to making this work is the primary navigation method, next() method. The first time call resultSet.next(), it places a cursor or pointer at the very first row of the ResultSet that's returned by the SQL query
+	The next() method returns true if there is a record at the cursor and false if there's not
+	Unlike JPA or most object to relational mapping APIs, JDBC does not auto generate objects for each row. Instead, it treats all tables and rows the same and is ignorant of the structure and total row count and data types in each row. It's up to you, the developer, to tell the ResultSet what fields and data types you want to extract from each row
+	This is done with while loops by using get methods of various types and and specifying which column you want to read from the current row
+		while(resultSet.next()) {
+			String name = resultSet.getString("productName");
+			sysout(name)
+		}
+
+4.2 - Handling Exceptions in JDBC
+	When connecitng to remote resource like a database, the chances of experiencing exceptions are pretty good
+	(shows a list of SQLException Types) For the most part, we're not going to be using these types. Instead, we will use their super type the SQLException which provides information unique to the JDBC programming
+	We can modify our product's component to extract general data as well as SQLException specific data as follows
+		try {...}
+		catch(SQLException exception) {
+			sysout(exception.getErrorCode());
+			sysout(exception.getSQLState());
+		}
+	getErrorCode - the error code is vendor specific code in the form of an int. Error codes used by MySQL can not be meaningful when using Oracle or Microsoft SQL server database systems.
+	The reverse is also true. With the error code, you can look up the problem at the vendor site to provide more info to help you pinpoint the problem
+	getSQLState - the SQL state is useful cross database vendors. The ISO? and ANSI? and the Open Group standardized these values in suite of SQL standards. If you want to know the values of these, you'll find them in your database documentation
+	Of course, we need to close the resources in the finally clause. But because the calls to each resource can itself generate SQL exceptions, we need to handle that possibility as well
+	Remember that the error codes are vendor specific while the SQL state is an industry standard. The bes tplace to do this for MySQL is Brian Dunning's error code reference. Just google "Dunning mysql error codes"
+	A modification to the try catch block was added in java 7 and JDBC 4.1. try-with-resource which automatically takes care of closing any resource that implements the AutoCloseable interface and JDBC 4.1, ResultSet, Statement and Connection and some other types that need to be closed were changed to implement the AutoCloseable interface. Now you don't have to worry about closing your resources. We still need a catch block however
+		try(Connection connection = ...;
+			Statement statement =...;
+			ResultSet resultSet = ...;
+		{ ... }
+		catch (...) {...}
+	
+
+4.3 - Using the PreparedStatement and ResultSet
+	While a select statement works great, it's not the best mechanism for executing queries. Better type is the PreparedStatement.
+	Using a PreparedStatement, our simple query would like as follows
+		try(Connection connection = ...;
+			PreparedStatement preparedStatement = connection.prepareStatement("SELECT * FROM products");
+			ResultSet resultSet = prepareStatement.executeQuery();)
+			{...}
+	When you use a statement object to query a database, the entire query is sent over the network to the database. The database then compiles the query plan, which takes place in 3 steps
+		First, the database parses the query into a format native to the database
+		Second, it optimizes the query plan so it runs as efficiently as possible
+		Third, it executes the query to get the results
+	Your database will need to compile a query plan every time you execute a query if you're using a statement object. That could be a few times a day or 10s of thousands of times a minute. It takes the database time to compile a query plan
+	The drain on memory and processing power adds up quickly and will impact the performance of your database and your application
+	When the PreparedStatement statement is used for the first time, it goes through the same process except that the fully parsed and optimized query is stored for future use and then it executes teh query plan
+	However, when the PreparedStatement is used again, the identifier is sent instead of the entire query. And since the database has kept the parsed and optimize statement in memory, it can move directly to execution every time the PreparedStatement is used
+	This increases the throughput and improves performance. There is usually no reason to use a Statement object instead of a prepared statement
+
+4.4 - Using Input Parameters with a PreparedStatement
+	The PreparedStatement can also have parameters allowing statements be prepared but still dynamic. For example
+		PreparedStatement preparedStatement = connection.prepareStatement("SELECT * FROM products WHERE buyPrice BETWEEN 50.0 AND 100.0");
+	The problem with this is that the parameters are hard coded. We don't want that because the desired range will probably change. So instead of hard coding the values, we replace each value with "?". We can set the values of ? using the set methods on the PreparedStatement
+		PreparedStatement preparedStatement = connection.prepareStatement("SELECT * FROM products WHERE buyPrice BETWEEN ? AND ?");
+		preparedStatement.setDouble(1, 50.0d);
+		preparedStatement.setDouble(2, 100.0d);
+	 The try-with-resource is used differently here
+		try(Connection connection = ...;
+			PreparedStatement preparedStatement = ...);
+		{
+			preparedStatement.setDouble(...)
+			
+			try(ResultSet resultSet = preparedStatement.executeQuery();) { 
+				...
+			}
+		}
+	Notice that ResultSet has its own try-with-resource is nested. This was necessary because the preparedStatement set methods cannot be inside the parameters of the try-with-resource block
+	Remember 2 things
+		First, the resource in the try-with-resource clause should not be referenced outside the clause so that everything you need to do with the ResultSet should be done in the nested try-with-resource clause, which is the case here
+		Second, the nested try blocks will close the resources ahead of their parents and that must be the reverse order in which they're created
+
+4.5 - Accessing Multiple Columns with ResultSet
+	We can get data from other columns and the ResultSet by simply using more get calls
+	The ResultSet provides a lot functionality. Chief among them are the get methods
+	If you google java.sql.ResultSet, you immediately find the javadoc that displays all the methods and the types that they return
+	You'll notice that for every get method, there are 2 versions. One takes a column name and one takes an index
+	JDBC defines a loose mapping between generic SQL return types and java types. In fact, there's no definitive 1-to-1 mapping between the ResultSet get methods and SQL types because support for the SQL types vary among vendors
+	If your application uses complex data types and is expected to support multiple database systems, do your homework to figure out what database types map to which ResultSet get methods
+	For most developers, however, the backend database is unlikely to change in their enterprise as such a move is a major undertaking. So as long as you know how your database maps it's SQL types to ResultSet get methods, you're fine
+	JDBC defines its own set of types called JDBC types and provides a set of tables showing conversions from JDBC types to java types. You can find an exhaustive list of the conversions in Appendix B of the JDBC 4.3 Specifications
+	Another thing to keep in mind is that JDBC defines its own types, some of which are similar to the standard java types, For example
+		java.sql.Date
+		java.sql.Time
+		java.sql.Timestamp
+		java.sql.Clob
+		java.sql.NClob
+		java.sql.Blob
+		java.sql.Array
+		java.sql.Struct
+		java.sql.Ref
+		java.sql.RowId
+		java.sql.SQLXML
+	Information can also be found in the Appendix B of the JDBC 4.3 Specifications
+
+4.6 - Additional ResultSet Navigation Methods
+	In addition to next(), the ResultSet can support several other navigation methods. In this video, I'll show you five other methods
+		first() and beforeFirst()
+		last() and afterLast()
+		absolute() - takes you to a specific index in the ResultSet
+		relative() - moves you either forward or backward n number of rows from your current position
+		previous()
+	Summary
+		PreparedStatement also helps prevent SQL injection attacks
+		It's improtant to note that not all JDBC drivers support all these navigation methods. Ideally, they should, but you may find that some do not
+
+5.1 - Using the PreparedStatement to Modify Data (Using JDBC to Update Databases)
+
+5.2 - Getting the Update Count from the PreparedStatement
+	PreparedStatement executeUpdate methods will conveniently return the number of records modified
+
+5.3 - Inserting New Data with PreparedStatement
+	(demo of adding a new employee to an existing employees table)
+		PreparedStatement preparedStatement = connection.prepareStatement("INSERT ...", Statement.RETURN_GENERATED_KEYS);
+		...
+	You may have noticed one difference. We added a parameter when we use the connection to manufacture the PreparedStatement. the last argument Statement.RETURN_GENERATED_KEYS tells a PreparedStatement that we want to the auto-generated primary key for the employees returned
+	Once the executeUpdate is called, we can the ResultSet from the PreparedStatement, which contains the generated key by calling getGeneratedKeys() method. The ResultSet returned will have one row and column, which is the auto-generated value
+
+5.4  -Deleting Records with PreparedStatement
+	Deleting dat in production database is not as common as doing inserts and updates. There are 2 reasons for this
+		First, all data recorded by an enterprise is important should not be removed unless it's really necessary. A general best practice instead of deleting record is to mark the reocrd as removed or invalid, using a special column so that the record could be ignored in queries
+		Second, the primary key of a record is often used as a foreign key of other records. For example, every order has the identity of the sales person who handled the order. If you delete the sales person's record, the foreign key in the order will be useless. In fact, dtabases will often be designed to prevent deletion of records where the primary key is used in other tables, which is a good thing
+	That said, you'll need to know how to delete records using JDBC
+
+6.1 - Using JDBC TO Sore AND Read CLOB and BLOB Data (Using Blobs, Clobs and CallableStatements)
+	Most but not all relational database support the storage of very large chunks of text called clubs and large chunks of binary data called blobs
+	An example of a clob might be a legal document or a resume. While an image is often used as an example of a blob
+	For clobs, use setCharacterStream() that takes InputStreamReader
+	It's really not that complicated once you've figured out the character encoding used by your target database and the character encoding of the text you want to store
+	When reading data, we use getCharacterStream()
+	For Blobs - setBinaryStream() that taker FileInputStream as parameter; and getBinaryStream() that returns InputStream
+
+6.2 - Using the JDBC CallableStatements
+	Most, if not all relational databases that support SQL also support stored procedures. Stored procedure is a collection of SQL queries that can, depending on the better, include imperative statements
+	With a stored procedure, the business logic is run and maintained on the database server rather than in the client application
+	There are advantages related to security performance for store procedures but there are also negatives. It's a debate that's proably aged for 20-30 years
+		The pros basically are that the database experts write the queries rather than a programmer	, better preventing injection attacks because all the code is in the database and more secure in terms of authorization
+		The cons are that it's mroe work for the database. The database is already sterss, answering queries and doing updates but to add business logic to it might be too much. It depends on the DBA to implement, in other words, programmers can't just put out a store procedure and expect it to be deployed. And that's not as portable as SQL on this because there are a couple of standard for stored procedures but they're really not used consistently
+	You can simply find out more by simply googling "why use stored procedures?"
+	Since stored procedures run all the business logic and SQL statements in the database, you only need to provide input parameters and process the output when working with stored procedures
+	Every database defines its own special syntax and language for stored procedures
+	For code
+		try(Connection connection = ...;
+			CallableStatement callableStatement = connection.prepareCall("{call listProductsFor(?)}");)
+		{
+			callableStatement.setString(1, productLine);
+			boolean success = callableStatement.execute();
+			if(success) {
+				try(ResultSet resultSet = callableStatement.getResultSet();) {
+					...
+				}
+			}
+		}
+	Instead of creating Statement or PreparedStatement, use CallableStatement. The prepareCall uses a special syntax to call the stored procedure specific to MySQL. It uses the name of the stored procedure
+	Next we call the execute method to invoke the stored procedure on the database
+	If we execute the command successfully, we use request the Result with getResultSet
+	If you've worked wtih other programming langugages, the concept of method parameters being IN, OUT or INOUT will be familiar to you. The stored procedure we just look at uses what are called IN parameters. By IN, we mean that the parameters passed into the stored procedure
+	It's also possible to use OUT parameters in stored procedures but when OUT parameter is used, it's like a second return value
+	The INOUT parameter is both an in parameter, that is the value passed into the stored procedure, and an out parameter meaning the stored procedure can change its value and when finished executing, the parameter will have a value set from inside the stored procedure
+	For setting the IN parameter, it is set the same way a parameter was set in the last example. We just call the set method
+	For setting OUT parameter, we have to tell the JDBC driver what type of database value we're expecting to come out of the call so you would use the registerOutParameter() with java.sql.Types enum for any out or inout parameter
+
+7.1 - JDBC Connection Pools
+	Throughout the course, you've been creating JDBC connections through the driver manager. You learned in module 3 alternatives to using the driver manager including Class.forName(), JNDI and JDBC DataSource Injection
+	In this video, I'm going to introduce you to a fifth alternative, JDBC Connection Pooling
+	The process of creating a new JDBC connection can be expensive in terms of the time it takes to make a connection and the resources used
+	Every thread in an application must create a new connection requiring memory and sockets. This cost quickly adds up, even if you're only operating on a single thread. There's also the cost of closing connnections
+	With JDBC connection pooling, you're re-using existing connections rather than creating new ones every time you need to interact with the database
+	A JDBC connection pool keeps alive certain number of JDBC connections in cache in memory, so that you need not create new JDBC connection every time you need one
+	When requesting a connection, the pool will take one from its cache rather than create a new one. As soon as you call connection close on a pool, JDBC connection is returned to the cache rather than disconnecting
+	This caching mechanism allows lots of concurrent functions to use JDBC connections without the cost associated with opening and closing new connections
+	With JDBC pooling, new connections are only created when all the connections in cache are used and another connection is needed
+	JDBC is frequently used in the container systems such as Java EE or Jakarta EE and access via JNDI or DataSource Injection. In those cases, the application server almost always provides a JDBC connection pooling
+	But if you're running the application independent of Java or Jakarta EE application server, you'll need to setup connection pooling
+	You don't need to write a connection pool yourself. In fact, doing so is rarely done. You can one of the few that are already available. The most popular are HikariCP, Apache DBCP and C3PO
+	In this video, I'll show you show to setup the HikariCP Connection Pool and how to use it in a standalone java application
+	Each connection pooling system will have its own configuration and API but we can hide the differences between them using a facade
+	In pom.xml, add HikariCP dependency
+		<dependency>
+			<groupId>com.zaxxer</groupId>
+			<artifactId>HikariCP</artifactId>
+			<version>3.4.0</version>
+		</dependency>
+	In utility class, there's a static block
+		public class ConnectionPool{
+			private static HikariDataSource dataSource;
+			
+			static {
+				HikariConfig config = new HikariConfig()
+				config.setJdbcUrl(...)
+				
+				dataSource = new HikariDataSource(config);
+				dataSource.setMaximumPoolSize(4);
+			}
+			
+			public ConnectionPool(){}
+			
+			public static Connection getConnection() {
+				return dataSource.getConnection();
+			}
+		}
+	The bottom line is that the connection pooling is really beneficial if you're working with a multi threaded application that doesn't have connection pool already. Most, if not all, Java and Jakarta EE servers come with connection pooling built in so you don't have to setup applications running those servers
+
+7.2 - JDBC Transactions
+	(demo of example adding an insert into both Orders and OrderDetails tables. Both need to succeed. Otherwise, statements need to be rolled back) We need to use transaction management to make sure that if the insert into the OrderDetails table fails, the insert into Orders table will also fail. Either they both succeed or both fail together
+	To do that, we need to put 2 inserts into the same transaction which it turns out is pretty easy to do. When you come in and update, you make the update permanent in the database. Normally JDBC commits the changes as soon as the udpate is finished automatically but we don't want that insert to be permanent unless the insert into the OrderDetails also works
+	So we tell the JDBC driver not to automatically commit by setAutoCommit(false) before executeUpdate
+		connection.setAutoCommit(false);
+	Because we set the auto commit to false, the connection will not commit the transfer automatically
+	We have to call the connection.commit() which we will do only if both the Orders and OrderDetails inserts complete successfully
+	If something goes wrong, we have the connection.rollback() which tells the JDBC to undo any changes made in the last set of operations
+	Generally, you want to call the rollback method if the operation throws an exception or some other error like if the orders insert doesn't return an order number or if the count from update OrderDetails doesn't equal 1
+
+7.3 - JDBC RowSets
+	A RowSet interface is an extension of the ResultSet that adds 2 important features
+		First, it's compliant with the java beans idiom?
+		Second, it supports both connected and disconnected data
+	The fact it's compliant with java beans idiom means that it is toolable by which I mean it could be incorporated to any tool that depends on the standard java beans getters and setters such as IDE or application framework like CDI
+	Until RowSet was introduced, the ResultSet and its driver were soon to be tethered or connected to the database for as long as the ResultSet was in use. Only when the close() method was called, would the ResultSet be disconnected conserving resources like memory, threads and network sockets
+	After closing the ResultSet, you would need to execute a statement again to get a new ResultSet
+	A RowSet however can cache the data and then disconnect from the database. The data would remain in memory and the RowSet could navigate through the rows and columns of the results as if it were still connected
+	This allows you to free up resources used to keep the ResultSet and the database connected. Just as importantly, it releases any read locks on the database tables so that other clients can access data without having any problems
+	There are few types of RowSets, including JDBC RowSet, which is simply a wrapper for ResultSet. JDBC RowSet remains connected to the database. It cannot be cached or used outside the context of the connection and statement types that created it
+	The CacheRowSet is, as the name suggests, a ResultSet that has been cached in memory. It is a disconnected RowSet. So after it's executed, it keeps the results in memory but releases its connection to the database saving resources
+	A CacheRowSet can be serialized using java serialization and save to disk or send across a network connection. This makes for a powerful and portable data object that could be useful when trying to reduce client resource usage or share data among applications
+	The remaining types are all extensions of the CacheRowSet, meaning that they're disconnected when in use
+		The WebRowSet extends CacheRowSet and differs in one important way. In addition to being serialized using java serialization format, it can generate an XML document with the WebRowSet data or read properly constructed XML to create a WebRowSet
+		FilteredRowSet is another CacheRowSet but this RowSet allows you to search the results using filters. You can filter out data you don't want without having to execute a new query to the database
+		Finally, the JoinRowSet is, as the name suggests, a RowSet that can join data from 2 other ResultSet or RowSets. By join I mean link the data in one RowSet to another by using a shared key
+	In this video, we're going to take a closer look at the CacheRowSet, as that's the one that's used most frequently and is the foundation of most of the other RowSet types
+	A CacheRowSet has several advantages and some disadvantages
+		First advantage is that it's less taxing on the database if the query used to produce it is called frequently. Instead of re-issuing the query to the database over and over again, the application can use these in memory cache RowSet
+		Another advantage of CacheRowSet is that it can be serialized. That means that RowSet ca nbe written to disk and then deserialized and used again. So it need not remain in memory all the time
+		Another advantage is that the CacheRowSet can be shared across the network with other java applications as the payload of some type of web services protocol like HTTP
+		Finally, if the CacheRowSet represents a query that never changes like the list of products for example, it could be much faster than using a ResultSet or JDBC RowSet, which need to communicate with a remote database
+	Disadvantages
+		The results of a query can be very large and in those cases, a ResultSet can fetch the data as needed. A CacheRowSet will need to fetch all the data at once. So CacheRowSet may not be the best choice if the results are very large as it would require a lot of memory in the java application
+		In addition, the CacheRowSet can contain stale data. The data in the database can change and you'll never see those changes after you get a CacheRowSet because it only has the data that was available at the time it was created
+	For these reasons, CacheRowSet tend to be a good choice when you have data that rarely changes such as products list and data that's not too large
+	Code
+		String query = ...
+		
+		RowSetFactory rowSetProvider = RowSetProvidre.newFactory()
+		CacheRowSet rowSet = rowSetProvider.createCachedRowSet();
+		
+		rowSet.setUrl(...)
+		rowSet.setCommand(query)
+		row.setString(...)
+		
+		rowSet.execute();
+		
+		// write object
+		try(ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream("row_set_serialized.ser"));) {
+			oos.writeObject(rowSet);
+			rowSet.close();
+		}
+		
+		// read object
+		try(ObjectInputStream ois = new ObjectInputStream(new FileInputStream("row_set_serialized.ser"));
+			CacheRowSet rowSet2 = (CacheRowSet) ois.readObject();)
+		{
+			...
+		}
+	There are a number of methods for creatign CacheRowSet but in this case, we're going to use the RowSetFactory
+	Remember that the CacheRowSet is an extension of ResultSet so we can use all the same navigation methods that we have used throughout this course with the same limitations and capabilities and exceptions
+	The CacheRowSet is disconnected as soon as it's created. As a disconnected java bean, we can work with it like we could with any other bean

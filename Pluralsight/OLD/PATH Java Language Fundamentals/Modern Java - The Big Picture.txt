@@ -1,0 +1,191 @@
+Sander Mak
+
+2.2 - Common Misconceptions (Introducing the Java Platform)
+	No relation between Java & JavaScript - not in technical sense and not in a commercial sense
+
+2.3 - Defining the Java Platform
+	We can divide the Java platform into 3 parts
+		Programming Language
+		Runtime environment - place where the java code is executed
+		Standard library - java standard library contains many commonly used functionalities, which you can reuse in your apps so you don't have to reinvent the wheel all the time
+	The 3 parts of the java platform  are bundled together in what's called the Java Development Kit (JDK)
+	The JDK is always the starting pint when you start developing java apps and it contains all the tools that you need to create and run java apps
+	When there's a new Java release, any combo of the 3 platform parts might be improved
+	Source code > compiles to Application bytecode. bytecode is a lower-level representation of the code that can be more easily executed by a computer. Now, as we discussed before, apps don't usually encode older functionality. They also reuse parts of the Java Standard Edition (SE) APIs. These Java SE APIs are the standard library that we talked about earlier. Often, just using the Java standard library is not enough. Most java apps also use third-party libraries. These libraries are published as bytecodes as well and can be used from apps
+	To run java apps, we also need a Java virtual machine or JVM. The JVM constitutes the runtime env that we talked about. The JVM knows how to execute bytecode on a real machine because, of course, we still have real hardware and an OS sitting beneath this deck. Now, the hardware only knows how to execute machine code, and java bytecode is not machine code. Java bytecode is a higher level intermediate format that can be translated by the JVM into actual machine instructions for the hardware the JVM is running on. This completes the chain all the way from java source code to our bytecode running inside of the JVM that knows how to execute this bytecode on the actual hardware
+	The combo of Java SE APIs and JVM and all their related tools, like the Java compiler that we talked about, form the JDK
+
+2.4 - Compiling and Running Java Code
+	Hello.java > (javac) > Hello.class
+	We compile java source code to java bytecode using javac, the java compiler tool. It outputs Hello.class file containing the bytecode for our app. Now, remember from our previous diagram, the bytecode sits on top of the standard library, the java SE APIs. Underneath that, we need a JVM to run the code
+	To run the bytecode in the Hello.class that we created using the java compiler, we can run it using the java command, which starts up the JVM and runs our app code
+
+3.1 - Philosophy of Java: Portability and Simplicity (Adopting Java)
+	Portability - we mean that java apps should be able to run on any platform, meaning any OS and any hardware
+	WORA - write one run anywhere
+	Now this portability is achieved by the separation of the 3 part of the java platform that we saw earlier. We have an app bytecode that's compiled from app source code sitting on top of the java SE APIs. What's missing from this picture is the runtime part, and it turns out there is a JVM for each OS and CPU architecture
+	The crucial point here is that neither our source code nor our bytecode had to change. We only had to compile our source code once and we can then run this on different JVMs on different platforms
+	The other reason why this portability is possible is because is because the Java SE APIs are platform-agnostic. This means that the APIs offer the largest common denominator of functionality across all platforms, so you can be sure that when you use functionality from the Java standard library, it will work the same across all platforms.
+	Another philosophy that drives the java language is that it's optimized for readability
+	So in practice this means that Java is quite conservative about adding new features, and this follows from the previous principle. If the language has too many features, there may be too many ways to express your intent
+	Another aspect of the philosophy behind Java is a very large focus on backward compatibility. There are so many large code bases around the world that it's important for the Java platform to guarantee that they keep working, even with new releases of Java
+	Now you cannot keep every feature or every aspect of the platform running forever, so there is also a controlled way of deprecating features, meaning that you will be warned about a feature going away and that only several major releases of Java later, the feature will be removed, if it will be removed at all.
+
+3.2 - Philosophy of Java: Openness
+	There's a specification process around the language in the platform that's driven by the Java community process or JCP. Members of JCP are relevant vendors in the Java world and other Java community leaders and they get a say in the specification of the platform together deciding where the platform is heading.
+	More importantly, because Java is formally specified by this process, that's not just a single implementation of the java platform but there are also many non-oracle implementations. And this is all made possible because there's a formal specification of the language and the JVM. For us as developers and end users, it provides an open ecosystem where we can choose between competing implementations of the Java platform, which each have their own strengths and weaknesses.
+	Another way in which Java is open is the fact that the Oracle reference implementation of Java is hosted as an open-source project called OpenJDK. All JDK releases are developed out in the open. You can access the repos and see exactly what's going on. The bug tracker, documentation, you can see everything that's going on with openjdk.java.net
+		https://openjdk.java.net/
+	Besides the source being open, the OpenJDK project also publishes GPL 2 licensed binaries of the Java platform, which you can download and use. At the same time, there are also commercially licensed binaries available from Oracle and other vendors. You can use those and get paid support
+	There are also many experimental subprojects on the OpenJDK, which will give you a feel for where the Java platform might be headed
+
+3.3 - Choosing Java: When and Why
+	Scalable Development
+	Type System
+	Managed Runtime - the JVM can also be categorized as a managed runtime because it manages many concerns for you that other languages and runtimes before Java didn't - automatic memory management, garbage collection, multi-threading
+	Talking about performance, the way the java platform is setup with its JVM allows for some very intersting optimizations. One of these is the concept of just-in-time compilation. As we know, JVM translates bytecode into machine code for the specific processor that the JVM is designed for which means that the different JVM implementations for the different platforms can really specialize to the underlying hardware. What happens with JIT compilation is that the JVM analyzes the execution of the bytecode and at runtime can decide to JIT compile to very specific machine instructions of the current CPU that the JVM is running on.
+	With Java we have the platform independent bytecode and a platform specific JVM giving both the benefit of portability and the benefit of performing highly specific optimizations towards the actual CPU that the JVM is running on through JIT compilation. An enormous amount of engineering time went into these optimizations in the JVM over the past 2 decades and it shows
+
+3.4 - When is Java Not the Right Choice?
+	There are definitely scenarios where using Java is not feasible or suboptimal
+	A class of systems where using Java is really not possible is real-time systems
+	The reason why Java isn't well suited to real-time systems is because of the garbage collection that we talked about previously. The JVM decides when it is going to garbage collect and how long it will take. You can't really influence this from the code and therefore you can't guarantee any hard bounds on the timing and execution of your code
+	Another scenario where java is not a great choice is when the app you're writing needs tight integration with specific OS features
+	This next situation is a bit more subjective. There are definitely other languages out there that make it easier to churn out prototype apps quickly. Java's focus on large-scale structured development sometimes gets in the way of this
+	The last reason for not using Java is not really technical but there are some groups of devs that thrive on using cutting-edge langauges and technologies. We saw that the philosophy of Java is different. It's focus on simple and understanble code leads to relative verbose code, and it also means that new language features are adopted slowly
+	However, there's also the option of using alternative languages that still target the Java virtual machine. In that case, you're still running on a stable and mature Java platform, but you're not using Java, the language
+
+3.5 - Comparing Java: C#/.Net
+	Let's look at C# which runs on the .Net platform. C# and .Net are probably the closest analog to the Java platform. It was introduced in 2002, about 7 years after Java. And a .Net platform is setup in a similar way as the Java platform, there's the programming language, C#, there is a standard library and there is a runtime env. And in the case of .Net, it's the common language runtime. This is the .Net equivalent of the JVM
+	C#, like Java, is a managed language running on a managed platform, so it offers all the same benefits like automatic memory management, garbage collection and multi-threading
+	Like Java, C# and .Net are open-source, however, this is a recent move by Microsoft. Not too long ago, C# and .Net were close source and in full control of Microsoft.
+	There are some significant differences as well
+	C# as a programming language, moves much faster than Java in terms of new features. Even though C# was created much later than Java, it surpasses the Java langauge in terms of features that are available in the language. More features in programming language makes the langauge more complex. Of course, it is very subjective but we saw that Java errs on the side of caution, and therefore, deliberately moves more slowly in terms of language evolution
+	Another difference is that unlike Java, which was cross-platform from the get go, the .Net stack has only been recently positioned as a cross-platform stack. This means that the cross-platform aspect of .Net is less mature than that of Java
+	Another less technical difference - C# ecosystem is still somewhat dominated by Microsoft
+	In general, you can say that the use cases for Java and C# on .Net are pretty similar
+
+3.6 - Comparing Java: C/C++
+	Java syntax inspired by C
+	Unmanaged langauge
+	More language features
+	Compiled to native code
+
+3.7 - Comparing Java: Python
+	High-level managed language
+	Open ecosystem
+	Interpreted language
+	Not statically typed
+	Python 2/3 split
+	Python can be a great fit for developing smaller apps or quick prototypes where performance is not of the utmost importance
+
+3.8 - Comparing Java: JavaScript
+	JavaScript was born as a language in the browser. However, combining JavaScript with NodeJS gives a similar managed platform like Java and C#. NodeJS took JavaScript out of the browser onto service. NodeJS provides a standard library and execution envs for JavaScript on the server
+	Java and javascript are also somewhat synctactically similar
+	Interpreted language
+	Not statically typed
+	Single-threaded
+	The goal of this comparison is to give you enough info to start looking into the options yourself and to ask the right questions. Every platform has its own weaknesses and strengths and when selecting a platform, you should, of course, also take into account the context of your org and the goals that you want to achieve. Please remember, there's no best language or platform. There's only fit for purpose
+
+4.1 - Desktop Java (From Desktop to Enterprise Java to the Cloud)
+	In this module, we're going to focus on what types of apps you can build using Java.
+	Desktop java - single machine
+	Java's first GUI tooklkit is called AWT - Abstract Windowing Toolkit. The implementation of AWT uses native OS controls and primitives to draw the GUI. AWT also offers some very primitive ways of drawing 2D graphics
+	It turns out that  it's very hard to actually build portable apps because depending on which platform your apps run on, it looks diff because of the native OS controls, it may behave slightly different in terms of UI interactions, and it's quite hard to make a good screen layouts that work across all different platforms. That's why later in the lifetime of Java, a new approach to creating desktop apps was created called Swing. With Swing, you can create GUIs that are rendered completely using java runtime. Swing doesn't depend on using native OS widgets like in AWT
+	Swing allows you as developer to choose from many cross-platform look and feels
+	Last on GUI components that are implemented in Swing, adhere to the Model-View-Controller design pattern
+	3rd GUI tooklkit called JavaFX - more advanced
+	As of Java 11, September 2018, the JavaFX GUI Toolkit is separated from the JDK and run in its own project called OpenJFX, wich is a sub-project of OpenJDK. This means that it's still available and being developed, only it isn't shipped directly with the JDK anymore. If you want to create a desktop java app that runs wit hthe plain JDK, then your best choice is to use Swing. However, if you want to create a modern looking Java desktop app, JavaFX is definitely the better choice
+
+4.2 - Enterprise Java
+	Enterprise Java is best known by the name Java EE (Enterprise Edition). Remember how java apps that we write run on top of the java platform, with Java SE APIs running on top of a JVM. And this works fine. This is also the model that's applied to desktop Java development
+	When we talk about enterprise apps, these typically have web front ends, transactional DB access, integrations with all kinds of different systems, scheduled tasks and so on. This goes far beyond what the Java SE APIs have to offer.
+	Java EE - a set of interoperable enterprise APIs for common enterprise app tasks. As enterprise java dev, you can now develop your app on top of these java EE APIs that are well specified anad guaranteed to work together. Java EE is a set of API specs geared toward enterprise app development.
+	But like we said earlier, Java EE only offers specifications of APIs and you still need an implementation to run your app against. That's where Java EE app servers come in. An app server is a container that runs on top of the JVM that can host Java EE apps and it offers implementations of the Java EE APIs to your app.
+	Normally, Java apps run directly on top of the JVM. But, in the case of Java EE, the app server is the app that runs on top of the JVM. And what happens is that the Java EE apps that you develop are deployed into this app server that runs on top of the JVM
+	There are several benefits to this setup.  First of all, the app server offers a fully functional sets of compatible Java EE libraries. App servers can typically also be clusters, so the app server takes care of scaling out your app. As a dev, you don't have to worry about this in your code, as long as you use the Java EE APIs
+	There are multiple app service available that implement the Java EE specs. Some are:
+		Wildfly (Red Hat)
+		WebSphere (IBM)
+		WebLogic (Oracle)
+		Tomcat (Apache)
+	Caveat - the Java EE 8 release in late 2017 will be the last release of the Java EE spec by Oracle. Oracle is donating the Java EE specs and the reference implementations to the Eclipse Foundation, where everything will be open-sourced. At the same time, Java EE is also rebranded to Jakarta EE. You can find out more about this by going to https://jakarta.ee/
+	A competitor to Java EE, called Spring Framework, has won the hearts and minds of devs as well
+
+4.3 - Java in the Cloud
+	You go for microservice architecture in the cloud
+	There are all kinds of new concerns in elastically scaling cloud envs in terms of authentication and authorization modules, etc. New approaches emerged in the java ecosystem for building these types of cloud architectures. Most of them can be grouped under the name microframeworks
+	One wildly popular microframework in the Java world is Spring Boot and Spring here is the same Spring as we mentioned earlier with Spring Framework. Spring boot is built on top of the Spring Framework and other libraries that offer solutions for problems that you have in the cloud. The most well-known libraries that Spring boot uses are Netflix open-source stack. Netflix is one of the poster children for microservice architecture and they offer components for service discovery, fault tolerance, and everything that's important in a cloud microservice architecture
+	When you develop a spring boot app, ultimately everything is bundled up into a single Java app that runs on top of the JVM. There's no big app server involved anymore. This model turns out to be very well-suited for developing microservices in the cloud
+	What also helps is that Spring boot adopts the convention over configuration approach, so out of the box you get a working app with lots of same defaults that you don't have to tune anymore.
+	There are other frameworks as well:
+		MicroProfile
+		Vert.x (Red Hat)
+		Play Framework
+
+4.4 - Android
+	Android is Google's mobile OS
+	Java has always been the primary dev language for apps on Android. While this is a true statement, we should qualify this because the Android Java platform is distinctly different from the Java platform that we discussed so far. That has everything to do with how Android is implemented.
+	When you develop apps for android, you do this using the Java language, however, google is lacking in support from other versions of Java, so if you're writing Android apps in Java, you're stuck with Java 7 or a subset of features of Java 8. For reference, in late 2018, Java 11 is already released. That means that Android Java developers can't move as quickly as other Java dev when moving to new versions of Java
+	Android Java app is still compiled into Java bytecode, the same as we saw before, however, this Java bytecode doesn't run on the phone. there's an additional step where a tool translates bytecode into DEX (Dalvik Executable Format). This is the code that runs on the phone. Android Java apps make use of the Android APIs, and Android also offers Java SE-ish  APIs, however, I say "ish" here because the Java SE APIs that are offered on Android aren't fully compatible with the Java SE APIs of the official Java platform
+	This is by the way, one of the reasons why there's a high-profile lawsuit between Google and Oracle
+	Another difference is that at the bottom of the stack, we don't have the JVM, but we have the Dalvik virtual machine which executes the DEX code
+
+5.1 - Spring Framework (Popular Java Libraries)
+	Spring Framework gained prominence when a book called J2EE Development without EJB was released by Rod Johnson in 2002
+	Dependency Injection - spring dependency injection container
+	Because spring is in full control of instantiating objects, it's als opossible that spring inserts some interceptor code in between that hdandles some imnportant cross-cutting concerns like security and transactionality
+	As we've seen at it's core, spring framework is a dependency injection container but there's more to it than that. Besides serving as a dependency injection container, spring also started to integrate more and more technologies and make them available for dependency injection with just a little configuration
+
+5.2 - Commonly Used Java Libraries
+	Utility libraries
+		One library that you'll often encounter in code base is called Google Guava. It's essentially a grab bag of utility APIs that extend functionality of the java standard libraries in useful ways
+		There's also Apache Commons, which is a collection of libraries hosted at the Apache foundation that extends core Java functionality
+		There's some overlap with Google Guava, however, there are many more Apache Commons projects, so the total functionality of the Apache Commons libraries is quite a bit broader than Google Guava's
+		Log4j library - Log4j is a library for structured app logging. It allows you to introduce logging statements in your app and then these logging statements to many different packages depending on the configuration
+	Distributed System Libraries
+		One popular but somewhat low-level library is Netty. Netty library makes it easy to build clients and servers for various protocols such as HTTP, HTTP2, Websocket, etc. It offers productive abstractions on top of the underlying TCP and UDP mechanisms and is one of the best-performing network libraries in Java space
+		There's Akka - more high-level library. Implements the actor model for concurrency
+		Akka, together with RxJava, is part of a new movement called reactive programming, which is all about highly concurrent and resilient apps. RxJava is not a distributed system library per se, but it's an implementation of the same reactive programming paradigm. Reactive programming is all about composing streams of events within your app. RxJava makes it easier to build asynchronous and event-based apps
+		Apache Camel - previously discussed Netty library is about low-level details of setting up a network server or clients, Camel is more about wiring together existing systems into new workflows. This is aka Enterprise Application Integration.
+	Data-access Libraries
+		The good think about Java is that in its core libraries, it defines the standards called Java Database Connectivity (JDBC), which outlines a standard java API for interaction with relational databases
+		Having JDBC means that you can write an app that talks to a JDBC API so you app is decoupled from all the details of the exact DB underneath. The details are handled by various JDBC drivers. While this sounds good in theory, in practice the JDBC API is still too low-level to be productive in. Therefore, different new abstractions emerged. The most well-known ones are the so-called Object Relational Mappers or ORMs. These libraries like Hibernate and EclipseLink, take care of automatically mapping your Java objects to relational tables in a DB
+		There are alternative data access libraries as well. These libraries often label themselves as SQL DSLs or domain specific langauges. These libraries take an opposite approach to ORMs. They try to embed the SQL query language as a DSL into Java as good as they can
+		Both of the approaches have their pros and cons
+
+5.3 - Java-based Data Processing
+	I want to focus on the app area that's aka big data
+	The most well-known big data application written in Java is Apache Hadoop. It's an open-source java implementation of Google's MapReduce concept. Hadoop is well suited to processing petabytes of data on large clusters running many instances of Hadoop. In that sense, it's not really a library, although it does offer its own programming model that you can use in your code, but it's a distributed system implemented in Java for processing big data
+	Another important player int he big data processing space is Apache Spark. Its goals are similar to Hadoop, but it's a new and even more scalable implementation. It's also possible to process large amounts of streaming data in Spark, something that's harder to do in Hadoop, which is more batch oriented. Similar to Hadoop, Spark offers a library or programming model
+	Another concept that ha staken off in the last few years is machine learning or especially deep learning. There's also a library for doing deep learning in Java called Deep Learning in Java or DL4J
+	If we look at big data storage apps, we can see several other proof points that show how well Java and the JVM scale. e.g. Cassandra - NoSQL DB written in Java. Another example is Neo4J, which is a graph DB written in Java. Another well-known big data storage solution written in Java is ElasticSearch. Lastly, there's Hadoop Distributed File System (HDFS) which sits underneath the Hadoop data processing Layer that we talked about previously
+
+6.1 - IDEs (Practices and Common Tools)
+	Java Development lifecycle - Code > Build > Test > Static Analysis > Code
+	In modern java development 2 IDEs are most prominent - Eclipse and IntelliJ
+
+6.2 - Unit Testing
+	JUnit
+	Mocking tool - Mockito
+
+6.3 - Build Tools
+	Maven
+	Gradle
+
+6.4 - Continuous Integration and Quality Control
+	Jenkins
+	Static code analysis - Checkstyle, Spotbugs, PMD, SonarQube
+
+7.1 - Why Alternative JVM Languages? (Examining Alternative JVM Languages)
+	The runtime env of Java is capable of running bytecode, but it doesn't matter where this bytecode comes from
+	Scala, Kotlin
+	Why would you choose an alternative language? One of the reasons has to do with developer productivity. Another reason may be familiarity. Another reason is that those languages may have different programming paradigms
+	If people no longer want to program in the Java langauge, they might prefer switching to these alternative JVM languages over switching to completely different platforms, such as Python, Ruby or NodeJS because you can still stay in the JVM and Java ecosystem taking adv of all the tools, libraries and practices that we saw so far
+	Also, many of these alternative JVM languages have inspired changes in the java language itself as well. It's actually a good thing for both java the language and java the platform to have these alternative JVM languages
+
+7.2 - Groovy, Scala and Kotlin
+	Groovy - dynamic scripting language. Interpreted or compiled
+	Scala - combines OO programming with functinal programming. Compiled langauge
+		The Akka library for concurrency and Spark are both written in Scala. Because Scala code is compiled into Java bytecode, you can also use these libraries from Java itself or from any other alternative JVM language. The extensiveness and advanced features of Scala can be a double-edged sword. When this double-edged sword is weilded by professional developers who know how to handle them, Scala can be great to work with. On the other hand, Scala is often perceived as complex to use as well, and the compiler can get quite slow on larger code bases due to all the features that the language has
+	Kotlin - "better Java". Endorsed by Google for android dev. Also runs in the browser

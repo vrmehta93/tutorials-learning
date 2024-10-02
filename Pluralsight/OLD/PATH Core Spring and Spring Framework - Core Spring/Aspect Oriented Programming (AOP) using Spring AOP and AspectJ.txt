@@ -1,0 +1,340 @@
+Eberhard Wolff
+Oct 13, 2013
+(Retired course)
+
+1.1 - Why This Course? (Course Introduction)
+
+1.2 - Modules
+
+1.3 - Prerequisites
+	Maven
+	STS
+
+1.4 - More information
+
+2.1 - Introduction (Spring Quick Start)
+
+2.2 - Java Config
+
+2.3 - XML
+
+3.1 - Introduction (Why Aspected-oriented Programming (AOP))
+	AOP is used to implement enterprise features
+
+3.2 - Simplify Code Using AOP
+	AOP allows you to remove things like exception handling, tracing and transactions so your method can only focus on business logic
+	The idea is to put things like exception handling, tracing and transactions into an "aspect" and remove it from this method
+
+3.3 - How AOP Works
+	How does AOP work on a large scale?
+	If you have a system that contains several packages and classes, what happen if yo udon't use AOP is that aspects such as Tracing, transactions and exception handling, I implemented in any class and any method
+	This results in 2 problems
+		First, there is code tangling, so each class, each method contains tracing, transactions and exception handling and also business logic. So if the code is tangled, it's often hard to see what's actually going on in the method
+		So what AOP does is it takes all the transaction code, for example, and puts it into a Transaction Aspect. Then there is a clean separation between the business logic and all those additional aspects
+		(second is code scattering)
+
+3.4 - Cross Cutting Concerns
+	An important concept in AOP are cross-cutting concerns i.e. a lot of classes and a lot of methods must implement them and therefore they sort of cut through the code
+	They can't be implemented in a single place, so if you only use OOP, you won't be able to avoid scattering and code tangling as we've seen
+	So if you're developing with AOP, the way it works is that you implement your business logic first and then you write the aspects for your cross-cutting concerns where you might also use some of the aspects that spring already provides for you
+	That way, you can "compose" your infrastructure, so you can choose whether securtiy transactions or also tracing, should be added to your code and where it should be added. So you can create your own individual customized hardware
+	Then you use Spring AOP or AspectJ to add your aspects to your application, so that at runtime, the aspects as well as your main line business logic is actually executed
+	Those 2 implementations are the most commonly used AOP implementations and also the most powerful ones
+
+4.1 - Introduction (Your First Aspect)
+	An Aspect contains a Pointcut and the Pointcut defines where the Aspect should be applied and then there is the actual logic that should be added to the mainline business logic and that's called the Advice. So that is the code that is executed as part of the aspect
+	So what it boils down to is that an Aspect just contains a Pointcut that defines where our code should be added and the advice is the actual code that should be added to the mainline business logic
+
+4.2 - Example: Tracing
+	Mark the class with @Component and @Aspect
+	Sample Pointcut expression
+		@Before(
+			"execution(void doSomething())"	// Pointcut expression
+		)
+		public void entering() {...}
+	Wildcards in pointcut expression
+
+4.3 - JoinPoints
+	So there is another problem that the original implementation of our Aspect had. It just printed out an information, that some method was called, but it didn't say which method was called
+	To actually find out which method was called, you can use a JoinPoint
+	JoinPoints are points in the control flow of a program, so executing a method for example is a JoinPoint
+	And Advices might get information about the JoinPoint that they are called at and this information can be used in our example
+	So information that can be found out using the JoinPoint is the method name, class name etc
+	So let's change the Tracing Aspect to actually use a JoinPoint. So what we do is we add a parameter of type JoinPoint and this parameter will automatically be filled with the JoinPoint of the current method execution by Spring AOP and now we can find out which class was called and which method in that class was called and this us all the tracing information we might be interested in
+		@Before(
+			"execution(void doSomething())"	// Pointcut expression
+		)
+		public void entering(JoinPoint joinPoint) {...}
+
+4.4 - Enable AOP in Spring Config
+
+4.5 - Demo: Tracing Aspect
+
+5.1 - Introduction and Before Advice (Advice Deep Dive)
+	Before Advice - executed before method call
+	Exceptions prevents method to be executed
+	Exeption is propagated to the caller
+
+5.2 - After Advice
+	Executed after the method is executed
+	Exception could have been thrown or method could hvae been executed successfully
+
+5.3 - After Throwing Advice
+	After Throwing is executed if the original method threw an exception
+	Exception will be propagated to the caller
+	The exception that was thrown can be accessed and that can be done in a type-safe manner
+	Sample
+		@AfterThrowing(pointcut =
+			"execution(* *(..))",
+			throwing = "ex")
+		public void logException(RuntimeException ex) {
+			logger.error("Exception ", ex);
+		}
+	This specific advice is only executed if a RuntimeException is thrown, so it's not executed if a different type of exception is being thrown
+
+5.4 - After Returning Advice
+	After Returning Advice is executed if the method returns successfully, so you can't change the result, you can't throw any additional exceptions
+		@AfterReturning(pointcut =
+			"execution(* *(..))",
+			returning = "string")
+		public void logResult(String string) {
+			logger.trace("result " + string);
+		}
+	So if a method returns something, it's bound to the parameter string
+	Spring AOP takes care that this advice is executed if the result is actually really a string, so it's type safe
+	So even though the pointcut expression says we don't care about the return type, at the end we do, because tyhe method has a parameter of type string and that means we are only interested in those methods that return a string
+
+5.5 - Around Advice
+	The Around Advice wraps around the original method that is called and it's the only advice that allows you to prevent the original method from actually being called at all
+	You could do that using the Before Advice but then you would need to throw an exception and that exception would be propagated to the caller, so the only way to avoid that the method is being called without throwing an exception and without propagating an exception to the caller is by using the Around Advice
+	It's also the only advice that allows you to catch exceptions, so you can catch an exception and then it won't be propagated to the caller
+	It's also the only advice that allows you to modify the return value, so you can use the return value and change it to something different
+	To do so, the Around Advice is given the current method call and that is done by using an object called ProceedingJoinPoint
+	We already know the JoinPoint, so the JoinPoint contains all the information about the method that is being executed and it can be used in an advice to learn more about the method
+	The ProceedingJoinPoint is an extension and it allows you to proceed with the method call, so that's why it's called ProceedingJoinPoint and there is a method called proceed() that allows you to continue the method call
+	So that means if you don't call proceed() on the ProceedingJoinPoint, the original method call won't be executed
+	Example
+		@Around ("execution(* *(..))")
+		public Object trace(ProceedingJoinPoint proceedingJP) throws Throwable
+		{
+			String methodInformation = ...
+			try{
+				return proceedingJP.proceed();
+			} catch (...) {...}
+			finally {...}
+		}
+	So if you look at the around advice, it's the most powerful advice. You can do something before the original method is executed. You can do something after the original method is executed if an exception is thrown, and so on
+	So you could actually use it instead of the Before and After Advice
+	So it is quite powerful but it's also complex
+	So I recommend to use the appropriate advice
+
+6.1 - Introduction (Pointcut Deep Dive)
+
+6.2 - Method Execution Pointcuts
+	So in a way, the pointcut language is like a "SQL for code". You can choose specific parts of your code and add advices to those parts of your code
+	Wildcards in pointcuts
+	Pointcuts in packages and classes
+
+6.3 - Annotations in Pointcut Expressions
+	Pointcuts for annotations
+
+6.4 - Spring Bean Names as Pointcuts
+	Pointcuts for Spring Bean Names aka java config @Bean method name
+
+6.5 - Reusing Pointcuts
+	Pointcut can also be combined using boolean operators
+	The problem is, if you're using the same pointcut expression, you have to repeat yourself
+	Instead, what you actually want to do is you probably want to reuse a certain pointcut expression
+	So what you do is define a class, and in the class you define a method and that method has an annotation, the @Pointcut annotation, and the pointcut expression has the value of that annotation
+	This is somewhat hackish because the method itself is empty. The only purpose of that method is to be annotated, so it's an empty annotation, that's all
+		public class MyPointCuts{
+			@Pointcut("execution(...)")
+			public void traceAnnotated(){}
+		}
+	And once you've defined that annotated method, you can use it as a pointcut expression
+	Example
+		@Around("MyPointCuts.traceAnnotated()")
+		public void trace(ProceedingJoinPoint proceedingJP) {...}
+
+7.1 - Introduction (Expressing Architecture Using Pointcuts)
+	If you look at the typical problems around software architecture, one of the problems is the approach taken towards architecture
+	So often the architecture is described in some documents and there are issues related to that
+		Not read
+		Not followed
+		Lots of boilerplate code 
+	The idea of this module is to use AOP to solve the problem
+	The idea is to add behavior only to the parts that aredefined in the architecture and to do that using AOP
+		1. The way to achieve that goal is to first of all define the architecture using pointcuts
+		2. Then you define the behavior that should be added using advices
+		3. Finally, you should add the correct advices to the correct pointcuts
+	The result is that there won't be any technical boilerplate code anymore, so the code base will be much cleaner
+
+7.2 - Expressing Architecture with Annotations
+	So the question is how do you actually define your architecture?
+	One of the ways to do that is by using annotations
+	The idea here is to use an annotation for each part of the architecture. So we would have one annotation that says, this is a repository, this is a service, and then the correct advices would be added
+	The spring framework already has such annotations. So if you look at the packages org.springframework.stereotype, there is @Service, @Repository and @Component
+	These annotations are orignally used for Spring dependency injection. However, spring dependency injection really doesn't care whether a class is annotated as @Service, @Repository or @Component
+	That just means that dependency injection will be executed on those classes
+	So using annotations, how do we define the architecture? We do that using reusable pointcuts
+	So let's define the architecture as a set of such pointcuts
+	We do that in a class called SystemArchitecture because that's really what it is and here are the Repositories and the repositories match the pointcut expression that looks like this
+		public class SystemArchitecture{
+			@Pointcut(
+				"execution(* (@org.springframework.stereotype.Repository *).*(..))"
+			)
+			public void Repository() {}
+		}
+	For services, we use a very similar pointcut
+	So now, we can use those pointcuts in our system. So we can define behavior using some advices. For example, exceptions should be logged
+	Here's our ExceptionLoggingAspect
+		@Component
+		@Aspect
+		public class ExceptionLoggingAspect{
+			Logger logger = ...
+			
+			@AfterThrowing(pointcut = "SystemArchitecture.Repository() || SystemArchitecture.Service()",
+			throwing ="ex")
+			public void logException(Exception ex){
+				logger.error("Exception", ex)
+			}
+		}
+	Because of @Component, it will become a spring bean and because of @Aspect, aspect annotations might be used in this class
+	Now we just need to add the pointcut
+	And as you can see, this almost reads like an architecture definition. So it says, if the class is a repository or service, then the exception should be logged
+
+7.3 - Expressing Architecture with Packages
+	So we've seen how to express system architecture using annotations. We can do something very similar using package names
+	In our SystemArchitecture, we will have some repositories but this time we will have a different pointcut expression
+	And the rest of the code stays the same
+
+7.4 - Using Pointcuts to Configure Spring
+	There are few more things you can do using pointcuts
+		Configure spring dependency injection container
+		Using this approach, you can avoid quite a lot of dependencies on spring. You spring beans won't be annotated using any of the spring annotations and you could also use your own annotations and you wouldn't have any dependencies on spring either
+
+8.1 - Introduction (How Aspects are Added to Objects)
+
+8.2 - The Proxy-based AOP Model
+	To understand why spring AOP behaves the way it does, you need to understand how aspects are added to objects
+	(Diagram) So here is the original object without any AOP stuff, without any advices. Here's the advice and now what happens is that spring creates a proxy around the original object and this proxy looks like the original object, so it has the same methods and this is injected into the spring bean
+	So if you use the spring dependency injection container, actually what you get is a proxy instead of the original object if you use spring AOP
+	There are 2 ways how proxies are implemented - either dynamic proxies are used, that's a JDK feature, or CGLIB-generated subclasses are used. We'll talk about it later
+	Now the other spring bean does a call to this proxy. The spring bean thinks it has the original object, but in fact, it has the proxy, and now what happens is that the call is forwarded to the original object and also the advice is called
+	So this is how spring AOP works. Instead of the original object, a proxy is used. This proxy pretty much looks like the original object except that advices are added
+	Now what happens if you do a local method call as we saw in the demo? What happens is that the original object just calls itself and the proxy is never executed. For that reason, the advice is also never executed, and that means that such local method calls cannot be enhanced using aspects because the call never reaches the proxy, and therefore, it never reaches the advice
+	Let's take a look at the implication of this. Here's a class
+		public class TxExample{
+			@Transactional
+			public void transactionalMethod(){}
+			
+			public void callsTransactionalMethod(){
+				transactionalMethod();
+			}
+		}
+	The problem is that a transactional is implemented using spring AOP, so the same rules apply that we just saw in the demo and therefore, a transactional will not be evaluated in this case for callsTransactionalMethod()
+	So even though, you might think that you are running in a transaction, actually you are not, and this is, of course, a problem and might lead to hard-to-find bugs and problems
+
+8.3 - CGLIB Proxies vs Dynamic Proxies
+	(demo) You'll notice that the proxy that is used here looks different from the one that we saw in the demo before
+	To understand what we just saw, we need to take a closer look at how proxies are implemented
+		One way to implement proxies is CGLIB. CGLIB allows you to dynamically create subclasses. So if you have a class, CGLIB can create such a subclass and that can be used to implement the proxy. So instead of the original class, this subclass is injected and this subclass calls the original object, as well as the advice, as we just saw
+		Another way to implement proxies are dynamic proxies. That's a feature of the JDK, while CGLIB is an external library. Dynamic proxies allow dynamic method dispatch for interfaces only, so if method on such a dynamic proxy is called, anything might be done. A dynamic proxy is always an implementation of an interface
+	CGLIB is used if no interface is implemented. Obviously, if you have a class without any implemented interfaces, you cannot use dynamic proxies because there's no interface that a dynamic proxy could use for method dispatch
+	Or you can set proxy-target-class to true, as we just saw in the demo, and in that case, CGLIB is also used, it is enforced then
+	So what we saw in the demo basically, first of all I introduced an interfaced that was an empty interface
+	Now dynamic proxies are used because their spring bean implements an interface and, therefore, CGLIB is not used anymore
+	That means that the proxy implements only the interface, not the original class and, therefore, dependency injection can't work
+	The first fix that I introduced was to use proxy-target-class, set that to true. Then CGLIB was used again, even though an interface is implemented and the dependency injection works because there is an instance of the class now
+	The second fix that I introduced was to include all the methods in the interface and use only the interface
+	Using proxy based AOP model that spring provides actually includes some limitations
+		It only works on public methods
+		No protected, private
+		Works only on methods calls from outside
+		Spring dependency injection makes it transparent
+
+8.4 - Creating Proxies Programmatically
+	(demo of using proxy factory)
+
+9.1 - Introduction (Spring AOP vs Aspect)
+	AspectJ is a different systems for AOP for Java
+	The reason why you should probably be interested in AspectJ is because it's actually a lot better than spring AOP in some regards
+	So first of all, it's faster, and it's more powerful, so you can add aspects at a lot more points in your program than Spring AOP allows you to do
+	Also, it's compatible with Spring AOP, so spring AOP uses the same syntax as AspectJ
+	The @Aspect annotation, that's actually an AspectJ annotation, and also @Before, @After, and @Pointcut work with AspectJ
+	And also all the pointcut expressions that you've learned so far with AspectJ
+	The only difference is the bean pointcut expression. That won't work in AspectJ. The bean pointcut expression depends on the spring DI container and AspectJ  is independent from the spring DI container, so that's why it won't work
+	The reason why AspectJ is actually better than spring AOP in a lot of regards, is how aspects are applied in AspectJ
+	AspectJ uses bytecode weaving. That means that classes and aspects are "woven" together in the bytecode
+	The question is when the weaving is done. So the weaving might be done when the classes are loaded or when the code is compiled
+
+9.2 - Load Time Weaving (LTW)
+	LTW is the term for weaving when the classes are loaded
+	The way it works is it's configured in a special configuration file called aop.xml
+	Add an argument to the JVM
+
+9.3 - Compile Time Weaving (CTW)
+	Basically, what you do is you replace the java compiler with the aspectj compiler and that compiler then weaves aspects directly into the bytecode
+
+9.4 - Introduce Errors and Warning
+	AspectJ compiler allows you to do a lot more fancy stuff
+	So one thing that you can do is you can add compile time errors or warnings to your code
+
+9.5 - CTW vs LTW and Spring AOP vs AspectJ
+	Let's take a look at the advantages of using CTW
+		You don't need to change the environment
+		You don't need aop.xml
+		Faster application startup
+		Can add errors and warnings
+	Problems with CTW
+		Cannot weave classes without source code
+		LTW can even modify JDK classes
+		Different compiler
+		Compiler slower
+	Summing it all up, I believe CTW is the way to go (the simplest approach)
+	The main disadvantages of LTW
+		Change the environment
+	For AspectJ vs Spring AOP, which should you use?
+	Pros AspectJ
+		Performance much better - instead of using a proxy and dynamic calls to methods, the bytecode is woven and that is very, very fast
+		Clearer model
+		Can also advise constructor, field access, protected methods, etc
+	Cons AspectJ
+		Spring AOP performance usually sufficient
+		Need to use a different compiler/modify execution environment
+		Spring AOP is already built into spring
+	I would still argue that AspectJ is probably the better alternative. At the end of the day, it's more powerful and also it has better performance
+
+10.1 - Introduction (Spring's Aspect Library)
+
+10.2 - Tracing and Minor Aspects
+	org.springframework.aop.interceptor
+	CustomizableTraceInterceptor
+	SimpleTraceInterceptor
+	DebugInterceptor
+	PerformanceMonitorInterceptor
+	You don't need to implement your own tracing
+	AsyncExecutionInterceptor
+	ConcurrencyThrottleInterceptor
+	Spring Security
+	CacheInterceptor
+
+10.3 - Transactions
+
+11.1 - Introduction (Real Life Aspects)
+	This module focuses on which challenges can be solved using AOP
+
+11.2 - Retry
+
+11.3 - Circuit Breaker
+	Don't use retry in real life
+
+11.4 - JPA / JDBC
+
+11.5 - Error and Exception Handling
+	First Failure Data Capture (FFDC)
+
+11.6 - Filter
+
+12.1 - Next Steps (Next Steps)
+	Spring Reference Documentation for spring and AspectJ (in eclipse.org)

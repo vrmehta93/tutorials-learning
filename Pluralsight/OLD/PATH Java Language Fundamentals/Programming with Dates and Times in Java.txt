@@ -1,0 +1,165 @@
+Maurice Naftalin
+
+2.1 - What's so Hard About Dates and Times? (Overview of java.time)
+	Assuming Java 8
+	Solar year is about 365.242 days long - explanation of leap years
+	Another complication in calculating dates and times comes from people's natural desire to match their activity and sleep times to the hours of daylight and darkness. For most of history, everyone set their start and end of their day according to the rising and setting of the sun. But, when railway journeys and telegraph messages became common, using multiple clocks make time-tabling problems impossibly complex and the world was divided into 24 times zones, 1 for each hour in theory. In practice, the time zone map of the world is extremely complicated and changeable and always subject to politics
+	Daylight Savings Time - rules that fix the dates for these changes themselves often change, and many countries are inconsistent in whether they use Daylight Savings Time at all, often changing their policy on it
+
+2.2 - Basics of the java.time API
+	The continuous flow of time is modeled quite closely by the class java.time.Instant, which contains a displacement in seconds and nanoseconds from the so-called UNIX epoch - midnight on the 1st of January 1970. The constant Instant.EPOCH contains a 0 displacement. There are various ways of making a new Instant. For example, if we want an instant that corresponds to 1 second before 7 AM on April 26 1970, we could construct it using the Instant.ofEpochSecond(9961199)
+	The length of time between two instances is modeled by a Duration. This one could be constructed from that large number of seconds but more commonly yo uwould make a Duration from the difference between to Instants like this Duration.between(Instant.EPOCH, Instant.ofEpochSecond(9961199)
+	A more human-friendly way of representing Instant is provided by an atomic timescale called UTC. The letters come from the initials for coordinated universal time. UTC is a common standard across the world. The international standard for representing dates and times in this format (ISO 8601) - "<year>-<month>-<day>T<hour>:<minute>:<second>Z"
+	ISO 8601 represents zoned date times like this with a time zone offset replacing the single "Z" - e.g. 1969-12-31T19:00:00-05:00. "-05:00 is in a zone 5 hours behind UTC)
+	The java.time classes actually map quite closely to the ISO representation:
+		java.time.LocalDate is a date without timezone info. e.g. 1969-12-31
+		java.time.LocalTime is a time of day without timezone info e.g. 19:00:00
+		java.time.LocalDateTime combines the information in these 2 e.g. 1969-12-31T19:00:00
+		Timezone offset is modeled by an instance of ZoneOffset
+		And all of these pieces of info can be combined in an object of type ZonedDateTime
+	ZoneOffset is only one kind of timezone identifier. It represents a fixed offset from UTC, but a fixed offset may not be enough to calculate the time. You may need Daylight Savings Time info too.
+	Since info about Daylight Savings Time changes is specific to a particular region, a different kind of time zone identifier is required. We need one that contains info about all historical and current daylight saving changes for each location. The java.time formatting methods displays these time zone identifiers like this "1970-04-26T01:59:59:-05:00[America/New_York]" and represents them as instances of the class ZoneId.
+	The last important java.time class is period which which encapsulates a fixed number of years, months and days. A period refers entirely to human time and its duration can vary according to any adjustment being made to the human calendar. For example, if you're sentenced to 1 year in prison, it's hard luck for you if that includes a leap day. You'll be released on the anniversary of your imprisonment having served 366 days, instead of your expected 365
+	Now the design goals of java.time are recognizable, a standard good practice for modern APIs
+		- Classes are immutable which means they can be used without precautions in multi-threaded apps. They have instances that can be safely cached and will work well with Java 8 streams and lambdas
+		- Methods are designed to allow fluent programming so the statements using them read very naturally
+		- The APIs are type-safe so that class cast exceptions are usually prevented by detection of type errors are compile time
+		- Library is extensible so that features that the designers didn't foresee or that didn't belong in the core API can be added
+
+2.3 - java.time - the Core Classes
+	Core classes:
+		Instant
+		ZonedDateTime
+		LocalDate
+		Duration
+		Period
+	Formatting and Parsing:
+		DateTimeFormatter
+	Interoperation:
+		Java had been in widespread use for nearly 20 years before Java 8 shipped, so there's a lot of code around that uses the Legacy classes java.util.Date and java.util.Calendar. No one's going to write new code using these seriously flawed classes, but for a long time there will be a need to interface with old code that uses them. Conversion methods have been added to the legacy classes rather than to the new ones on the basis that the new library shouldn't be cluttered with the need for interoperation that will eventually reduce or disappear. So java.util.Date has a method that will create a new date from an Instant "Date.from(Instant)" and a method toInstant() that will convert in the opposite direction, as does java.util.Calendar. The java.util.TimeZone class is similarly equipped
+		Database storage of java.time objects is important too, and that requires interconversion with java.sql types. So, java.sql.Date has methods for interconverting with LocalDate, and java.sql.Timestamp can interconvert with LocalDateTime assuming the local timezone, and with Instant
+		If your program uses the Java Persistence API for relational database persistence, then you may still be using an implementation of JPA 2.1, which was published before Java 8 shipped. If so, you'll have to provide an adapter, a so-called AttributeConverter, to integrate java.time objects with JPA
+
+2.4 - Demo: a Personal Task Scheduler
+	MonthDay.now() gets the current system date-time and works with that. It means that this program has a hidden dependency o nthe current date-time and that means that it can't be tested with a variety of date-times
+	You should always make it possible for tests to choose date-times, and similarly timezones, when it is exercising your code, which means your program's date-time and timezone dependencies should be explicit. We make these dependencies explicit through java.time class Clock  which combines an Instant with the timezone
+	Every now() method in the java.time library has an overload that takes a Clock argument, and this is the one that you should always use for production code
+
+3.1 - Duration: the Measure of Computer Time (The Basics of java.time)
+	This module is structured around:
+		- TemporalAmount - represents an amount of time with the implementations we've already met - Duration, Period, build from units of time called TemporalUnits
+		- Temporal - represents one or number of points on the timeline. There are various kinds of temporals, but we've already seen - LocalDate, LocalTime, LocalDateTime. Each of these is a mapping from a set of temporal fields, days, numbers whatever, to a number.
+		- TemporalAdjuster - a useful strategy for creating new Temporal objects from existing ones
+	java.time.Duration
+	A Duration is simply a fixed distance along the timeline. Internally, it's implemented as a pair of values representing the number of whole seconds it contains, plus the number of nanoseconds
+	Method types
+		- Factory methods - used instead of constructors to create a new object from its components
+		- Adjustment methods - creates a new object from an existing one by replacing the value of one or more fields
+		- Accessors - which can extract the value of a single field
+	Factory method
+		- a well-established design pattern in which the class exposes static methods for creating objects instead of constructors. The adv to this pattern is that it gives the library class freedome to decide how to create an object instead of forcing the client programmer to choose.
+		- The most common use of this freedom is where the factory decides which subclass to create.
+		- Since Java 8, interaces also can expose factory methods, which really shows the adv of the pattern. But that idea isn't used in the java.time API.
+		- Returning to Duratoin, we can look at the factory methods in detail using the read-evaluate-print-loop tool, JShell, which shipped in Java 9
+
+3.2 - Duration Adjusters and Accessors
+	You know by now that Duration is immutable, so you won't be expecting that the adjustment methods will change anything about the receiver, the object on which the method is called. Instead, all these methods crate a new object based on the receiver but with one or more of its constituent values replaced
+	Java 9 introduced toUnitPart()
+
+3.3 - Period: the Measure of Human Time
+
+3.4 - Temporal Classes: Points on the Timeline
+	java.time.temporal.Temporal
+	Because it's a framework-level interface, which is a client programmer, you will not often have reference explicitly. You'll usually be using its implementations like LocalDate, LocalTime, LocalDateTime and others
+	ChronoField
+
+3.5 - Demo: Creating a WorkPeriod
+
+3.6 - Temporal Accessors and "from" Methods
+	Most of the accessors straightforwardly access the value of a named field
+	There are other accessor methods though. The most important is the general purpose get() method. It accepts any fields and returns the value of that field in the object provided that the object contains it of course
+	Many of the java.time classes have 2 methods. These convert to other types, and it's convenient to look at them alongside accessors. Sometimes it's hard to tell the difference. e.g. LocalDateTime has methods toLocalDate() and toLocalTime() which extract different partsof the LocalDateTime object
+	If there's a LocalDateTime method that converts to a LocaDate, shouldn't there also be a LocalDate method that converts from a LocalDateTime. Indeed, there should be. The java.time library has a general pattern for building objects from the components of others using a static from() method to pull the values it needs out of its arguments
+
+3.7 - Demo: Bulk Population of the Calendar
+	This is a good point at which to explore an alternative approach to generating working days. The adjustment methods we've seen are specific examples of a more general pattern, which is formalized i nthe DateTime API by the interface TemporalAdjuster with a single method adjustInto(). In a way, TemporalAdjuster pattern is the opposite of the from(). Whereas from() pulls values out of its arguments, adjustInto() pushes values into its arguments, which creates a new one, of course, because the argument will be immutable. TemporalAdjuster aren't just limited t osimply replacing single fields. They can make quite complicated calculations
+
+4.2 - Working with Fixed Zone Offsets (Working with Time Zones)
+	ZoneOffset, which represents a fixed time displacement and ZoneRegion representing a time zone named for a geographical region. Both have a common super type in ZoneId and they combine with a LocalDateTime to produce classes with zone info OffsetDateTime and ZonedDateTime
+	ZoneOffset and OffsetDateTime are simpler. It's just a wrapper for time displacement. 0 for standard time or positive or negative depending on whether the time is later or earlier than standard time. We met standard time, UTC, i nthe first module of this course. Although, really UTC is a standard and not a time zone. The java.time library treats it the same as GMT, Greenwich Mean Time, the time zone for London and the UK
+	This time displacement is internally recorded in seconds, although, all real-world zone offsets are actually a whole number of minutes. The factory and accessor methods of ZoneOffset are very like those of the LocalDateTime classes of the previous module, and there are no adjustment methods for so simple an object
+	OffsetDateTime - this is the first complete date-time class that we've met, one that has enough info to provide an absolute position on the timeline
+	One consequence is that OffsetDateTime has a very close relationship with Instant
+	The class offers convenient adjustment methods for changing the offset. withOffsetSameInstant() allows you to move between different OffsetDateTimes and adjust the local DateTime part so that the result still points to the same place on the timeline
+	withOffsetSameLocal() simply replaces the offset, leaving the LocalDateTime part untouched so that the position on the timeline will change by the amount that the offset changes
+
+4.3 - Demo: Translating an OffsetDateTime
+
+4.4 - Regional Time Zones and Daylight Saving Time
+	ZoneRegion represents a geographical region that has the same time zone everywhere within in. The class ZoneRegion is packaged private so the public API of java.time library doesn't refer to it at all. The only way you can make a ZoneRegion object is with the factory method of ZoneId. Remember that one big adv of using factory methods is that the super class, in this case, can choose at runtime which subclass to create
+	The ZoneId factory method takes a string argument, which is either assigned number, which creates the zone offset of course, or a region based identifier from the internet time zone database which ships with its JDK and whose 600 or so region IDs have the form "area/city"
+	The other component of a ZoneRegion is a set of rules for that region which provides historic data about Daylight Saving Time and predict future daylight saving transitions. These rules are derived by the java.runtime from the internet time zone database. They are politically determined and change often. So if Daylight Savingt Time changes are important to you, you must be sure to use an up-to-date version of the time zone database shipped with the JDK
+	The database can be updated independently of your JDK. If you're using the Oracle JDK, the Oracle Timezone Updater Tool will be what you'll want
+		https://www.oracle.com/java/technologies/javase/tzupdater-readme.html
+	For  other JDKs, Azul have produced an equivalent time zone updater
+	ZonedDateTime implements Temporal. So we've already seen mabyt of its methods
+	Perhaps the biggest "got you" is that you do need to account for ZoneDateTime split personality. It's date-based adjustment methods use the LocalDateTime, where as the time-based ones translate to the UTC timeline and do their calculations there. This can lead to odd looking results
+
+4.5 - Demo: Populating WorkPeriods
+
+4.6 - Calculating the Time Between Two Temporals
+	There are 2 main ways depending on the form in which you want to get the result. If you want a temporal amount, a duration or a period, use the TemporalAmount.between() method of one of those classes. If you want the answer in terms of ChronoUnits, ChronoUnit.UNIT.between() method
+	If we want to know the duration, we would have to supply DateTime arguments
+	Everwhere you can write a call of ChronoUnit.between(), you could instead write a call on the temporal method until(), which does the exactly the same work
+
+5.2 - the Interface TemporalAccessor (Formatting and Parsing)
+	ZonedDateTime.toString() and .parse() - same format
+	But if you need to create/use a different format, the java.time library offers features that allow infinite variations, including accomodating variable and even malformed representations. Before we get into how to work with these representations, we need a quick intro to the interface TemporalQuery
+	The LocalDate.from(Temporal) method is an example of a TemporalQuery. What it acts on is a collection of field mappings. In general, an implementation of an interface called TemporalAccessor. The way things fit together is this, as you know DateTime objects like LocalDateTime, ZonedDateTime, LocalDate, and so on are implementations of the interface Temporal. Because these are all collections of field mappings, they're also implementations of TemporalAccessor. That's what a TemporalAccessor is, a collection field mappings (from TemporalFields to numbers). What makes Temporal different from TemporalAccessors in general is that they also expose adjustment methods, as well as the TemporalAccessor methods to read the mapping values. If there's enough info in a TemporalAccessor to create a Temporal from it, a TemporalQuery, a from() method, will do the job
+	How does string parsing and formatting fit into this picture? We're now discussing the parse and format methods of the class DateTimeFormatter. We'll see how they fit with the native methods we just looked at. Formatting a TemporalAccessor creates a string representation, and in general, if parsing succeeds, it produces a mapping from fields to numeric values, in other words, a TemporalAccessor, not a Temporal. So you can parse a string containing whatever field values you want, for example "10:15", this one representing hours and minutes only into a TemporalAccessor, which will hold them as field mappings. But for a TemporalQuery like a from() method to succeed, there has to be enough info to make a DateTime object. If the string I'm parsing does have enough info, you can first parse it to a TemporalAccessor, then use a TemporalQuery, in this case, LocalTime::from or you can supply the TemporalQuery LocalTime::from to an overloaded parse method that will apply it for you
+
+5.3 - Formatting and Parsing Temporals with DateTimeFormatter
+	DateTimeFormatter is the class that does all the heavy lifting of string into conversion. The choices of string representation that it offers can seem overwhelming at first. Here's how to not be overwhelmed (flow chart):
+		- Is the format a standard one? (from API documentation)
+			Y - DateTimeFormatter has pre-defined instances corresponding to each of these. DateTime objects have their default formats
+			N - Does it fit a combination of predefined date and time styles?
+				Y - You can use one of the factory methods .ofLocallizedXxx(). These are ofLocalizedDate(), ofLocalizedTime() and 2 overloads ofLocalizedDateTime
+					- When you create a DateTimeFormatter using one of these factory methods, it automatically incorporates the JVM locale, which is usually acquired from the host platform
+				N - If these pre-defined styles still haven't given you the format you want to use, your next step is to look at how DateTimeFormatter patterns work
+					Y - .ofPattern() factory methods - The symbol of these patterns and number of occurences of them control the content of the string representation. There are too many patterns, symbols, and rules to list them all 
+					N - For advanced users, even a pattern may not be flexible enough. The most flexible and advanced way of creating a DateTimeFormatterBuilder. This is an implementation of the well-known Builder design pattern, which simplifies the construction of complex objects by configuring their construction in a separate object
+						- A DateTimeFormatterBuilder can be configured with any of the characteristics that a pattern can give it, and with some other advanced features that are only available through this builder like default value for fields, controlling case sensitivity of parsing, inclusion of behavior of entire existing DateTimeFormatters and many others
+						- Once the builder is fully configured, you can call its method toFormatter(), to create the DateTimeFormatter itself
+
+5.4 - Formatting and Parsing TemporalAmount
+	DateTimeFormatter is all about stream representations of TemporalAccessor objects. It won't help with formatting or parsing the TemporalAmount implementation's period and duration. This problem hasn't received much love compared with what has gone into DateTimeFormatter, though later we'll see where we can get some help outside the JDK. But let's look at what's available within the JDK with the methods toString() and parse()
+
+5.5 - Interconvsion iwth Other Java Date-Time Classes
+	(Table)
+	Legacy types - java.util, java.sql and java.nio.file.attribute.FileTime
+	java.time Equivalents and Conversion methods
+	 - java.util.Date (milliseconds since epoch) - java.time.Intant (seconds and nanoseconds since epoch; to java.time = toInstant(); from java.time = from(Instant)
+	 - java.util.GregorianCalendar (handles historial dates) - java.time.ZonedDateTime (Gregorian calendar only); to java.time = toZonedDateTime and toInstant(); from java.time = from(ZonedDateTime)
+	 - java.util.SimpleTimeZone (single daylight saving time rule) - java.time.ZoneId (historial daylight saving time rules); to java.time = toZoneId(); from java.time = getTimeZone(ZoneId)
+	 - java.sql.Date and java.sql.Time (milliseconds since epoch) - LocalDate and LocalTime (interprets in JVM's time zone); toLocalTime() and toLocalTime(); valueOf(LocalDate) and valueOf(LocalTime)
+	 - java.sql.Timestamp - Instant; toInstant() and toLocalDateTime(); from(Instant)
+	 - java.nio.file.attribute.FileTime - Instant; toInstant(); from(Instant)
+
+5.6 - Database Persistence
+	The last kind of interconversion that we'll look at is interconversion with relational data. The way to persist a java.time type to a relational database depends on the persistence technology you're using. JPA 2.1 provides no support, so you have to write an AttributeConverter or use a 3rd party implementation. JPA 2.2 and its successor Jakarta Persistence on the other hand does support a limited set of java.time types
+	The Hibernate implementation of JPA 2.2 from Hibernate version 5.3 onwards goes beyond the standard in supporting a wider range of types
+	The best practice is to use UTC for storing all DateTime values and for your business logic. If you have a user interface that means you accept and present local times, convert them to UTC in your presentation layer. Don't leave it to the database to do the time zone conversions, and beware of databases that may do it anyway
+
+5.7 - Testing java.time Code
+	Make yoru date-time and time zone dependencies explicit: always use .now(Clock) and Clock.getZone() methods
+	Methods of java.time.Clock
+		- Clock combines an instant and a time zone. You can make one from the system time and time zone systemDefaultZone() or systemUTC, system(ZoneId), which is what you may well want to do in production.
+		- You can specify a different time zone, different granularity of ticking and reporting times tickSeconds(ZoneId), tickMinutes(ZoneId)
+		- Or you can create a new clock from an existing one with different properties tick(Clock, Duration), offet(Clock,Duration)
+	For all these clocks, their Instant advances continually after creation. The Fixed factory method is an exception. fixed(Instant, ZoneId) - it produces a clock that always returns the Instant with which it was initialized
+	The accessors of a Clock allow its Instant to be read either as an Instant object or as milliseconds since the epoch instant() or millis() or getZone()
+	Clock is actually an abstract class, and the subclass that we've been using is immutable. But other implementations are available. An interesting one for this purpose is MutableClock which is part of the ThreeTen Extra project
+	ThreeTen Extra consists of date-time classes written for the java.time package and of equal quality to it but which designers felt were not sufficiently central to its purpose to include in the release
+		https://www.threeten.org/threeten-extra/
+	ThreeTen Extra is also where you can find a Julian calendar amongst many others should you need one
+	(Going through an example) We didn't find a bug in the code, but we did find an inadequacy in the test, which is almost as bad. And the only reason we could find that was because externalizing the dependency of the test on time and zone allowed us to change those dependencies and explore corner cases without altering the test code itself. If you have hundreds of unit tests, as I hope you will, this is the way to go

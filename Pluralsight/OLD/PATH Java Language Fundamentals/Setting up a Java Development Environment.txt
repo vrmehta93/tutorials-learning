@@ -1,0 +1,25 @@
+Sander Mak
+
+2.3 - Demo: Installing the JDK (Installing and Running Java)
+	For Windows 10
+	Download latest JDK
+	Setup JAVA_HOME variable
+	Update PATH variable
+	Verify correct installation
+	jdk.java.net
+
+2.4 - Installing the JDK on macOS or Linux
+	On other platforms, the process is actually similar; you download JDK, unpack it, put it into a well-known location, update JAVA_HOME and PATH variables to point to the right JDK directories
+	On macOS, alternative - package manager Homebrew
+		brew tap homebrew/cask-versions
+		brew cask install java
+	On Linux, you can perform the exact same steps
+	If you're running Ubuntu Linux, then it's also possible to use their native package manager to install the JDK
+		apt update
+		apt install openjdk-13-jdk
+		update-alternatives --config java	// useful if you want to install multiple versions of the JDK and switch between them
+
+3.4 - Demo: Using IntelliJ to Write and Run Java (Using IntelliJ for Java Development)
+	IntelliJ by default comes with a bundled Java. You might have to change it depending on your project
+
+4 - (Packaging Java Applications)

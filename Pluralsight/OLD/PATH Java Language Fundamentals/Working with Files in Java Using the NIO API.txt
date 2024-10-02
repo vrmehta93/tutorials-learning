@@ -1,0 +1,154 @@
+Jose Paumard
+
+2.3 - Introducing the Agenda of the Course and This Module (Accessing Files and Directories Using Java NIO Path)
+	Path is an interface and the path is not a file
+
+2.4 - Making the Difference between Instance of File and Path
+	Path is an interface from Java 7. It means that for each file system that there exists, I can have a different implementation of this path interface. And indeed, it is the case. The implementation for a Windows file system is not the same one as the one for Linux file system for instance.
+	Since a file is created on a string, it's just a wrapper on a string that represents a path on a filesystem. It is independent on any file system. And indeed, a file doesn't know anything about the file system it describes a file on
+	Whereas Java 7 introduces a file system class with file system objects, and the path is necessarily linked to an explicit file system. If you do not tell the system which file system you're going to use when you create a path, this system will give you a path linked to your default file system, which is most of the time the case
+
+2.5 - Using Instances of File to Access Files on a File System
+	What can you do with this Path object? Basically, you can do the same kind of thing as with the file object. You can access file in roughly the same way, but you can get more info, especially specific attributes dependent on your file system object
+	So in a nutshell, a path is just used to access a file or a directory on a given file system. You can get info on this file or directory, especially the different elements directory you're going to go through to access this file and the same if it is a directory. You can check if this element contains symbolic links or not. And through different factory methods from the Files class, you can have info on the file or directory represented by this path
+
+2.6 - Creating Path Object Using the Available Factory Methods
+	How can you create instances of this Path object? Path is an interface. So to create instances of it, to get instances of path, you have to use factory methods. Now we have 2 patterns to create those Path instances. The original patterns from Java 7 uses a "Paths" factory class with an "s" and we have 2 get() factory methods on this factory class. And starting with Java 11, we have factory methods directly on this Path interface (with Path.of())
+	Why don't we have these Path factory methods directly on the interface right from the beginning? Well, because in Java 7 it was not possible to create factory method on interfaces. This became possible starting with java 8, so it has been introduced later on
+	Let's take a look at these patterns
+		The first one is called the get() method. And to this get() method, you just give a string, a character representing the path on the file system that will access the file. e.g. Path path1 = Paths.get("c:/tmp/debug.log);
+		The second ones gets this path element by element without giving the separator, and the factory method will create the path accordingly. e.g. Path path2 = Paths.get("c:", "tmp", "debug.log");
+		And you also have a third one that is going to take a URI as a parameter. Now you have a pattern to create this URI which uses another factory method. And once this URI has been created, you can pass it to this get() factory method to get your path instance. e.g. URI uri = URI.create("file://c:/tmp/debug.log"); Path path3 = Paths.get(uri);
+		And if you're using Java 11 or later, you can also use the factory method directly accessible from this path interface. e.g. Path path3 = Path.of("c:/tmp/debug.log");
+
+2.7 - Getting More Information on a File from the File and Path Objects
+	How can you get info on a file or directory using this Path object? You have this Files factory class that has all the methods that takes the Path as a parameter to give yo uthe info you need. You can check if this Path exists or not, if the file or directory you're looking for does exist or not. You can check if this file is a hidden file. You can see if it's a directory or a regular file. And at last you can check if it is readable, writable or if you can execute it
+	All those functinalities are implemented using corresponding methods:
+		Path path = Paths.get("c:/tmp/debug.log");
+		
+		boolean exists = Files.exists(path);
+		
+		// This method can also take a further argument which is a constant called NOFOLLOW_LINKS. That is going to tell the API whether you want to follow symbolic links or not on the file system
+		boolean exists = Files.exists(path, LinkOption.NOFOLLOW_LINKS);
+		
+		// Check if two path actually locate the same file
+		boolean sameFile = Files.isSameFile(path1, path2);
+
+3.2 - Introducing the Possible Errors When Dealing with Text Files (Reading and Writing Text Files Using the Java NIO API)
+	Binary files are about storing bytes
+	Text files are about storing characters. Now what is a character? A character is also a set of bytes in text file, but it can be interpreted as this or that character using a Charset. And there are really many charsets. The charset we should all be using is probably UTF-8 but this is not the only one that is living around. So the API provides support for that
+
+3.3 - Placing the Text File Support in the Context of Java I/O
+	Java  provides classes to read and write both types of files (binary and text). The classes provided to read and write text files are Reader and Writer further extended by many classes
+	And for binary files, the corresponding classes are InputStream to read the binary files and OutputStream to write binary files
+	Those 4 classes were created in Java IO back in 1995, and they're still used today to read and write text or binary content to file
+
+3.4 - Creating a BufferedReader to Read the Text Content of a File
+	What does it take to be able to read text from a file? It's a very simple process, very simple pattern indeed
+	First you created a BufferedReader. BufferedReader is a Reader. It's an extension of the Reader class. And then through this BufferedReader, you're going to read your file line by line
+		// Create a path
+		Path path = Paths.get("c:/tmp/sonnet.txt");
+		
+		// Get a BufferedReader on the corresponding file
+		BufferedReader reader = Files.newBufferedReader(path);
+		
+		// Read a line (returns null if there is none)
+		String line = reader.readLine();
+	There are many things that could go wrong unfortunately. So let us see one of the weirdest things that could happen. It has to do with the charset you are using. By default, this pattern assumes that the file you're reading is encoded in UTF-8. If that's not the case, you're going to have this kind of exception
+		Exception in thread "main" java.nio.charset.MalformedInputException: Input length = 1 at ....
+	It means that the charset you need is not the default charset. You need to pass an explicit charset as a parameter. The JDK knows a lot of charsets that you can invoke through the use of constants. Here in this example, it's StandardCharsets.ISO_8859_1 that is going to solve your problem
+
+3.5 - Using a BufferedWriter to Write Text Content to a File
+	The pattern is almost as simple as the previous one
+	First step, you need to get a BufferedWriter. Second step, well you just write to that file through this writer and that's it.
+		// Create a path
+		Path path = Paths.get("c:/tmp/sonnet.txt");
+		
+		// get a BufferedWriter on the corresponding file
+		BufferedWriter writer = Files.newBufferedWriter(path);
+		
+		// Write a string
+		writer.write("Hello World!");
+	There are still many things that could go wrong. But the main issue you may encounter when dealing with this pattern is an issue with flushing and closing your writer properly because if you do not do that, then you'll have missing content in your file and this is also very confusing
+
+3.6 - Introducing the Use Case Study of the Live Demo
+
+3.7 - Live Demo: Creating a BufferedReader to Read a File Line by Line
+	Need to call reader.close() to close the resources because it is a resource given by the system
+	Now this pattner calling close() by hand is not the right pattern to use. In fact, starting with Java 7, we have a try-with-resource pattern
+		try(BufferedReader reader = Files.newBufferedReader(path);) {
+			String line = reader.readLine();
+			// Looking at the documentation, readLine() returns null when there's no more lines
+			while(line != null) {
+				System.out.println(line);
+				line = reader.readLine();
+			}
+		} catch (IOException ioe) {
+			ioe.printStackTrace();
+		}
+	Thanks to the use of this try-with-resource pattern, we have the guarantee that the reader will be closed when we exit this try block
+
+3.8 - Live Demo: Handling Non-UTF-8 Texts Using the Correct CharSet
+	If it turns out that you don't have any special characters in your file, you will not see an exception. So this is very important when you consider testing your application to pass those special characters in it
+	Always test your code very thoroughly especially with the special characters because you may end up with buggy code that is going to be very hard to fix
+
+3.9 - Live Demo: Closing a Writer with the Try With Resources Pattern
+	If you check the file you wrote it into and nothing is there. If you see that, it means that most probably, you haven't closed your file
+	In fact, this close() method is calling a flush() method itself and this is the flush methodd that is going to transfer what has been written to the disk
+	If you use of try-with-resource, the close() method from our writer is automatically called when exiting this try-with-resource block
+
+3.10 - Live Demo: Flushing a Writer Properly to Avoid Missing Writes
+	Let us go one step further with this flushing and closing of our writers
+	PrintWriter is a very handy writer. It has a printf() method, a print format, following the same kind of pattern as the C language
+	So a good practice is add the opening of all resources you need as parameters to the try-with-resource pattern
+
+
+4.3 - Live Demo: Reading a CSV File Line by Line Using a For Loop (Analyzing CSV Text Files Using the Stream API)
+	Function<T, R>. T = Input param type; R = return type
+		Assign a lambda function?
+	Stream API introduced in Java 8. The stream API is just about implementing a map filter reduce approach. And it turns out that on this reader object, I have another method called lines() that is just going to return exactly what I need which is a Stream of String. So this stream of string here, I'm going to filter it with filter(), map it with map() and forEach()
+	I can go one step further because in fact on this Files factory class, I directly have a lines() factory method that takes a path as a parameter and that is going to return the stream I need.
+	To be able to open a resource in a try-with-resource pattern, the resource needs to implement a special interface called AutoCloseable
+
+4.4 - Live Demo: Analyzing a CSV File Using the Stream API
+	Stream.empty()
+	flatMap() operation will open all the streams that contain either one instance of Person either nothing. 
+
+5.2 - Manipulating Files on a File System Using the Files Factory Class (Manipulating Files on a File System Using the Java NIO API)
+	What tool do we have in this API to move files around? It all turns around this Files factory class that has a set of methods, to create, delete, copy and move files from one place to the other. Basically all methods are in this Files factory class and you just need to use them
+
+5.3 - Getting Information on a Hierarchy of Directories Using a Visitor
+	Now suppose you're looking for a specific file or set of files, a category of files ina  given hierarchy of directories. You have thousands of files on the directory and you want to find special files among them. You have one pattern for that, again a static method, a factory method, from this Files factory class which is called the find() method. This find method is gong to take a path, which is the root of the directory under which you want to look for info. It takes an integer. This integer is the depth of exploration udner this root, it takes  a second element which is a BiPredicate. This BiPredicate takes a path and a set of attributes. This path represents every elementhe API is going to visit under this hierarchy of directory. so this path can represent a file or it can represent a directory and this set of attributes will give you information on the attributes of this path. Is it a file? A directory? Can you read it? write it? etc. But you can also get the creation date, last modification date, owner, etc. this kind of info. In fact, this attributes object also depends on the file system you are on.
+	So the BiPredicate is called with all the info available on this path element, whether it is a file or directory
+	e.g. If you want to look for a special jpeg image in your set or directory
+		Path dir = Paths.get("e:/images");
+		Path image = Paths.get("image.jpg");
+		Files.find(dir, 3, (path, attributes) -> path.endsWith(image));
+		// Attributes give access to various properties
+		
+	But you can do much more sophisticated stuff. Suppose you want all the files that have been modified or touched in the past 2 hours
+		Path dir = Paths.get("e:/images");
+		Instant twoHoursAgo = Instant.now().minus(Duration.ofHours(2));
+		Files.find(dir,3, (path, attributes)-> {
+			attributes.creationTime().toInstant().isAfter(twoHoursAgo);
+		});
+
+5.4 - Analyzing a Hierarchy of Directories Using the Stream API
+	Being able to find a specific file in a set of directories is nice, but it is not necessarily what you want to do. Sometimes you want to visit a set of directories gathering some info, something like counting all the JPEG fiels you have under those directories, for instance. This could be a use case. And for that yo uneed to visit a set of directories. And in that case, what you probably need is some kind of visitor pattern. Just providing a BiPredicate is not enough. It is not going to solve your problem
+	To address this problem, we have 2 patterns called walk pattern that allows yo uto walk through a set of directories. The first one has been made available in Java 7 and is called walkFileTree. It takes a root driectory as a parameter and a FileVisitor, which is a callback, that is going to be called for any element found in this hierarchy of directories
+	And then we have a second pattern, more recent, that leverages the Stream API. Instead of visiting every element using a callback, it will provide all the elements in a stream, lazily computed so that you don't lose any kind of performance. And you're going to process the content of this directory with a map/filter/reduce approach.
+
+5.5 - Live Demo: Visit Directories with the Files.walkFileTree Pattern
+	walkFileTree() tkaes a FileVisitor as a parameter
+		FileVisitor<Path> visitor = new FileVisitor<Path>()
+	FileVisitor is an interface so we need to implement it. And you can see that there is a bunch of methods we implement. We're not going to implement all of them	because not all of them  are necessarily needed in all the apps
+	***Defines FileVisitor<Path> visitor = new FileVisitor<Path>();
+		That loads a methods that need to implemented. He adds global variable to keep track of how many files visited and how many directories visited.
+		'This is not going to work because the FileVisitor interface, doesn't define this variable. But if I say this visitor is in fact a "var", tell the compiler that this is a FileVisitor of Path, it is going to infer the type of this visitor and get the visibility on this count variable'
+		Changes from to var visitor = new FileVisitor<Path>(); And that works
+	FileVisitor - the core of this walkFileTree pattern. All you have to do is implement your own visitor, pass it as an argument to this walkFileTree, and this walkFileTree will go through all the directories under a given directly and do whatever you want using the visitor pattern
+		Files.walkFileTree(path, visitor);
+
+5.6 - Live Demo: Filtering Directory Content Using Files.walk
+	Files.walk(path) returns Stream<Path> with all the path availabe in the directory
+	Now you need to be aware that this stream is lazily computed, meaning that if you have a find first shortcuts terminal operation on that stream, it will not explore all the hierarchy, thus saving on performances

@@ -1,0 +1,85 @@
+Craig Golightly
+Feb 27, 2020
+
+2.1 - Version Check (Understanding API Versioning)
+	Spring-boot-starter-parent 2.2.4
+	Java 1.8
+
+2.2 - Why Version APIs?
+	The number one reason that you would need versioning is to introduce breaking changes
+	A breaking change would be something that used to work in the old version of the API that no longer works in the new version or that requires some modification by the client in order to continue working
+	Trying to coordinate an API rollout with a breaking change among many organizations that consume your API is a very slow and error prone process
+	Versioning allows you to roll out the new changes while still supporting the existing functionality in a way that is clear to your consumers
+	Let's take a look at the types of changes you can make to your API and the effect those changes have on your consumer from low impact to high impact
+		Whenever possible, you want to make your changes backwards compatible so that they don't break existing functionality. This has little to no impact on existing customers except hopefully fixing bugs and adding new features. APIs can often go for quite some time and never need to introduce a break in change, so versioning becomes unnecessary
+		When there are changes that need to be introduced that are going to be backwards compatibility, that is where versioning can help ease the transition for consumers of your API, as well as simply your rollout process. You can release the new version, then consumers can choose to use the new version at their own pace
+		There are other times when an API is just going to need a rewrite. Many major APIs have gone through this where the service expands in unexpected ways, and the only solution to really address all of the requirements is with a completely new structure of the API. In these cases, the solution requires more than just a new version of the API, but instead it's a rewrite, resulting in an entirely new API
+
+2.3 - Demo: Breaking a Spring Data REST API
+
+2.4 - Comparing API Versioning Strategies
+	There are several different strategies for API versioning. We're going to look at 5 common approaches
+		URI
+		Media type
+		Custom Header
+		Request parameter
+		No strategy
+	URI versioning is popular because it's simple to implement. Somewhere in the URI, usually near the root, a version indicator is placed, such as v1 or v2, then the rest of the URI follows
+	When caching uses the URI as a key, this helps invalidate cache when switching API versions so that hte cache content matches what a particular version of the API is returning
+	One disadvantage of this method is that an entire new subtree is created with each version of the API, which will require testing and validation
+	Another disadvantage could be that the URI itself is changing
+	Normally, media type would be something like application/json. When using media type as a versioning scheme, you would define vendor-specific media types that would then be read on the server side to determine which version of the API to use for that particular call
+	Some people like this versioning strategy because the URI doesn't change
+	Others find it confusing since nonstandard media types are being used as values
+	Using custom header is similar to using media type, but instead of overloading an existing header, you define a new custom header for the client to use to communicate version information to the server
+	With this strategy, the URI doesn't change and some people feel that a custom header is more clear than using an overloaded media type
+	Request parameters are another option to use for API versioning. You can define parameters to append with version information, then that parameter would need to be parsed by the server to determine which version of the API to use for that call
+	In this strategy, the main URI doesn't change, only parameter values
+	Some people dislike this strategy because it can make routing requests more difficult than other versioning strategies
+	Another option you can consider is no versioning at all. Just don't worry about adding a version because you may never need it
+	If the time comes that you do need to make a major change, you may need a rewrite, which wouldn't use versioning anyway or if you just need a new version, go ahead and add it with whatever versioning strategy you wish and the existing non-versioned API can simply become the default if no version information is specified
+	Out of all the versioning strategies we discussed, and a few that we didn't, the most popular tend to be URI and custom header
+
+3.1 - URI Versioning with Spring Data (Implementing URI Versioning)
+	First off, let's talk about the one line of code that's going to save you a lot of time and headache
+		spring.data.rest.basePath=/v2
+	This property adds whatever value you put to the base of the URI path for all of the spring data managed endpoints. You'll add this in your application.properties file
+	Be aware that the base path is only automatically applied to the spring data managed endpoints
+	For any other classes or methods with a request mapping that you want to have the base path added to their URI, you'll need to include the @BasePathAwareController annotation on the class or else the endpoint will only be mapped to whatever is in @RequestMapping
+
+3.2 - Demo: Implementing URI Versioning
+
+3.3 - Deployment and Management Strategies
+	When managing API versions, try to group breaking changes into a single release
+	Releasing versioned APIs isn't something you want to be doing on a frequent basis due to the overhead of managing the versions and getting clients to change
+	Typically, you'll only release major versions like v1 and v2. Using minor versions like 1.1 and 1.2 implies more frequent release schedule than you'll want to do and may confuse clients as minor versions typically do not contain breaking changes
+	For API versioning, the only reason to ever version is because of a breaking change, so stick with major single-digit versions
+	When you release a new version, set an end-of-life date for the previous version. This will vary based on your application, but it should be long enough for consumers to reasonably switch to the new version, but short enough that you don't add unnecessary overhead, supporting the old version longer than you have to
+	When you make a breaking change to an entity, you need to think through what that means for your clients
+		Are you going to need to migrate your back-end data from one version to the next?
+		What coordination is required for a client to switch to a new version? Generally, you don't want to allow clients to use both the old and the new version concurrently, they can use the old version until they are ready to switch, they will stay with the new version
+		Depending on your datastore, you could set up automatic forward syncing of their data so that when they switch, it's all ready to go. But trying to do a two-way sync from old to new and new to old is going to be more complicated and error prone and should be avoided whenever possible
+	Spring Data makes working with entities extremely easy, but it assumes one version of the entity and uses the class name for endpoint mapping
+	If you start trying to create multiple concurrent versions of an entity by appending v1 or v2 to class names, you're getting away from the intended use
+	Also, if you find yourself starting to create classes with all of the built-in spring data CRUD and query methods  written out so you can assign paths to all of them, you're definitely going away from the intended use case and creating a lot more maintenance for yourself going forward
+	There are many things you can do in spring, or JPA for that matter, for this course, we're going to focus on how to handle versioniing in a way that maximizes what the framework can automatically do for you
+	An easy way to implement URI versioniing in your spring data REST API is to leverage source control branching and a load balancer or a proxy server in your deployment
+	When you're ready to make a version 2 of your API, first create a branch for version 1 so that you can continue to bug fix and independently deploy that version of the API
+	You can then make your breaking changes and build version 2. Both versions of the application are then deployed behind a load balancer or proxy server which will look for the v1 or v2 in the URI path, then route the traffic to the appropriate deployment
+	Creating an artifact per version helps avoid mixing up what is supposed to be in which version of the application, so you don't accidentally add a breaking change to the old version of API
+	If there are bug fixes, you can easily port those from the new version to the old version with something like cherry-pick if you're using git
+	Leveraging tools like source control branching and load balancer or proxy server helps remove undifferentiated heavy lifting from your application code and allows you to focus in on the unique value add of your application
+	The result is a repeatable pattern that allows you to follow spring conventions and maintain a cleaner code base as you move through different versions of your API
+
+3.4 - Demo: Creating and Deploying a Spring Data REST API with URI Versioning and a Load Balancer
+
+4.1 - Mapping Custom Headers (Using a Custom Header for Versioning)
+	In @RequestMapping, add param for "headers"
+
+4.2 - Implementing Custom Header Routing
+	(For an entity class) with spring data, we don't have to define every single method. By convention, spring manages all of those methods for us so we don't have to write and maintain all of the CRUD methods for our objects
+	Unforutnately, there isn't a property like basePath that we can just define to introduce custom headers
+	So you could break out everything and add the header annotations yourself. However, that's a lot of extra code to write and maintain, and isn't that why we're using spring data REST in the first place, so we don't have to write and maintain all of that boilerplat code?
+	If you want to utilize custom header to determine which version of your API to run, the best way to do that without giving up the simplicity of spring data REST is to let your load balancer or proxy server handle it
+
+4.3 - Demo: Creating and Deploying a Spring Data REST API with Custom Header and a Load Balancer

@@ -1,0 +1,71 @@
+
+2.2 - Problems with Traditional CI/CD Systems (Jenkins X Aerial View)
+	CI/CD server is ultimately responsible for taking code in our local computer and shipping it to production
+	A core problem with traditional CI/CD platforms like classic Jenkins is that they're un-opinionated and require heavy customization. That means that although the end result is continuous delivery, the journey to get there often requires a lot of work that can take weeks, months, years. This extra work comes from designing and implementing the end-to-end workflow from a local workstation to production
+	Traditional CI/CD tools are not built for the cloud
+	If we try to restart, scale or moving an instance of classic Jenkins, it's state coudl be lost alongside any data that was on the original disk
+	These tools are also resource hungry
+	Another problem - provisioning new agents
+	Because CI/CD server makes no assumption about how an app is deployed, we often come with our own bespoke strategy
+	When we build pipelines, they tend to be custom for each project we build or copied and pasted from similar projects and slightly modified
+
+2.3 - The Opinions of Jenkins X
+	Jenkins X is an opinionated, cloud-native CI/CD platform build on top of Kubernetes
+	Many decisions are made for us and they're implemented for us. This means that once we've finished installing Jenkins X that a new project is deployable all the way to production by default
+	Opinions of Jenkins X
+		Everything runs on Kubernetes
+		All apps are built into Docker images and packaged using Helm
+		We use GitOps
+		Each language has a re-usable default structure (buildpack)
+
+2.4 - Jenkins X Architecture Overview
+	Entry point is GitHub (Prow)
+	Prow -> engine called Tekton. Tekton is a Kubernetes-native pipeline engine and is great for running builds in the cloud provisioning new containers for them on demand
+	Jenkins X hosts all of its own envs within Kubernetes cluster
+
+2.5 - The Differences between Classic Jenkins and Jenkins X
+	General purpose CI/CD server vs entire end-to-end CI/CD platform
+	Runs wherever you like vs runs on Kubernetes
+	Pipeline and project creation boilerplate vs sensible defaults for projects and pipelines
+	Was Originally the pipeline engine for Jenkins X vs No longer used by Jenkins X and replaced by Tekton
+
+3.1 - Overview (Setting up Jenkins X)
+	Provision a Kubernetes cluster with Terraform
+	Use jx boot to install Jenkins X into the cluster
+
+3.2 - Creating a Kubernetes Cluster
+	To install Jenkins X, we're going to do it in 2 steps
+		Create Kubernetes cluster
+		Install Jenkins X
+	This logical separation is important. It means that we can use the best tools for the job for both of these use cases, as infrastructure provisioning and configuration management are 2 entirely different concepts that should be completely independent of each other
+
+3.4 - JX Boot
+	JX is a command line interface for Jenkins X
+	We'll focus on jx boot this module
+	GitOps principles - every part of installation is versioned for git commits
+	It also self-installs itself via a Jenkins X pipeline meaning Jenkins X builds itself. Every time a change is made to the jx boot configuration repo, a new pipeline is triggered which will update the installation
+	Core configuration file that's used to drive the installation - requirements.yml
+	Prerequisites - create github org like a real company; and create a github account that will be used by Jenkins X whenever it performs a commit to a repo aka Jenkins X pipeline bot (as best practice)
+
+4.2 - Anatomy of a Jenkins X Project (Creating Your First Application with Quick Starts)
+	4 basic components to Jenkins X project
+		Project source - app source code
+		Docker file - all services stored in Docker images
+		Helm chart - all docker images wrapped in Helm packages
+		Jenkins X file - Defines the pipeline
+	jx quick start - generate Jenkinx X project
+
+5.2 - Our Journey to GitOps (Managing Environments with GitOps)
+	Issues with Manual Deployment Strategies
+	Automated Deployment Strategies resolves some issues but there are still unresolved
+
+6.2 - Pull Requests with Jenkins X (Working with GitHub Pull Requests and ChatOps)
+	Jenkins X streamlines the pull request workflow
+	Prow - Kubernetes CI/CD system
+	ChatOps - ability to perform chagnes to pull requests through comments
+
+7.2 - Quickstarts and Build Packs Overview (Creating Custom Quick Starts and Build Packs)
+	jx create quickstart
+	Just like quickstarts, Each build pack is open source on GitHub maintained by Jenkins X community
+	Buikd pack project cannot be used to create a new project at all. Instead, it's a collection of Jenkins X files that get applied to an existing project to make it Jenkins X enabled
+

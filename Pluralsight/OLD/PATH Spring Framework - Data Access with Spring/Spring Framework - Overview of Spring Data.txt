@@ -1,0 +1,112 @@
+Andrew Morgan
+Dec 5, 2019
+
+2.1 - Version Check (What is Spring Data?)
+	Spring boot 2.1.9 RELEASE
+
+2.2 - Introduction
+	What is Spring Data? In a nutshell, it's a collection of data-access projects that share a common programming model
+	What this means is whist there are Spring data projects for all sorts of different types of databases from relational to document to graph, each of them shares the same common abstraction
+	One example of this would be the Repository Interface used in all Spring Data projects
+
+2.3 - Why Spring Data?
+	So what are some of the abstractions that Spring data makes use of across all of its projects?
+		CRUD
+		Derived queries
+		Transactions
+		Pagination and Sorting
+		Auditing
+		And more
+	Benefits
+		One of the core benefit is its consistent programming model. Regardless of the underlying data store, whether it's Cassandra, Neo4j or MongoDB, you'll still be working with the same familiar spring data code for all modules
+		This keeps learning curve as low as possible for a developer
+		Reduction of boilerplate code
+		Integrates easily into spring boot
+
+2.4 - Spring Data Module Hierarchy
+	Spring data is a collection of many projects and it can be a bit confusing to understand what is what and how they all relate to each other
+	The parent project is Spring Data Commons, which all the other modules depend on and make use of. Spring Data Commons provides the interfaces or common programming model that everything else implements
+	Making use of spring data commons, we first have our main modules
+		Spring Data JPA
+		Spring Data JDBC
+		Spring Data MongoDB
+		Spring Data Cassandra
+		Spring Data n
+	These main modules are officially backed by Pivotal, the commercial enterprise that owns Spring. This means they're expected to be stable, following the same development and release lifecycle as the rest of the spring framework
+	There are also community modules, which also depend and implement Spring Data Commons. Whilst they aren't officially managed by Pivotal, you can expect the same familiar programming model as the other projects as the majority of the code that you'll be working with will be coming from Spring Data Commons
+		Spring Data Couchbase
+		Spring Data ElasticSearch
+		Spring Data Hazelcast
+		Spring Data Neo4j
+		Spring Data n
+
+2.5 - What We Will Cover and Won't Cover
+	The main focus will be Spring Data Commons
+	The core interface we'll be working with is a Repository interface, providing an abstraction for writing and querying data
+	We'll be using JPA and MongoDB
+	Introduction to transactions
+
+2.6 - Demo Project Overview
+
+2.7 - Demo
+	Dependencies in spring initializr - Spring Data JPA and H2 Database
+
+3.1 - Introduction (Querying Data with Repository Interface)
+
+3.2 - Repository Pattern
+	One of the core patterns that spring data makes use of is the repository pattern
+	In a nutshell, the repository pattern is a persistence ignorant data access abstraction
+	What this means is that rather than querying a database directly, your application code will communicate with a repository interface instead
+	Internally, this interface will have an implementation with some data access code, but from your application's point of view, the repository that you work with will be abstract or hide away all of this entirely
+
+3.3 - Repository Hierarchy
+	The base interface is a Repository interface which all other repository instances inherit from. This is a marker interface with no methods, just arguments for the entity you want to persist and the ID class of the entity
+	Below is the CRUDRepository, the one which is most used in Spring Data projects. As the name implies, it comes with generic operations for creating, reading, updating and deleting entities
+	That's then inherited by the PagingAndSortingRepository, which again, as the name implies, adds additional generic operations for paging and sorting the data, as well as the original CRUD operations
+	Whilst the 3 instances live in spring data commons and used by all modules, the remaining subinterfaces or implementations are module-specific. It's these that will contain all the code specific to the module's database such as JPA or MongoDB repository
+	It's important to note that you're not going to be touching this code yourself and will only be working with the interfaces provides in spring data commons (SDC)
+
+3.4 - Crud Repository
+	Repository interfaces takes 2 arguments
+		The first is the type of entity to persist
+		The second is the type of entity's ID class
+	Below the Repository interface, we have the most commonly used CRUDRepository. This provides CRUD methods out of the box for our entities
+
+3.5 - Demo: Crud
+
+3.6 - Derived Queries
+	Spring Data aims to solve these problems of query boilerplate for derived queries
+	In a nutshell, a derived query is a query geneated by spring data for you based on the method signature
+
+3.7 - Demo: Derived Queries
+
+3.8 - Paging and Sorting
+	Another generic problem that spring aims to solve is the paging and sorting of data
+
+3.9 - Demo: Paging and Sorting
+	Using Sort.by() and PageRequest.of()
+
+3.10 - Swapping Modules
+	Now because we use spring data, if we wanted to migrate to a different database such as MongoDB, a document database, then things wouldn't change so much at all
+	We will only need to swap string data modules
+	There should be very little refactoring required
+
+3.11 - Demo: Swapping Modules
+
+3.12 - Custom Implementation
+	Sometimes, but rarely, the spring data Repository interface as in derived queries might not be enough for our use case
+	If this is the case, we can implement a repository method ourselves rather than leaving spring data to do it for us
+	To get it to work, we need to generate an additional repository interface, which doesn't inherit from the spring data repository. Any method we put there, we can implement
+	We then use composition with our original repository to write our custom method to it
+	So if we want to implement a method with our own code, we put it in a separate interface, implement that interface and then make our repository inherit from that interface
+
+3.13 - Demo: Custom Implementation
+
+4.1 - Introduction (Working with Transactions)
+
+4.2 - Spring Transactions
+	A single transaction contains multiple queries which either all take place or do not take place at all
+	ACID
+	@Transactional
+
+4.3 - Demo: Transactions

@@ -1,0 +1,138 @@
+Maurice Naftalin
+Aug 12, 2020
+
+2.1 - Course Overview (What is Object Orientation?)
+	To begin with, what is object orientation? We're going to spend the rest of this course finding the long answer to that question, but the short answer is it's style of programming in which the unit of behavior is an object, an entity that has both state, that is data held in fields and behavior, called methods in Java, functions in other languages
+
+2.2 - What is Object Orientation?
+	In this first module, we'll see how the whole process of object-oriented programming starts with analysis via use cases, scenarios for how the ysstem will work in practice
+	From these, we'll derive so-called conceptual classes, which correspond to real-world entities
+	(Intro to UML diagram)
+
+2.3 - From Use Cases to Conceptual Classes
+	(examples of use cases)
+	The next phase develops a top level design and further refines the requirements on the system
+	The important product of this phase, indeed, the most important product in object-oriented development is the domain model, which represents real world entities by so called conceptual classes
+	In the next stage, these conceptual classes will evolve into the classes of the java program
+	In real life, you can often find a published domain model that will suite your purposes, but for this example, we will discover the conceptual classes from scratch using one common technique, identifying nouns and noun phrases in the use case descriptions
+	Normally, not all nouns in the use case correspond to domain classes, so it's not likely that you will get this list perfect the first time. It usually takes several iterations of this in the next few stages to get a satisfactory design
+
+2.4 - Class Relations
+	The next design state is to try to determine the relationship of these classes with one another
+	(mapping out use case to psuedo UML diagram)
+	"has-a" relation - one to one relation
+	"is kind of" relation often called "is-a" relation is called inheritance
+	Composition (diamond) and Aggregation (hollow diamond)
+	"*" - anything from 0 upwards
+	Composition - shown with a solid diamond at the composite end. It's not really necessary to show multiplicity at the composite end of a composition
+	Aggregation - relatively looser form of association, shown with a hallow diamond at the composite end
+	Composition and aggregation are not the only kinds of association. There are still looser forms
+
+2.5 - Deriving Software Classes, Part 1
+	(Building UML)
+
+2.6 - Deriving Software Classes, Part 2
+
+2.7 - Demo: Instance and Static Methods
+
+3.1 - Module Overview (Encapsulation and Abstraction)
+
+3.2 - More Class Relationships
+	Remember, composition is the relation when the part object could not exist independently of the composite object
+	Whichever route we choose, the biggest test of our design is whether it achieves encapsulation
+	What is encapsulation? The word is used in two ways
+		When we talk about achieving encapsulation, we mean hiding implementation details, in particular, detail that might vary creating an impact on other parts of the system
+		The word is also used to describe specific mechanisms that achieve that purpose by grouping related code and data into a larger entity
+
+3.3 - Encapsulation
+	(example with UML diagram) Now the code for Line Item has to change becuase of a change in some completely different part of the system. You really want to avoid this. Encapsulation prevents it by isolating the effect of changes to a single class
+	This is often summarized by the slogan "encapsule what varies". The idea is to anticipate changes before they happen, then encapsule the component that will have to respond to these changes so that they don't ripple out into the whole system
+
+3.4 - Assigning Responsibilities
+
+3.5 - Demo: Exercising the System
+
+3.6 - Demo: the Single Responsibility Principle
+	Object oriented design always aims to restrict the responsibility of each class. In fact, this rule is so important that it has a name of its own, "The Single Responsibility Principle", which states that a class should have only one reason to change
+
+3.7 - Demo: Defending Encapsulation
+	Encapsulation isn't just a nice ideal. We need to know how to enforce it robustly
+	One important technique is defensive copying, in which the idea is that we return a copy of internal data. Whatever the client does to that won't affect us
+
+3.8 - Abstraction: Encapsulation or Inheritance?
+
+4.1 - Module Overview (Inheritance and Polymorphi sm)
+
+4.2 - Don't Repeat Yourself
+	DRY principle - Don't Repeat Yourself, because duplicated code invariably leads to maintenance problems
+
+4.3 - The Liskov Substitution Principle
+	Liskov Substitution Principle states that anything that is true of objects belonging to some class must also be true of objects belonging to any of its subclasses
+
+4.4 - Overriding and Dynamic Dispatch
+	This way of resolving method calls at runtime is called dynamic dispatch. It's obviously only used when the same method is defined more than once
+
+4.5 - Demo: Dynamic Dispatch
+
+4.6 - Using Overridden Methods
+
+4.7 - Understanding Inheritance
+
+4.8 - Abstract Classes and the Open-closed Principle
+	Open-closed Principle, which in its java version states that classes and methods should be open for extension but closed for modification
+	The reasoning behind this is to avoid modifying existing code because client code depends on bit, but to allow it to be extended because extensions are a necessary response to new requirements which are always arising
+	You'll be pleased to head that we're also most of the way through learning the basic principles of object-oriented programming
+	These principles, which act as guidelines for the object-oriented developer, are often summarized in the acronym SOLID
+	We've met the first 3 already
+		S - Single Responsibility Principle
+		O - Open-closed Principle
+		L - Liskov Substitution Principle
+	We'll learn about last 2 in the next module
+
+5.1 - Module Overview (Interfaces, Composition, and System Design)
+
+5.2 - Interfaces What Are They, and Why Do We Need Them?
+	In UML diagram, solid line is implementation inheritance, dashed line is interface implementation
+
+5.3 - Demo: Paying through an Interface
+
+5.4 - Demo: The Fragile Base Class Problem
+	(demo of showing Fragile Base Class Problem) There are variations on this problem but the root of them all is that classes can use their own overridable method
+	Doing that breaks encapsulation because the details of a class's implementation become important to subclasses
+	This is called fragile base class problem, and it's important to know about it if you're like Cool Fintech people designing classes intending to be subclassed
+	And if instead you're writing client code, you might light to know of other ways in which you can use libraries that don't make you vulnerable to these problems
+
+5.5 - Delegation and the Decorator Pattern
+	(demo of classic decorator design pattern - Multiple implementations of an interface) It's flexibility in composing different combinations of function without creating a huge class hierarchy is one of the best arguments for using composition instead implementation inheritance
+
+5.6 - The Strategy Pattern
+	GRASP principles/guidelines - General Responsibility Assignment Sofware Patterns
+	(demo of strategy pattern - different implementations of an interface) The idea of a strategy pattern is for a given interface to assign different variants of an algorithm to different implementations with the choice of which to use being made at runtime
+
+5.7 - The Interface Segregation Principle
+	Interface Segregation Principle, which states that client code should not be forced to be forced to depend on interfaces that they do not use
+	By following this principle, you prevent bloated interfaces that define methods for multiple responsibilities, and respecting it helps us also to observe the Single Responsibility Principle
+	Obviously, classes which implement small interfaces will be less likely to accumulate multiple responsibilities
+	Unswervingly following the Interface Segregation Principle won't necessarily produce a good design though. The aim and system design is to right size interfaces so as to maximize cohesion, the measure of how strongly the members of a class belong together
+	Cohesion is often discussed together with coupling, the measure of the dependence between classes, which we always want to reduce
+	System design is all about trade-offs
+
+5.8 - The Dependency Inversion Principle
+	A dependency on another component represents a potential of being affected by changes in it
+	And we know that reducing this potential is the key to creating stable and maintainable systems
+	And since dependencies are actually essential for interaction between system parts, when we need interaction, we should aim for it to be with the most stable components possible
+	But what does that have to do with inversion? The title of this principle contains a rather outdated assumption about people's expectations that high-level components will depend on low-level components
+	The term high-level and low-level in the original statement of the principle contrast high-dependence components with low-dependence ones
+	The Dependency Inversion Principle advises aginst that direction of travel. It tells us that all dependencies should be on abstractions because these are much more stable and less likely to change than concrete implementations, depend upon abstractions rather than on concrete classes
+	Real system designs do contain compromises
+	Like all principles we've explored, the Dependency Inversion Principle is a guideline that will be broken sometimes in real designs
+	The Dependency Inversion Principle is closely related to a slogan, "program to an Interface"
+	The word interface here means something different and more general in the object-oriented world than the java interfaces we've been discussing
+	Although java interfaces do support the idea, this interface is the "I" in the common acronym API, standing for Application Program Interface
+	Everyone understands the word Interface here to carry a connotation of published and stable
+	Sicne the component's API is a constract with its clients, the component's owner can't just change it without considering the consequences for the clients
+	So that slogan would be less widely misunderstood in the java world if it was rephrased to "program to a published, stable abstraction", but then it would be a lot less catchy, and you'd probably never have heard of it
+	Programming to an Interface has 2 big benefits
+		First, it allows the library writers freedom to change their implementation, for example, to improve performance
+		Second, it allows you or your framework to completely change the implementation that you're using, as long as the new one conforms to the same interface
+	It's very common to use this second advantage in testing when, for example, a heavy database implementation can be temporarily replaced with a lighter weight in-memory implementation

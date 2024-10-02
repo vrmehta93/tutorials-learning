@@ -1,0 +1,344 @@
+Jose Paumard
+
+2.4 - Implementing Functional Interfaces with Lambda Expressions(Implementing Lambda Expressions with Functional Interfaces)
+	A lambda expression implements a functional interface. This is a key point and if there is one thing you want to remember from this course is this definition
+	So it means that a lambda expression is NOT a way of writing instances of anonymous classes. If you do not know what an instance of an anonymous class is, you're someone lucky. Don't bother learning that. But if you do, then you need to realize that an anonymous class may implement any kind of interface, not necessarily functional and it can extend any kind of class whether it's a concrete class or an abstract class. And this is not the case for a lambda expression
+
+2.5 - What is a Functional Interface?
+	A functional interface is an interface. That's the point
+	There's only one thing that makes an interface a functional interface. It's the fact that a functional interface has only one abstract method. It means that the default methods, which are methods, and the static methods that you can define in terfaces do not count in this total. Only the abstract methods do count
+	And now there is something a little odd, is that if you add abstract methods from the object class, methods like toString, equals, hashCode, then those abstract methods do not count in the total
+	So a functional interface may have one abstract method, as many default methods as you need, as many static methods as you need, and it can also define the method from the object class
+	Now you may be asking yourself, why would I put methods from the object class in an interface? Any implementation of an interface will be a class, a class that extends object because every class extends Object in java. So this class is bound to have a toString, equals, and a hashCode method. So why would I bother adding them to an interface? Well, in fact, if you check the JDK you will see that several interfaces are adding those methods in their interface. And the reason is simple. It's that those interfaces are changing the documentation of those methods. For instance, if you check the collection interface, there is the equals method that is defined in it. Why? Because the documentation, the semantic of this equals method is changing in the case of collections. It has to be more precise than the general contract defined in the object class. that's the reason why you will find those methods in interfaces
+	The last point is that a functional interface may be annotated with the special annotation called functional interface. But it's not mandatory. If you add this annotation, you are just telling the compiler, "hey, compiler, please help me. And if this interface that I've written is not functional, then give me an error so that I can fix that". It's just your intention that you're writing there. If it's not functional, you will have compiler error, but if you don't put this annotation, you may still have a functional interface
+
+2.6 - Implementing a Functional Interface in Three Easy Steps
+	Let us see an example:
+		public interface Supplier<T> {
+			T get();
+		}
+	Here we have a simple interface called Supplier. It has a parameter T, and it defines one single abstract method, which is the get() method that does not take any parameter, and that returns a T. Is this interface a functional interface? Well, from the definition we just gave, yes, it's a functional interface. It has only one method that is abstract, so this Supplier interface is indeed a functional interface
+	Now the question is, how are you going to implement this interface? I'm going to give you a method that we're going to use use all throughout this course that always work. If you follow very precisely the several steps I'm going to give you, you'll never fail in implementing a functional interface with a lambda expression:
+		1. Just copy/paste the block of the parameter to begin writing your lambda. Here, this block of parameter ("()" part of "get()")) is empty, so we're just copying the opening and closing parathesis
+			Supplier<String> supplier = ()
+		2. ASCII art. You're going to draw a little array. And for that, you're going to use the minus sign and the greater than sign "->". This is called a mega arrow (similar to "fat arrow" in Javascript)
+			Supplier<String> supplier = () ->
+		3. This is where you need to be smart because here you need to provide an implementation for this lambda. What is this lambda going to do? And the answer is it's going to fit my needs. So, you have the answer to that question. I do not. I'm just going to give you an example
+			Supplier<String> supplier = () -> "Hello!";
+	That's it! Only 3 steps
+
+2.7 - Live Coding: Implementing and Running the Supplier Interface
+	Supplier interface is an interface from the JDK. It has been added in Java 8
+	This is interface is indeed a functional interface, so we can implement it using a lambda expression
+		main()
+		{
+			Supplier<String> supplier = () -> "Hello";
+			
+			// Call the method from the interface
+			String string = supplier.get();
+			sysout("string = " + string);
+		}
+	If you're new to writing lambda expressions, this is something you need to get used to. This way of writing things is in fact an implementatoin of a method of the only abstract method you have in a functional interface
+	Sometimes people are saying that a lambda expression is an anonymous method, and I think that it can make sense in some way
+
+2.8 - Live Coding: Implementing and Running the Consumer Interface
+	I'm going to use another interface, also introduced in Java 8, called Consumer.
+		void accept(T t);
+	And what does this consumer do? It just accept values of type T and doesn't return anything. Let's implement that
+		main()
+		{
+			// Change "T" to "String"
+			// This implementation doesn't need to return anything because accept() method returns void
+			Consumer<String> consumer = (String s) -> System.out.print(s);
+			
+			consumer.accept("Hello");
+		}
+	So you can see on those 2 examples that whatever the lambda you need to write, following those very 3 easy steps is going to work for you. You're going to write a lambda that you can invoke later
+	Now you may be asking yourself, but what if I have several lines of code in the body of my lambda expression?
+		main()
+		{
+			// Change "T" to "String"
+			// This implementation doesn't need to return anything because accept() method returns void
+			Consumer<String> consumer = 
+				(String s) -> {
+					sysout("I am inside Consumer");
+					System.out.print(s);
+				};
+			
+			consumer.accept("Hello");
+		}
+	Put your lines of code between the curly braces because, in fact, this is a block of code.
+	You can do the same thing for Supplier but it's going to be a little different because this code needs to return something
+		main()
+		{
+			Supplier<String> supplier = () -> {
+				sysout("I am inside Supplier");
+				return "Hello";
+			};
+			
+			// Call the method from the interface
+			String string = supplier.get();
+			sysout("string = " + string);
+		}
+	So here, you need to put a "return" explicitly
+
+3.1 - Introducing the Module and Its Agenda (Writing Suppliers, Consumers, Predicates, and Functions)
+	All of those 4 functional interfaces are part of a bigger family, that is the java.util.function package. You need to nkow this package because it is used all throughout the JDK as a provider of functional interfaces to write lambda expressions
+	There's only one problem with this package, it's that there are more than 40 functional interfaces in it, which is really a lot. I'm not going to present you all those functional interfaces one by one, that would be a sure way to put you to sleep, and I certainly don't want that. Merely, what I'm going to show you is that there are 4 big categories of functional interfaces, and those categories we're going to see them
+
+3.2 - Using the java.util.function Toolbox to Write Lambda Expressions
+	Those 40 functional interfaces can be put in 4 different categories:
+		1. Supplier - we just took a first glimpse
+		2. Consumer
+		3. Predicates
+		4. Function
+	If you check the collection framework and the Stream API, you will see that especially the predicates and functions are used absolutely everywhere. So it's really important for you to understand those functional interfaces, how you can implement them, and how you can use them
+
+3.3 - Introducing Suppliers, Consumers, Predicates, and Functions
+	First one is a supplier. This is the abstract method from the supplier interface:
+		public interface Supplier<T> {
+			T get();
+		}
+	You need it to implement the right instances of suppliers as a lambda expression
+	The supplier doesn't take any argument and produces any kind of object as long as it matches, of course, the T type you define when you deine your Supplier
+	Second one is the Consumer interface
+		public interface Consumer<T> {
+			void accept(T t);
+		}
+	Consumer interface consumers any kind of object. It's defined on a parameter which is the type of object that's going to consume
+	Next one is Predicate interface. A Predicate is just that:
+		public interface Predicate<T> {
+			boolean test(T t);
+		}
+	It can take any kind of object and will do some kind of testing on it and produce a boolean as a primitive type. A predicate is also an interface with a parameter, so you need to give a value to this parameter
+	In this example, this predicate takes a string of characters and returns true if the string is empty
+		Predicate<String> isEmpty = s -> s.isEmpty();
+	The Predicate is very important because it is used in the filtering operatoins of this Stream API
+	Fourth category is called a Function. A function may be seen as some kind of extended Predicate. A Predicate has to return a boolean. A function, in fact, may return any kind of object. So a Function takes an object and returns another object of another type. Function is built on 2 parameters:
+		public interface Function<T, R> {
+			R apply(T t);
+		}
+	The first one is T parameter. It's the type of the object this function takes. And the second one is the R parameter. It's the type of object that this Function may produce. Example:
+		Function<User, String> getName = user -> user.getName();
+	The function is really important also because it is used in the map operation of the Stream API
+
+3.4 - Adding the Runnable Interface to the Standard Toolbox
+	 There's a bonus one, which is the Runnable interface. It is defined to model a task in Java concurrent programming. If you check the Runnable interface, you will see that it has only one single abstract method called run(), and this run method doesn't take anything and doesn't return anything
+	 This is a method and this is an interface that you can implement using a lambda. Example:
+		Runnable alert = () -> sysout("I'm Groot");
+	And indeed, this runnable interface is the fifth fundamental functional interface used nowadays in the JDK
+
+3.5 - Implementing Pre Java 8 Interfaces with Lambda Expressions
+	With this Runnable interface, you can see a very important point of this functional interface definition. Thie definiton of the functional interface is, in fact, backward compatible. Has the runnable interface changed in Java 8 where lambda expressions and this notion of functional interfaces has been introduced? The answer is no. The runnable interface was not touched. But with the definition of the functional interface we have, it suddently became a functional interface without having to touch it
+	And this is precisely the reason why this functional interface annotation is not mandatory. If it had been mandatory, this runnable interface wouldn't have become a functional interface starting with Java 8
+	Since this annotation is optional, you do not need it, and this runnable interface, back from the old days of Java 1, is now a functional interface that can be implemented using lambda expressions. And this point is very important for you because it is something you can use in your code. If you have all parts of your app code that has been written years ago before the days of Java 8 with interfaces that become functional now we're using Java 8 or Java 11, then you can implement them using lambda expressions without having to recompile them
+	This is a very powerful point of lambda expressions in Java
+
+3.6 - Live Coding: Filtering a List with a Predicate
+	List.removeIf() takes a predicate.
+		Predicate<String> filter = (String string) -> string.startsWith("t");
+		strings.removeIf(filter);
+	By the way, I can write it in a simpler way because, I do not need to tell the compiler that this parameter is of type String. The compiler is smart enough to check that itself. And since I have only one parameter in this predicate, I can get rid of the parentheses.
+		Predicate<String> filter = string -> string.startsWith("t");
+	This is another way of further simplifying the code
+	List.forEach() method takes Consumer as a parameter
+
+3.7 - Live Coding: Mapping a List with a Function
+	The same syntax can have different types since you do not provide the type of the parameters of the lambda. This is very important to remember that the compiler is herer to help you,  but somehow it made it a little confusing code. So, if you're not familiar with this, you can make things more explicit by putting the lambda expression into a variable just to make things more clear and explicit for you
+	If you're more comfortable with this, then use that and odds are with a little habit, you will not need that kind of thing anymore
+
+3.8 - Wrapping up the Four Categories of Functional Interfaces
+
+4.2 - How Fast Are Lambda Expressions? (Invoking a Lambda Expression on Objects and Primitive Types)
+	How fast lambda expressions are? I started this course with telling you that lambdas are not the same as instances of anonymous classes, and I'm certainly not going to tell you the contrary now. This is still true, of course, but what you can put in a lambda can be written also in an instance of anonymous classes. So you can have an equivalent return in a lambda expression and in an instance of an anonymous class.
+	And this is very useful if you want to make some comparisons. The first thing you may want to compare is what did the compiler generate foryou, and it turns out that the code generated by the compiler has nothing to do in the case of a lambda and in an instance of an anonymous class that does the same job as this lambda expression. Lambda expressions are compiled using specific bytecode instructions called "inokedynamic" introduced in Java 7, almost specific to lambda expressions. 
+	So if the compiled code is not the same in both cases, you can expect the performances to be very different, and indeed they are very different. If you compare precisely and measure the differences in performance between lambdas and anonymous classes, you'll see a 60x difference in the execution of your code and that's really a lot
+	But in fact, in some cases, you can go even faster, and this is what I'm going to show you
+
+4.3 - Estimating the Performance Cost of Auto Boxing
+	What you want to avoid when writing lambda expressions is a mechanism introduced in Java 5 called autoboxing. What is autoboxing?
+	Autoboxing is a trick used by the compiler to automatically convert a primitive type, let's say an int, to an object. And for the int, this is going to be an Integer
+	An Integer is an object, it has a method, it extends the object class, and it is just a wrapper on an int, which is a primitive type, which is only a value. And this is called autoboxing
+	On the other hand, you have the auto unboxing that opens this wrapper and returns the primitive type contained in it
+	Example:
+		comparator<Integer> cmp = (i1, i2) -> Integer.compare(i1, i2);
+		int compared = cmp.compare(10, 20);
+	If you take a closer look at how you're going to invoke this comparator, you can see that you're going to call the compare method, passing in this example, 10 and 20 as primitive types/values. So, to conduct the comparison, the compiler is going to box those primitive values to be able to compare them in this compare method that takes Integers as a parameter, thus boxing. And to do the comparison, we'll have to unbox those 2 values because the compare static method from the integer class takes ints as parameters. So, you box on the first step, unbox on the second step to return the int value result of those 2 ints
+	The problem is that in your code, it's completely transparent. This boxing and unboxing you do not write it, you do not see it, this is something the compiler gives you, and in that case, it's not a gift you want in your code
+	The problem is that in your app, this boxing and unboxing stuff has a cost because you're moving from the primitive type space to the object space
+	But remember what comparators are for. They are passed to a sort method, so if you need to sort a huge list of integers, suppose a million integers, this comparator is going to be called roughly 20 million times. And even a small amount of performance lost times 20 million may become a performance loss that is going to be see in the overall performance of your application
+	The problem is that
+
+4.4 - Introducing the Specialzied Interfaces for Primitive Types
+	Thankfully, the java.util.function toolbox got you covered on this point, and for each category we saw, you will find a specialized version of the function, predicate, consumers, and suppliers tailored to work with primitive types instead of wrapping types
+	For instance, you have the IntPredicate that takes an int as a primitive type and returns a boolean. You have LongSupplier that does the same, produces longs as primitive types. You have IntFunction<T> takes an int as a primitive type and returns an object of type T.
+	And you have also functions like LongToIntFunction that takes long primitive types and returns int as primitive types. So you have many specializatoins of suppliers, consumers, predicates, and functions for ints, longs, and double primitive types
+
+4.5 - Live Coding: Using a Specialzied Supplier and Function
+	Specialized functions are always named with the following convetion. First, what they take. And two, the type they return. So, in that case, int. So, if I have a function, called DoubleToIntFunction, it takes double as a parameter and returns an int
+
+5.1 - Introducing the Module and Its Agenda (Creating Lamdas by Chaining and Composing Other Lambdas)
+	At this point, some of you may think, but lambda expressions are about functional programming, and we haven't heard about that yet. What's going on? You're right. Lambda expressions are about functional programming, but introducing lambda expressions in Java does not make Java a functional language. Java is an object-oriented language. And thanks to the introduction of lambda expression, some patterns from functional programming have been added to it. And this is what we're going to see now
+
+5.2 - Creating Lambdas by Chaining and Composing Other Lambdas
+	3 examples - consumers, predicates and functions. And in the case of the predicate interface,  you're also going to see how to modify your predicate using default method of the predicate functional interface
+
+5.3 - Live Coding: Creating a Consumer by Chaning Two Consumers
+	Exmaple of chaining consumer interfaces
+		main()
+		{
+			Consumer<String> c1 = s -> sysout("c1 consumes " + s);
+			Consumer<String> c2 = s -> sysout("c2 consumes " + s);
+		}
+	Now what I would like to do is create a third consumer, I'm going to call it c3, that consumes first with c1 and then c2.
+		main()
+		{
+			Consumer<String> c1 = s -> sysout("c1 consumes " + s);
+			Consumer<String> c2 = s -> sysout("c2 consumes " + s);
+			
+			Consumer<String> c3 = s -> {
+				c1.accept(s);
+				c2.accept(s);
+			}
+			
+			c3.accept("Hello");
+		}
+	What I Just did is that created a consumer on top of two other consumers
+	Now, it turns out that we have a method on the consumer interface exactly to do that. Instead of writing the explicit implementation of c3 in that way, I'm going to write
+		main()
+		{
+			Consumer<String> c1 = s -> sysout("c1 consumes " + s);
+			Consumer<String> c2 = s -> sysout("c2 consumes " + s);
+			
+			// andThen()
+			Consumer<String> c3 = c1.andThen(c2);
+			
+			c3.accept("Hello");
+		}
+	If I write c3 in that way, it means that all the strings of characters I'm going to pass to c3, are going to be passed first to c1 and then to c2
+	So now there's something mysterious going on here because I just told you at the beginning of this course that functional interface has only one abstract method, but I also told you that it may have as many default methods as you want. So obviously, since I already have an abstract method which is called accept(), andThen() cannot be an abstract method, it has to be a default method
+	Just realize that adding default methods to functional interfaces bring the possibility to chain lambdas or to compose them
+
+5.4 - Live Coding: Applying Boolean Operations on Predicates
+	Example with Predicate
+		main()
+		{
+			Predicate<String> isNull = s -> s == null;
+			
+			Preciate<String> isEmpty = s -> s.isEmpty();
+			
+			// Chain here to check if string of characters is neither null nor empty
+			Preciate<String> p = isNull.negate().and(isEmpty.negate());
+			
+			sysout(null);
+			sysout("");
+			sysout("hello");
+		}
+
+5.5 - Live Coding: Creating Comparators with Factory Methods
+	Example:
+		main() {
+			List<String> strings = Arrays.asList("one", "two"..."nine");
+			
+			// Compare strings in natural alphabetical order
+			Comparator<String> cmp = (s1, s2) -> s1.compare(s2);
+			
+			strings.sort(cmp);
+			sysout(strings);
+		}
+	When you have 2 or more parameters to your lambdas, then you need to keep the parentheses
+	What I would like to do now is sort the string not in that order, but to the shortest to the longest string 
+		main() {
+			List<String> strings = Arrays.asList("one", "two"..."nine");
+			
+			// Compare strings in natural alphabetical order
+			Comparator<String> cmp = (s1, s2) -> s1.compare(s2);
+			strings.sort(cmp);
+			sysout(strings);
+			
+			// Compared based on length
+			Comparator<String> cmp2 = (s1, s2) -> Integer.compare(s1.length(), s2.length());
+			strings.sort(cmp2);
+			sysout(strings);
+		}
+	Now, let us take a closer look at cmp2. What is this cmp2 really doing? It's just comparing strings of characters, and we know that because it's a comparator of string, so we already have this info. And depends on the fact that I need to extract a special property of those strings, which is the lengths of those strings. And once I have the lengths, I am just using the natural order to compare the resulting integers. So, in fact, this comparator of string only depends on the fact that I'm extracting the length of those strings
+	It turns out that the comparator has been built in a way where I can create comparators just by providing this property extractor as a function. Let me write a function:
+		main() {
+			List<String> strings = Arrays.asList("one", "two"..."nine");
+			
+			// Compare strings in natural alphabetical order
+			Comparator<String> cmp = (s1, s2) -> s1.compare(s2);
+			strings.sort(cmp);
+			sysout(strings);
+			
+			Function<String, Integer> toLength = s -> s.length();
+			
+			// Compared based on length
+			Comparator<String> cmp2 = Comparator.comparing(toLength)
+			strings.sort(cmp2);
+			sysout(strings);
+		}
+	So this kind of a key extractor, we could call it in that way. And from that, we can say that this comparator is just comparing my strings of character using this function. comparing() si a static method from the Comparator interface. It doesn't make this Comparator interface not a functional interface because as we said it at the very beginning, only abstract methods are limited to one. I can have any number of default methods and any number of static methods in this functional interface
+	And I'm just pasing this function, which is a key extractor, as a parameter
+	So, in fact, the static method is here to create instances of comparators, that is to create lambda expressions for me without having to write them
+	But you can think that this function is returning an Integer instead of an int primitive type. so creating this comparator is going to box the int primitive type into integer wrapper types, and this, I want absolutely to avoid that, especially in comparators. Let me make this function a ToIntFunction
+		main() {
+			List<String> strings = Arrays.asList("one", "two"..."nine");
+			
+			// Compare strings in natural alphabetical order
+			Comparator<String> cmp = (s1, s2) -> s1.compare(s2);
+			strings.sort(cmp);
+			sysout(strings);
+			
+			ToIntFunction<String> toLength = s -> s.length();
+			
+			// Change from using comparing() to comparingInt()
+			Comparator<String> cmp2 = Comparator.comparingInt(toLength)
+			strings.sort(cmp2);
+			sysout(strings);
+		}
+	So you need to be aware that the ToIntFunction of string has nothing to do with the function that takes a T and returns an integer in the form of R. It doesn't work like that, the type system of that function doesn't work like that. So this is the right way of creating this cmp2 comparator
+	Under the hood, there's no boxing occuring to compare the ints, which are the length of those strings of characters
+
+5.6 - Live Coding: Combining Comparators with Their Default Methods
+	 Example with User object has name and age attributes:
+		main() {
+			User sarah = new User("Sarah", 28);
+			...
+			
+			List<User> users = Arrays.asList(sarah, ...);
+			
+			// Compare name
+			Comparator<User> cmpName = Comparator.comparing(user -> user.getName());
+			// compare age (if they have the same name)
+			Comparator<User> cmpAge = Comparator.comparing(user -> user.getAge());
+			
+			// Chain comparators
+			Comparator<User> comparator cmpName.thenComparing(cmpAge);
+			
+			users.sort(comparator);
+			users.forEach(u -> sysout(u));
+		}
+	This thenComparing() method is itself a default method from the Comparator interface that allows me to chain comparators
+	So, the comparator API allows me to chain comparators between themselves. And it can do many, many more things
+	reverse() method example. That is once you've created a comparator, suppose you want to sort a list in the reverse order, just call the reversed() default method from the comparator interface
+		main() {
+			User sarah = new User("Sarah", 28);
+			...
+			
+			List<User> users = Arrays.asList(sarah, ...);
+			
+			// Compare name
+			Comparator<User> cmpName = Comparator.comparing(user -> user.getName());
+			// compare age (if they have the same name)
+			Comparator<User> cmpAge = Comparator.comparing(user -> user.getAge());
+			
+			// Chain comparators
+			Comparator<User> comparator cmpName.thenComparing(cmpAge);
+			// Reverse order
+			Comparator<User> reversed = comparator.reversed();
+			
+			users.sort(reversed);
+			users.forEach(u -> sysout(u));
+		}
+	This comparator interface is extremely rich. It's also a little complex, but it's really worth studying if you want to master it completely

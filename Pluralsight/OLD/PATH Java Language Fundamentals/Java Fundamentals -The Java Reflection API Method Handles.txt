@@ -1,0 +1,594 @@
+Jose Paumard
+
+2.1 - Introducing to the Course, What Are You Going to Learn? (Introducing Java Reflection)
+	Reflection API introduced in Java 1
+	Method handles introduced in Java 7
+	The reflection API is about reading and modifying the content of an object at runtime without any prior knowledge of the structure or even the class of that object at compile time
+	In fact, the reflection API is about discovering the content of an object and the structure of its class at runtime
+	All major Java frameworks use it
+
+2.2 - Who Are You? What Should You Know To Follow This Course?
+
+2.3 - Agenda of the Course
+	This course is application oriented in a way that we're not going to cover all the methods and all the classes brought to the JDK by the Reflection API, but merely minimum we need to create 2 small applications
+
+2.4 - Agenda of this Module
+
+2.5 - Introducing the Java Reflection API: Calss, Field, and Method
+	There are several fundamental classes that you need to know in this API, and the name of those classes are the following:
+		the class Class
+		the class Field
+		the class Method
+		the class Constructor
+		the class Annotation
+	The idea you need to keep in mind is that each of those classes provides a model for a fundamental element of a class. And from Class object, we're going to be able to access those fundamental elements one by one
+
+2.6 - Introducing the Class Named Class, GEtting an Instance of Class
+	First, it is not possible to create yourself a Class instance. In fact there is a way to create class instances, a very particular way, very technical, which is sometimes used in certain frameworks. We're not going to cover this point. This is outside the scope of this course
+	So the question is, how is it possible to get a reference to a class instance? There are several patterns to do that
+		The first one is querying an existing object for its class
+		The second one is that hwen you know a class by its name, it is easy to get a reference on the corresponding class object (at compile time)
+		Third, when you get the name of a class at runtime only, that is your name that is not known at compile time, you can also get a refrence on the corresponding class as long as this class is known from your application
+
+2.7 - Getting a Class Instance Using the Object.getClass() method
+	getClass() method is declared on the Object class
+		String hello = "Hello";
+		Class helloClass = hello.getClass();
+	It is worth noticing that if you call the getClass() method on another string object, what you get is a reference on this same object
+	A java application only loads a class once so you have only one instance of a given class at a given time
+	If you check the exact signature of the getClass method from the Object class, you will see that it returns, in fact, a class of question mark type
+		Class<?> getClass();
+	And this is worth pointing out because it may lead to very confusing compile errors when you are trying to write code that is using this getClass() method. If you just call it on the string of character and put the result in type of Class<?>, it is just working just because the type is the same as the getClass() return type
+		Class<?> helloClass = "Hello".getClass();
+	But if you try to put the results in a Class<String>, which may look natural, then you get this odd compiler error
+		Class<String> helloClass = "Hello".getClass();	// Compile ERROR
+	And it cannot be put in a variable of type Class<Object> either, which may look even more confusing
+		Class<Object> helloClass = "Hello".getClass();	// Compile ERROR
+	The reason for that lies in the way generics are working in Java. In fact, Class<String> or Class<Object> are not extensions of the Class<?>. This is the reason why the compiler will give you this error
+	If you want to write this kind of code, what you need to write really is the following
+		Class<? extends String> helloClass = "Hello".getClass();
+		Class<? extends Object> helloClass = "Hello".getClass();
+	The first of this type is the exact type of the "Hello".getClass()
+
+2.8 - Getting a Class Instance from the Name of the Class
+	The second way is always very classical, very well known, using the .class:
+		Class<?> stringClass = String.class;
+	.class will give you a reference on the corresponding Class object
+	Now there is also a third way of getting Class object that is going to work even if you do not known the name of the class at compile time, which is great and gives many opportunities for Reflection
+		String className = "java.lang.String";
+		Class<?> stringClass = Class.forName(className);
+	Class.forName(), the static factory method from the class Class
+	This is very powerful and this is the entry point of many applications based on the Reflection API
+	Now you need to be extra careful when running this code because the forName() method throws several exceptions. Namely, it can throw security-related exceptions in case you do not have the rights to read that Class object to get a reference on that Class object, and it can also throw exceptions related to the fact that the name of the class you're passing is wrong and this class is not known by your application
+	So this code is a little more fragile than the others in the way that it can fail when you're calling Object.getClass or String.class, it will never fail. But it is also much more powerful because you can get a name of a class at runtime and try to load it, try to get a reference on it, and this is what we're going to use throughout the rest of this course
+
+2.9 - Wrapping up the Three Patterns to Get a Class Object
+
+2.10 - Getting the Super Class and the Implemented Interfaces of a Class
+	Now that we have a reference on a Class object, let us see what we can do with it
+	First, we're going to see how to get information on that class itself. The first method we're going to see on this Class object is get the super class method that returns a reference on the super class of that Class object
+	All the class we see in java have at least one super class, which  is the Object class, the default super class. It can also have other super classes explicitly declared in the class file
+	And you can also get a reference on the implemented interfaces if there are any. In fact, interfaces are seen as types by the Reflection API, and they are also modeled as Class object
+	A Class object can be modeled of a proper class, but also of an interface
+		Class<?> clsss = "Hello".getClass();
+		Class<?> superClass = clss.getSuperClass();
+		
+		Class<?>[] interfaces = clss.getInterfaces();
+	getInterfaces() gets an array of interfaces which are modeled by the Class object
+	If you call getSuperClass() method on the Object class, which is the only class in Java that doesn't have any super class, then the reference you'll get will be null
+
+2.11 - Getting the Declare and Non Declared Fields of a Class
+	The second type of information we can get from a Class object is about the content of a class itself
+	There are many methods in the class named Class, methods to get references on the fields, methods, constructors and many more
+	We're not going to cover everything
+	How to get fields from a class:
+		Class<?> clss = Person.class;
+	There are 3 methods to get the fields of this Person.class object
+		Field field = clss.getField("age");
+	It is a nice method but we need to know the Person class and how it is organized internally. We need to know the name of the fields to use this method
+	Suppose it is not the case. Suppose we have loaded this class dynamically, and we do not evne know its name
+		Field[] declaredFields = clss.getDeclaredFields();
+	Second method
+		Field[] fields = clss.getFields();
+	What is the difference between the declaredFields and the fields from a class? The declared fields are the fields declared within the class whether they are private, protected, package protected, or public. The fields of a class are only the public fields, including all the fields from the super classes of this person class
+	For declared elements of a class , there are no inherited elements within the declared elements of a class
+
+2.12 - Getting the Methods and the Constructors of a Class
+	Following the same pattern we saw for the fields of a class, we can also get the methods from within a class
+	We have 3 methods to get the methods from that person class:
+		Class<?> clss = Person.class;
+		
+		Method method = clss. getMethod("setName", String.class);
+		Method[] declaredMethods = clss.getDeclaredMethods();
+		Method[] methods = clss. getMethods();
+	3 Pattern to get constructors of a class:
+		Class<?> clss = Person.class;
+		
+		Constructor constructor = clss.getConstructor(Class<?>... types);
+		Constructor[] declaredConstructors = clss.getDeclaredConstructors();
+		Constructor[] constructors = clss.getConstructors();
+
+2.13 - Reading the Modifier to Tell if a Class Member Is Public
+	One last point to cover which is about the modifiers you cna put on fields, methods, or constructors.
+	The modifiers we can put is going to tell if a field or a method is static or not, abstract or not, final or not, public/private/protected or even packaged, synchronized or volatile, or native
+	Not all those modifiers are available on any kind of element you can find in a class
+	How can you tell if a method is abstract or if a field is static or final? There is a method for that that is available on Field, Method and Constructor objects, and that is called getModifiers()
+	Now if I mention this method here it is because it's not very easy to use it. There is a special pattern for that
+	In fact, this getModifiers() method returns an integer on 32 bits. What can you do with this int? How can it be used to get the information you need?
+	What you need to understand is that this modifier integer is seen by the JDK as a field of bits. Each bit of this modifier integer has a special meaning. For instance, the first bit tells you if the element you're looking at is public or not, second one will tell if it's private, third one if it's protected, and the next one if it's static and so on
+		Field field = clss.getField("name");
+		int modifiers = field.getModifiers();
+		
+		boolean isPublic = modifiers & 0x00000001;
+	What we can do is use a bit mask. We can do that for each modifier we want to read
+	The problem is that it will lead to very hard to read code, very hard to write also, and very error prone
+	the right pattern to use is to use the Modifier factory class:
+		boolean isPublic = Modifier.isPublic(modifiers);
+	Using this factory class is not mandatory, but it will be much simpler and much safer to use it than to write the bit mask yourself
+
+2.14 - Demo: Using the Reflection API to Read Fields and Methods
+
+3.1 - Introduction to the Module and Agenda (Creating an Object Metamodel Using Annotations and Reflection)
+	Adding annotations is about adding meaning, adding a sense to those elements, so it will help us tell which element of this class is the primary key, for example, which one should go in which column and the like
+
+3.2 - Introducing the Mapping of Objects to Database, XML, and JSON
+	Mapping objects to files on databases is a very classical problem. Everybody does that, and you have many many standard tools to do that
+	Suppose you have a person objects in your application. If you need to map those objects to a database, you can do that with JPA, the Java Persistence API, implemented by Hibernate on the EclipseLink just to name a few
+	If you want to amp those same objects to XML files or streams, you can use the JAX-B to do that
+	And to save for JSON, if you need to map them to JSON file, you can use JSON-B to do that
+
+3.3 - Creating a Metamodel by Adding Annotations to Fields
+	First, let us see how we can create a metamodel. That is something that we're going to add to our Java classes to add some semantic to the fields of our classes
+	The information we need is quite simple. It is what to save from the objects we're dealing with and how to save it
+	From a technical point of view, what we need is to add metadata to the Person class, and we're goingto do that using annotations in Java
+	Sample Person class - adding @PrimaryKey to id field, and @Column to age and name fields
+	How can we create annotations in Java? It's extremely simple. What you just need is to create an interface,
+		public @interface PrimaryKey {}
+		public @interface Column {}
+
+3.4 - Using the Reflection API to Read and Write a Field of an Object
+	Now that we have annotations on our fields, now that we know which field should be reading or writing in what context, how can we use the Reflection API to read and write a given value to a given field?
+	The problem is the following:
+		We have a Person bean and we want to read the content of this person bean without knowing that is an instance of the Person class. We want to do that using the Reflection API
+		And then when we have read the content of that bean, we want to be able to write this content to any kind of storage whether it is a file, XML file, JSON file, or even a database
+		Then the question is how to read fields using this Reflection API and after that, how to write some value back to a person bean
+	 Setting the value of a field - the first parameter of Field nameField.setValue() is the instance we want to set the field on, and the second parameter, the value we want to put in that field
+	 Example:
+		Person o = ...;
+		Class<?> = o.getClass();
+		Field field = clss.getDeclaredFields("name");
+		
+		field.setValue(o, "Sarah");
+
+3.5 - Making a Field Accessible to Reading from Outside its Class
+	What about the fact that the name field we're setting is private?
+	If you're outside of the Person class, you do not have access to the private elements of that class. So the question is, is the Reflection API breaking encapsulation? Is it giving you access to the private memebers of a class, and in that way, bypassing all the security checks that can be done by the JVM
+	The answer is a little subtle and is a yes and no
+	If the given field is private and you call the previous code just like that, then you will have an exception which is an IllegalAccessException just because you're not allowed to read a private field from outside of the Person class
+	So no, encapsulation is not broken, and yes there is a security check if you want to access a private member to a class using Reflection
+	But you have a method on the Field class, which is called setAccessible(). And if you pass "true" to this method, you will NOT have this IllegalAccessException anymore
+	Now the reason for that is a little subtle, calling setAccessible(true) does not make a private field public. If you call the getModifiers on that field and you check if the field is private, it is still private. What the setAccessible(true) call really does is that it suppresses the access control on that field
+	And if you do not want that, if you want to prevent this kind of thing in your application, you can set a security manager and configure it to prevent people to be able to do this kind of thing
+	So yes, there is still a security check, and no, this API doesn't completely break encapsulation. It just gives you a control access to the private members of a class if you need it
+	So what we need to do in the previous pattern is just add field.setAccessible:
+		Person o = ...;
+		Class<?> = o.getClass();
+		Field field = clss.getDeclaredFields("name");
+		
+		field.setAccessible(true);
+		field.setValue(o, "Sarah");
+	And the same goes for the read pattern
+		Person o = ...;
+		Class<?> = o.getClass();
+		Field field = clss.getDeclaredFields("name");
+		
+		field.setAccessible(true);
+		String name = (String) field.getValue(o);
+
+3.6 - Designing an EntityManager for Reading and Writing to a Database
+	We now have all the elemens we need, both metamodel and technical, to read the content of a person and to write that content to a storage
+	What we're going to do is the following:
+		We're going to create an interface called EntityManager<T>
+		We'll have 2 methods
+		void persist(T t) - write object to a persistent storage
+		T read(Class<?> clzz, long primaryKey) - get object given it's primary key and class
+	Interface:
+		public interface EntityManager<T> {
+			void persist(T t);
+			T read(Class<?> clzz, long primaryKey);
+		}
+	If you have some knowledge of the Hibernate or JPA frameworks, you will recognize the EntityManager object from those frameworks in a very simplified form, of course
+	So given an instance of any object of type T
+		First, we're going to be able to read the fields of T because we can get a reference on the class of T at runtime
+		Then we check for the annotations on the subject
+		Find the primary key
+		Find the fields we want to read and write from the persistent storage
+	The reflection API will do the rest, read the content of T, get the place in the storage we want to save this instance of T and be able to read the object back from that persistent storage to the memory of our application
+	Let us quickly see how we can proceed:
+		Class<?> clss = t.getClass();
+		Field[] fields = clss.getDeclaredFields();
+		for(Field field: fields) {
+			if(field.getAnnotation(PrimaryKey.class) != null {
+				// this is the primary key
+			}
+			if(field.getAnnotation(Column.class) != null {
+				// this is an element to read/write
+			}
+		}
+	This is the base pattern that we're going to implement
+
+3.7 - Demo: Designing a Generic Metamodel
+	Example of creating basic skeleton of project
+
+3.8 - Demo: Adding Application Specific Annotations to a Bean
+	Exmaple of creating new annotations and adding annotations to Person class
+
+3.9 - Demo: Setting the Retention Policy of an Annotation
+	An annotation is first handled by the compiler, and the compiler needs to decide at what time of the lifecycle of a class an annotation will be made available
+	And there are 3 stages when an annotation can be available
+		First stage is the compile stage itself, so only the compiler will be able to see that annotation if we choose to do so
+		Second stage is the class loading stage. So the annotation will only be seen by the class loader
+		Third stage is the runtime itself
+	If we need to analyze an annotation to take an annotation into account at runtime, we need to tell the compiler to do so. And to do that, we need to add an annotation on the declaration - @Retention
+	The Retention annotation takes an attribute of type RetentionPolicy. And this RetentionPolicy is an enumeration, which may take 3 values
+	Example of adding retention policy to project
+
+3.10 - Demo: Implementing the Generic Metamodel
+	Example of implementing reflection in project
+
+3.11 - Demo: Running the Generic Metamodel
+	Executing sample project
+
+4.1 - Introduction to the Module and Agenda (Creating an Object Relational Mapper Using an Object Metamodel)
+	This module will be mostly live demo because we're going to implement our very simple object relational mapper using the object metamodel that we created in the previous module
+
+4.2 - Introducing the Database Server and the Person Bean
+	Since creating, configuring, installing a database is a tedious process, we're going to use a very simple database, which is an in-memory database taht basically does not need any kind of configuration
+	It is the H2 database
+	Adding a "name" attribute to the @Column to specify the name of the column we want to write those values in
+
+4.3 - Demo: Setting up the Project and Its Dependencies
+	For using H2 database - you do not need to install anything to use this base in this live coding session. All you need to do is to download form here (https://h2database.com/html/main.html) > Download > Jar file > maven.org.
+	Put this jar in this lib folder of your project
+
+4.4 - Demo: Running the H2 Server and Launching SQL Requests
+	Let us configure our project to be able to use this database server
+		Properties > Java Build Path > Libraries tab > Select "Classpath" > Click "Add JARs" > Navigate to the lib folder and select h2 jar file > Click OK > Apply & Close
+	this tab may look different if the version of Java you're using is pre java 9 but basically the steps are the same. What you need to do is add this JAR as a dependency to your project 
+	Create a new main method, and in this main method, all we need to do is just call server
+		main() {
+			org.h2.tools.Server.main();
+			sysout("DB Launched");
+		}
+	We do not need to pass any argument
+	Now what I would like to do is that this H2 server should store its data, table, objects and the like in this directory I've created in the project called "db-files"
+	To do that, we need to check the path of this file
+	In the navigator window of H2, in the URL JDBC, give the path to the db-files and add the name of the file. Let me call it "db-pluralsight"
+
+4.5 - Demo: Writing the Pattern to Create and Persist Person Instances
+
+4.6 - Demo: Creating and Implementing the EntityManager Interface
+
+4.7 - Demo: Building the SQL Query to Insert a Person Bean
+
+4.8 - Demo: Preparing the Statement to Execute the Query
+	Extending stuff is not recommended is not recommended by the patterns from the Gang of Four. Instead of extending objects, Gang of Four tells us to compose objects
+	To create database connection
+		Connection connection = DriverManager.getConnection("jdbc:h2:[path to db-pluralsight]", "sa", "");
+	Default username "sa" which stands for system admin with empty password
+	ISSUE - After launching the Server.main() through Eclipse, Through the H2 browser console, under "JDBC URL", whatever path I used, Kept getting error "not found, either pre-create it or allow remote database creation (not recommended in secure environments) [90149-210]"
+		In CMD - execute first https://h2database.com/html/tutorial.html#creating_new_databases
+			Provide the []path to db-pluralsight]
+			That created the file initially. After that, I was able to pass that path in H2 browser console without any issues
+
+4.9 - Demo: Setting the Primary Key Value to the Insert Statement
+
+4.10 - Demo: Setting the Field Values to the Statement
+
+4.11 - Demo: Running the EntityManager to Persist Person Instances
+	Example setup for writing a generic class to DB
+		Person class - sample class with id (primary key), age and name (non primary)
+		
+		PrimaryKey annotation
+		Column annotation
+		
+		PrimaryKeyField - Field wrapper with PrimaryKey annotation
+		ColumnField - Field wrapper with column annotation
+		
+		Metamodel class - to get primary and non primary fields based on class; also construct sql statement since it has access to field
+		
+		EntityManager<T> - prepare DB statement and execute insert
+
+4.12 - Demo: Creating the Find Pattern and the Select Query
+
+4.13 - Demo: Setting the Primary Key Value to the Select Statement
+
+4.14 - Demo: Creating an Instance of the Object Read from the Database
+	Class<T> clss.newInstance() is deprecated since Java 9
+	The right method to call, even if you're running Java 8, it's better to use this second pattern, is to get the constructor of the class, and on that constructor, to call the newInstance method 
+
+4.15 - Demo: Setting the Primary Key Value to the Object
+
+4.16 - Demo: Setting the Column Values and Reading the Objects
+
+4.17 - Demo: Creating an EntityManager Specific to a Database
+
+4.18 - Demo: Closing Properly the PreparedStatement and ResultSet
+	Close the PreparedStatement with try-with-resource
+
+4.19 - Demo: Specifying the Mapping through the Annotation
+
+5.1 - Introduction to the Module and Agenda (Injecting Dependencies in an Object Using an Object Metamodel)
+	I told you earlier that there are 2 main applications of the Java Reflection API
+	The first one has been covered in the previous modules. It is the object relational mapping
+	And here is the second one, dependency injection. What we're going to see is at the basis of 2 very important frameworks in the Java space. The first one is Java EE, and the dependency injection module of Java EE is called CDI, context and dependency injection, and the second one is, spring based dependency injection engine
+
+5.2 - Applying Dependency Inversion Using Dependency Injection
+	There are 5 fundamental principlse in OOP which are known as the SOLID principles
+		Single responsibility principle
+		Open/closed principle
+		Liskov substitution principle
+		Interface segregation principle
+		Dependency inversion (not dependency injection)
+	Dependency inversion means that if you're designing an object that needs another object to work, a delegate object, then this first object should not try to create itself this delegated object. Instead of that, when you construct this object, you should ask for some other mechanism to inject that delegated object into the first object
+	So a way to implement this is to work with a dependency injection framework. It is not the only way to implement the dependency inversion principle but it is probably nowadays the most classical one you meet in business applications
+
+5.3 - Designing an EntityManager Independent of the Database
+	We're going to work on this example injecting a database connection. We'll use the project from previous module
+
+5.4 - Designing a BeanManager to Perform Dependency Injection
+	What we really want to do is create an EntityManager class that will receive using dependency injection a JDBC connection to a particular database
+		public class EntityManager {
+			@Inject
+			private Connection conn;
+		}
+	On the other hand, we need a connection provider, an object that will be able to create this JDBC connection
+		public class H2ConnectionProvider{
+			@Provides
+			public static Connection createConnection(...) {...}
+		}
+	From a technical point of view, we're going to use a factory method createConnection() and annotate it with this @Provides that we're also going to create that will tell the system that this method, createConnection(), should be used to create the Connection object this EntityManager needs
+	(Diagram) The EntityManager doesn't know anything about this ConnectionProvider, and of course, the ConnectionProvider doesn't know anything either about this EntityManager
+	So those 2 objects are completely separated. They can live in 2 different modules of our application, but then we need some kind of glue object that will use the ConnectionProvider Provider to create this database connection and give it to the EntityManager
+	So we need a third object, and we're going to call it BeanManager, that will be able to wire those 2 objects together. 
+	BeanManager is a classical name for this kind of glue object that is used in both CDI and Spring framework
+	Here is the pattern we're going to use:
+		BeanManager beanManager = BeanManager.getInstance();
+		EntityManager em = beanManager.get(EntityManager.class);
+	The BeanManager needs to create this connection object. For that it needs to locate the right factory method annotated with the @Provides annotation we also need to create, but we know how to do that
+	And then it will need to invoke that method to create the connection object. So it needs to invoke a method using the Reflection API
+	Once it will have created this database connection object, it will need to set it to the EntityManager in the right field annotated wiht this @Inject annotation. This is just setting a field to a given value
+
+5.5 - Getting and Invoking Methods Using the Reflection API
+	How can you invoke a method using the Reflection API?
+	Let us take an example
+		public class ConnectionProvider{
+			Connection createConnection(String uri) {...}
+		}
+	This createConnection method is an instance method of the ConnectionProvider class. It is not static, so we need to invocate on an instance of this ConnectionProvider class
+	First, we need to get the reference of this ConnectionProvider class,
+		Class<?> clss = ConnectionProvider.class;
+	Then we need to create an instance of this class using this pattern
+		Object connectionProvider = clss.getConstructor().getInstance();
+	And then this is the new pattern. We need to get a reference and a particular method of the ConnectionProvider class
+		Method method = clss.getMethod("createConnection", String.class);
+	Invoking this method is done throug hthe use of the invoke method
+		method.invoke(connectionProvider, "jdbc:h2:mem:db_reflection");
+	In case this createConnection method is static, the first argument of this invoke methos is just null since you do not need any object to invoke a static method
+5.6 - Demo: Preparing the Project for Dependency Injection
+
+5.7 - Demo: Updating he EntityManager with Dependency Injection
+
+5.8 - Demo: Creating the BeanManager to Create the BeanManager
+	In this constructor, we need to check all the classes and all the methods that have been annotated with this Provides annotation
+	Because this BeanManager needs to know all the types that it will have to inject in the fields of the object it will have to create
+	For that, it needs to have a list of all the classes of the application that can have @Provides annotation
+	Now getting this list of classes is quite tricky to say the least, and there is not way in the JDK to simply get the list of the classes that have been loaded by an application
+	There are several outside APIs to do that, including Guava, for instance or another API called Reflections
+		https://github.com/google/guava
+		https://github.com/ronmamo/reflections
+	But those APIs are not part of the JDK
+	Since this is not really the problem we want to deal with, we're going to crate this list by hand
+	 
+
+5.9 - Demo: Associating Types to Creation Recipes in the BeanManager
+
+5.10 - Demo: Injecting the Connection Value to Provide the EntityManager
+
+6.1 - Introduction to the Module and Agenda (Improving Performance Using Method Handles)
+	We're goign to talk about performances of this API and about method handles, which is the solution to fix the performance issues introduced in java 7
+
+6.2 - Spotting Security Checks While Calling Reflection Code
+	So first, let us set up the problem. Let us see where do those performance issues come from
+	Let us consider this very simple code
+		Person person = Person.class.getConstructor().getInstance();
+	How does this code work?
+	If we deep dive in the code called by those methods, we will discover this - there are security checks, a SecurityManager is looked for, and if there is one, we have this checkMemberAccess method that is called
+	And later one, we have more security checks. Reflection.ensureMemberAccess will check if the caller is alloweed to use the Reflection API on the subject
+	So every time you're calling a method from the Reflection API, several security checks are conducted to check if your code is allowed to access a class using Reflection
+	And all those checks are checked again every time an access is made. So if the same code is calling the same Reflection method again and again, those security checks will be done again and again just to return the same result
+	This has been spotted quite a long time ago. All those checks are costly and they have a noticeable impact on performance
+	In fact, this is the main reason the Java Reflection API is considered as a slow API
+
+6.3 - Introducing MethodHandles VarHandle and the Lookup Object
+	The entry point of the MethodHandle API is the Lookup object. We saw that the main issue of the Java Reflection API is that the security checks are done again and again on each method call
+	So this Lookup object is going to encapsulate all the security information. We'll check it once. And since those information are not going to change, it will be used all the time when accessing a class, a field or a method
+	From this Lookup object, you can create MethodHandle instances to access the class itself, the methods within that class, and the fields within that class
+	So this single method handle will give you access to all the content of the class that was distributed among several objects in the Reflection API, namely, method, constructor, and field objects
+	You can also create VarHandle instances to gain access to fields. Now we just saw that the MethodHandle object also gives you access to field but the VarHandle does it differently
+	You can use this object to access fields in a concurrent way
+
+6.4 - Getting a Private Trusted Lookup Object
+	Let's see how to create a Lookup object
+		Lookup lookup = MethodHandles.lookup();
+	Factory method MethodHandles.lookup() - entry point is the object returned by the lookup static call
+	This lookup object carries all the security information, and it has 2 consequences.
+	The first one is that if you have different threads running in your application with different security roles with different security context, this lookup object will be different for each thread
+	And since it carries all the security information that will not be checked again fro all the rest of your processings, you should be aware that this lookup object should not be shared with some untrusted code
+	If you share it, this untrusted code will be able to access your objects using Reflection with the security of someone else. And of course, you want to avoid that
+
+6.5 - Using a Method Handle to Get a Reference on a Class
+	Let us see the first pattern exposed by the MethodHandle API to get a reference on a class object
+		Person person = ...;
+		
+		Class<?> personClass = MethodHandles.lookup()	// factory method that returns a Lookup instance
+								.findClass(Person.class.getName());
+	The entry point is the lookup object as we just saw. On that lookup object, we can just call the findClass() method that takes a string as a parameter, which is the name of the class and this returns a reference on the Person class object
+	This code works the same way as the Class.forName() factory metho
+
+6.6 - Creating MethodType Object to Get a Reference on a Method
+	Second pattern, how to create a method handle on a method. This pattern is a little more complex than getting a reference on a class
+	It is a 2 step process
+	The first step is to get a MethodType object that will just model the type of this method. It carries information on the type returned by this method and the types of the parameters this method takes
+	And then with this method type, we can call the right method on the lookup object, passing this type as a parameter to get a reference on the method we needed
+	We also have a bridge fom the Method class classical Java Reflection API to the MethodHandle API when what we have is a method object
+		Lookup lookup = MethodHandles.lookup()
+		
+		MethodType getterType = MethodType.methodType(String.class);
+		
+		Method setterType = MethodType.methodType(void.class, String.class);
+	The first object we need to create is this method type object. We have a factory method for that on the MethodType class that may take several arguments
+	The first argument is the type returned by that method. On this simple example, which is a plan getter that returns a string and doesn't take any parameters
+	Now if we consider the setter, the setter returns void and takes a string as a parameter. So the first argument passed to this method type method call is the void.class object and the string.class object
+	You just need to be careful because in the JDK, there are in fact 2 ways of writing void.class. The first one is this one, and there is a second one with a capital V, and you do not want to use the one with the capital V. If you do so, the rest of the code will not work
+	You can also create a MethodType for constructors
+		MethodType constructorType = MethodType.methodType(void.class, String.class, int.class);
+	The convention is that a constructor returns void. So if we have a constructor of person that takes a string and an int as a parameter, the corresponding MethodType as void.class as the first argument, string.class and int.class as other 2 arguments
+	For empty constructor
+		MethodType emptyConstructorType = MethodType.methodType(void.class);
+
+6.7 - Gettintg a Method Handle on a Method or a Constructor
+	Now that we have the proper method type for the method we're looking for, the second step consists in finding the right method of this lookup object
+	We have 3 available methods to find the reference on the method or constructor
+		The first one is the findVirtual() method for any kind of method
+		The second one is the findConstructor() method for constructors,
+		And third one is the findStatic() method for static methods
+	Let us see the pattern of code
+		Lookup lookup = Methodhandles.lookup();
+		
+		MethodType getterType = MethodType.methodType(String.class);
+		
+		MethodHandle getterHandle = lookup.findVirtual(Person.class, "getName", getterType);
+	We can do the same kind of thing for the setName method
+		Lookup lookup = Methodhandles.lookup();
+		
+		MethodType setterType = MethodType.methodType(void.class, String.class);
+		
+		MethodHandle setterHandle = lookup.findVirtual(Person.class, "setName", setterType);
+	Let us see the pattern for constructor
+		MethodType constructorType = MethodType.methodType(void.class, String.class, int.class);
+		
+		MethodHandle constructorHandle = lookup.findVirtual(Person.class, constructorType);
+	Of course, we do not pass a name since we know that a name of a constructor has to be the same as the name of the class
+	For empty constructor
+		MethodType emptyConstructorType = MethodType.methodType(void.class);	// not Void.class
+		
+		MethodHandle emptyConstructorHandle = lookup.findConstructor(Person.class, emptyConstructorType);
+
+6.8 - Getting a Method Handle to Read and Write a Field
+	We saw how to use the MethodHandle API to get a reference on a class. We saw how to create method handles on constructors and methods. Now we're going to see how to create method on the fields of a class
+	The Lookup class has also these 2 methods, I put a warning sign here for a reason
+		The first method is called findGetter()
+		The second method is called findSetter()
+	Now you may think that findGetter will give you a reference on the getter method on a field and findSetter on a setter method on a field, and it is NOT the case
+	The getter method returns a method handle directly on a field to get read access to that field, and the setter method to get write access to that field but they have nothing to do with getters and setters from the bean specification from the JDK
+	How can you create this read method handle and write method handle? It all starts with the lookup object
+		MethodHandle nameReader = lookup.findGetter(Person.class, "name", String.class);
+	A handle returned by a findGetter gives read access on a field and does not call the getter of that field
+	The pattern to get write access uses findSetter
+		MethodHandle nameWriter = lookup.findSetter(Person.class, "name", String.class);
+	A handle returned by findSetter gives write access on a field and does not call the setter of that field
+	And what you can see is that getting read and write access is done by 2 different objects, but have the same type, which is the MethodHandle type. So we need to be extra careful here because if you're using this nameReader object to write a value, you will get an exception. Same for the nameWriter.
+	The problem is that those 2 objects are the same type so the type doesn't carry the information and what this object can do exactly
+
+6.9 - Using Method Handle to Invoke a Method of a Class
+	Now that you have a method handle, how can you use it? How can you use it to invoke a method or read a field?
+	Invoking a method using a method handle is the same kind of thing as with an instance of Method. It uses invoke() method. The argument is the object on which you want to invoke that method, the object that holds the invoke method, and the following arguments, if any, that the method is taking
+		Person person = ...;
+		
+		MethodHandle nameGetter = ...;
+		String name = (String) nameGetter.invoke(person);
+		
+		MethodHandle nameSetter = ...;
+		nameSetter.invoke(person, "John");
+
+6.10 - Accessing Public and Private Fields Using Method Handles
+	MethodHandle also gives you access to fields of a class
+		Person person = ...;
+		
+		MethodHandle nameReader = ...;
+		String name = (String) nameReader.invoke(person);
+		
+		MethodHandle nameWriter = ...;
+		nameWriter.invoke(person, "John");
+	This is going to work but a MethodHandle only gives you access to non-private members of a class. Odds are the methods you're going to invoke are public so everything is fine, but the field you want to read/write are goign to be private
+	So this is most probably here that you will see this exception, tell you that this MethodHandle cannot access private fields
+	There are 2 patterns to overcome this problem
+	The first one is the one you need to use in java 7 and 8
+		Person person = ...;
+		
+		Field nameField = Person.class.getDeclaredField("name");
+		nameField.setAccessible(true);
+		
+		MethodHandle privateNameReader = lookup.unreflectGetter(field);
+		String name = (String) privateNameReader.invoke(person);
+	The starting point of the first one is the Field object itself. You get the Field object from the Person class, which is not great because if you want to use MethodHandle, it's precisely to get the performances offered by the MethodHandle API and not the one offered by the Reflection API but there is no other solution
+	You make this field accessible by calling setAccessible() and then you use this unreflectGetter() method from the lookup object passing this accessible field as a parameter. This is going to give you a MethodHandle and you can use this MethodHandle to read the value of the private field directly
+	The same pattern also exists if you want to get write access to that field
+		MethodHandle privateNameWriter = lookup.unreflectWriter(field);
+		String name = (String) privateNameWriter.invoke(person);
+	unreflectGetter() and unreflectWriter are the only solution for Java 7 and 8
+	Starting with Java 9, we have a much cleaner solution, what you need to create is a private lookup object with this special static factory method from the MethodHandles class called privateLookupIn()
+		Lookup privateLookup = MethodHandles.privateLookupIn(Person.class, lookup);
+		
+		MethodHandle privateNameReader = privateLookup.findGetter(Person.class, "name", String.class);
+		
+		String name = (String) privateNameReader.invoke(person);
+	And this private lookup object is a regular lookup object with more access to the person class because it's created really on the Person class only. If you invoke the findGetter on this privateLookup object, it will create a MethodHandle with private access to the write field of the Person class
+	Same for private write access
+		Lookup privateLookup = MethodHandles.privateLookupIn(Person.class, lookup);
+		
+		MethodHandle privatenameWriter = privateLookup.findSetter(Person.class, "name", String.class);
+		
+		privateNameWriter.invoke(person, "John");
+
+6.11 - Adding Concurrent Field Access Using the VarHandle API
+	Most of the time you won't need the VarHandle API because MethodHandle already give syou access to methods and fields, but VarHandle has a special functionality that we're going to see
+	First, this VarHandle class is an addition of java 9. So if your application is java 8 or before, VarHandle are just not for you
+	It looks like a MethodHandle for fields. But as we saw, a MethodHandle can already access a field. It already gives you full access to fields, including private fields
+	So the question is why VarHandles have been added to Java 9? VarHandle gives you 3 types of access to fields
+		The first type is just the plain, regular access, read and write to both public and private fields
+		It also gives you volatile access
+		compare and set access
+	Those 2 kinds of access have to do with concurrent access
+	Volatile is a concurrent notion, compare and set or compare and swap is also a concurrent notion, and this is what VarHandle brings to the table
+	So in a nutshell, if you do not need this concurrent access, then you do not need VarHandle. You can stick to MethodHandles
+
+6.12 - Using VarHandle to Gain Concurrent Access to Fields
+	Let us have a look at the pattern
+		Lookup lookup = ...;
+		Person person = ...;
+		
+		VarHandle nameVarHandle = MethodHandles.privateLookupIn(Person.class, lookup)
+									.findVarHandle(Person.class, "name", String.class);
+		Sting name = (String) nameVarHandle.get(person);
+		
+		Sting name = (String) nameVarHandle.getVolatile(person);
+	It follow the same kind of pattern as the MethodHandles patterns that we already saw
+	Most of the time, you'll want to invoke this findVarHandle on a private lookup object since the field of  a class are most of the time private
+	get() method invokes a VarHandle in normal mode
+	getVolatile() invokes VarHandle in volatile mode and this time the read you're going to do is a volatile read that is guaranteeing that in concurrent access, the value you get is the last value that has been returned somewhere else on some other thread, including on another core of your CPU
+	And the third access is a compare on get or compare and swap type access
+		VarHandle ageVarHandle = MethodHandles.privateLookupIn(Person.class, lookup)
+									.findVarHandle(Person.class, "age", int.class);
+		int newAge = (int) ageVarHandle.getAndAdd(person, 1);
+
+6.13 - Demo: Creating Person Beans Using Method Handles on Constructors
+	This MethodHandle API is very technical, and it's very easy to write code that compiles, but that doesn't execute properly
+
+6.14 - Demo: Invoking Methods Using Method Handles
+
+6.15 - Demo: Reading and Writing Private Fields Using Method Handles
+	There's just one thing that may be confusing in this API, every access you can get on any class element, whether it's a field, method or constructor are done through this MethodHandle object
+	Everything you get is a MethodHandle, and you don't have any difference between a field, a method or whatever from a class
+	This may be confusing so you need to be really careful when you manipulate this kind of object because the type of the object you manipulate doesn't tell you what kind of element from a class you are really handling

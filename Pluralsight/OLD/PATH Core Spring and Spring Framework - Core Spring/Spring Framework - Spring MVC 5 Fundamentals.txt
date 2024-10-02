@@ -1,0 +1,420 @@
+Bryan Hansen
+Feb 11,2020
+
+2.1 - Version Check (What is Spring MVC?)
+	Spring MVC 5
+
+2.2 - Introduction
+
+2.3 - Course Update
+
+2.4 - Request/Response Lifecycle
+	The request/response lifecycle is actually a tricky one when you look at it
+	We have an incoming request that hits our front controller, that's just our dispatcher servlet inside of spring and that hands off the request and delegates our request over to one of the controllers that we've set up
+	So the dispatcher is just the router tha comes in and says, what controller's going to handle it? I'm going to delegate this request over to that controller over there
+	The controller just routes traffic to where it's supposed to go. So it says, I'm going to handle that request and hand it over to the back end
+	Now our backend could be composed of web services or a database or multiple databases, any number of things that we're gathering data from
+	And in turn, what that does is it hands back a model object to us. So it creates that model and hands it back
+	The model is basically just our data, what we're trying to represent on our screen
+	Once that gets back to the controller, the controller says okay, I'm going to let somebody else now do the rendering. And the rendering is separate from the business logic
+	So we have this model-view-controller design pattern, and everything is doing its own specified functionality here
+	So coming back to the controller, we have our model now or our data that we're going to try and represent the UI with
+	So we go back to our front controller and it says, oh well, now who's going to handle this? Who is going to render this response? Let's pass our model down to some view template
+	For this course, we're going to use JSP, but we also are going to look at examples using Thymeleaf. There's many other different technologies that integrate nicely with Spring MVC as well that you could use
+	Once it's gone to our view template, our JSP page, we're going to return control back to the front controller and then return back our response to the browser
+	Now this whole thing is kind of divided up into 3 different parts
+		We have our model, so where we get our model created and the data associated with it
+		Our views, so our representing view
+		Our controller
+	That's where our model-view-controller is coming into play with our entire application
+
+2.5 - Vocabulary
+	SPA - spring page application
+	DispatcherServlet - this is our entry point into our application and it's really where a Spring MVC web app begins its configuration. We always start with the dispatcher servlet
+	Controller - the controller is actually an implementation of the command pattern handler
+	RequestMapping - everything inside of spring MVC is associated wtih a request mapping, and that's the URL, and the type of request that we're making to our application
+	ViewResolver - view resolvers are used to locate the view and serve it back up. Now a view resolver can be used to find a template or a JSP page or HTML page or serve up a RESTful service
+	servlet-config - Now this used to be a web.xml file coupoled with a servlet-config.xml file and now we're going to talk about how all of this is now configured using java configuration
+	POJO - plain old java objects. Everything inside of spring, all spring beans are just simple POJOs, which is just a basic class that follows the bean specification of no-argument constructor with getters and setters named appropriately
+	Spring Bean - it's just a spring configured POJO. So when you talk about a spring bean, it's just a POJO that's been configured and implemented inside of Spring
+
+2.6 - What Are We Going to Build?
+
+3.1 - Introduction (Creating Your First Spring MVC Application)
+	There is more than one approach to using Spring, but I often see people pick one and never understand the benefit of the other approach. I'm speaking specifically about using spring standalone or using spring boot to initialize your app. We're going to cover both in this module
+	Java 11
+	Maven
+	IntelliJ - ultimate edition
+	Tomcat
+
+3.2 - Getting Spring
+	One of the reasons for re-releasing this course was because spring quit offering a direct download for the compiled jars
+	Sure, there are ways to obtain it, but nothing is simple as just clicking a link on their project page
+	Like it or not, spring wants you to download their tools using maven
+	One of the main reasons spring wants you to use maven is because of the transitive dependencies that are required to run projects
+
+3.3 - Demo: Project Setup
+	Use spring initializr with Spring web dependency
+
+3.4 - Demo: Tomcat Configuration
+	But deploying JSP pages, they actually work great but spring boot self-contained jars don't do well with them
+	In fact, spring will caution you in their documentation to not deploy your application as a fully self-contained jar and as a spring boot application
+	So let's go ahead now and look at converting that to a packaged war and deploying that on a tomcat server
+	To get tomcat - https://tomcat.apache.org/ > Download section > Tomcat 9
+		Download Core - zip version
+	To change packaging to war file, in pom.xml add,
+		<packaging>war</packaging>
+	And add this dependency
+		groupId - org.springframework
+		artifactId - spring-boot-starter-tomcat
+		scope - provided
+	The spring-boot-starter-tomcat is to remove the dependencies on the internal packaged application and convert this over to where we now have our own standalone tomcat enabled war, and so we have a war that will work for tomcat with all of its dependencies all packaged up
+
+3.5 - Spring MVC Configuration
+	More recent serverless specification have called for not having a web.xml at all
+	XML is often thought to be more complicated and at a minimum, is more error prone for copy/paste errors
+	Not using XML though can fill a little like a blackbox. And what I mean by that is you can start using it, but not understand what's going on behind the scenes. This often leaves developers confused about what's going on in their application and how it's working and left wondering what to do when something breaks
+	The configuration of spring MVC though, regardless of whether we're using xml or not is broken down into 4 basic areas
+		pom.xml - to download any of our dependencies and that's what we created using the initializr
+		Config - configuration section whether that is xml or java configuration or using web.xml
+		Java files - our controller, possibly our configuration, our model tier, that's all going to be done in java code
+		View - it doesn't matter if we're doing REST services, JSPs, FreeMarker templates
+
+3.6 - Demo: Greeting Controller
+	We've done with a bunch with our pom file already to begin with
+	The next one we'll go to is the view, and our views are usually served up from underneath our src/main/webapp directory in the traditional JSP application
+	In your main method class, update class to "extend SpringBootServletInitializer". And what this will do is launch our application with the desired configurations we're used to using inside of a web app. So it's going to set up an interview view resolver
+		Create WEB-INF/jsp folder
+	It's going to resolve JSP pages, set up JSTL for us, basically launch stuff the way we want to
+	Open your application.properties file,
+		spring.mvc.view.prefix=/WEB-INF/jsp/
+		spring.mvc.view.suffic=.jsp
+	Now this is the other part of our configuration that tells it where to one, look for JSP pages, and two, what the extension for those are
+	In java,
+		Create a controller class with @Controller
+	
+4.1 - Introduction (Understanding the Structure of Spring MVC Applications)
+
+4.2 - Model-View-Controller
+	A request comes through the view based off of some user event and then is interpreted by the controller. The controller can change the model or not
+	And then it will select the view based off of our action
+	From here, the model can update the view with the database off of the user's actions
+	Our view can access our model, but it's usually done so through a controller
+	We don't have our view typically going directly against our database or model
+
+4.3 - Application Layers
+	You'll often hear people talk about applications in terms of tiered architecture, or an n-tier architecture, or layers
+	We try to build our applications in tiers more now in enterprise languages, and there are great reasons to do so. A few of these are
+		Separation of concerns. This just means that each layer is only concerned with the task that it's assigned to
+		Now there's another term called reusable layers, and that sounds very similar to separation of concerns, and in some ways it is, but its focus is different. If I have a business logic in my presentation tier, I can't easily change my presentation tier or expose a web service for example, without recreating some of that logic. If I have extracted it into its appropriate tier, then I'm not duplicating that logic
+		So if you ever notice yourself copying and pasting code in your application, it's probably not in the correct tier or it's not architected in the correct tier or way
+		Now there's a little bit of difference between separation of concerns and reusable layer. Separation of concerns is not about reuse. It's just about having things in the right layer, so I can re-architect them layer
+		Whereas reusable layers means that I have a purpose and a point that I'm trying to drive. I can expose the same data in multiple ways without having to worry about it, or I can replace my presentation tier without having to re-architect my application
+		Another term is maintenance, or refactoring, that might be a better way to put it. The ability to change things without having those things ripple through all of our code
+		If this is done correctly, we can change our code and not have to retest everything, but rather just the pieces that we changed
+		This leads into a much larger discussion about unit testing, but that's outside the focus of this course
+	Talking about those layers of our spring mvc app, and this is important because of how we annotated our components, we first have a data model that we should be accessing using something like Hibernate. This layer represents the data or model of our application
+	Next, we have a controller that interprets the user's requests and selects the appropriate view based off of what we've requested or what information we got back from our data model
+	And then we have our view
+	Now one thing that's often misunderstood by people is that spring mvc has nothing to do with regards to our database, but it has a model associated with it
+	So is the model talking about our database or the model talking about what our framework is going to represent to just our JSP page? It's actually the latter. It's referring to what we're going to represent in our JSP page, or Thymeleaf page or our web service
+	We always have to get that information from somewhere
+
+4.4 - Spring Components
+	We've spoken about tiers, layers. How do we represent these tiers with spring and spring mvc?
+	That's with these 3 components
+		Controller - we've discussed controllers already a little bit. They just route where we're going to and interpret the user's request
+		Service - the service is where our business logic goes. It should also be noted that it's where our transactions will most likely start as well, if we're accessing more than one database table
+		Repository - The repository tier is also sometimes referred to as the DAO or data access object, and they usually have a one-to-one mapping with our database table
+	So looking at controllers, 
+		we've mentioned, they handle our incoming requests in building the response
+		I can't emphasize strong enough that business logic should NOT be handled here
+		This is also where our request and our response object should stop as well. We shouldn't hand those off to separate tiers. It should grab information from the request and the response and hand that over to the business logic
+		This works with our service and repository tier for the business logic and data gathering
+		And it's annotated using the @Controller annotation
+		There are some convenience classes that you extend but you either have to wire them up or annotated them with the controller still
+		It also should be noted that this is where we handle exceptions and route views accordingly, based off of whether or not you had an exception or if we've got the correct information
+	The service tier is annotated with the @Service annotation
+		It describes the verbs, or actions, of our system
+		It's where our business logic should reside. In fact, it should all be contained here. It shouldn't bleed over into our repository tier
+		Another role of the service tier is to ensure that the business object is in a valid state. This is where all of our state management should be handled, confirming that we've got a valid object passed in from a request. It meets the standards of our business objects or requirements
+		Also, this is where our transactions should begin. If you're doing a two-phase commits or there's a chance we might have to roll back or access web services, those types of things, this is where we want those transactions to begin
+		It often has the same methods as a repository, but a different focus. We may have a method in here that says, find user by last name, and we may have that same method in our repository, but what we do if we don't find the user or how many people will return or what state we might return those objects in  is controlled by the service tier, where the repository tier is just going to go get that data
+	And lastly, the repository tier
+		Annotated with @Repository
+		It also describes the nouns of our systems. Where the service here described the verbs, the repository tier is focused on the nouns
+		You can see where the focus is different from the service versus the repository
+		The service tier describes those actions that we want to do, and the repository describes the data that we're going to interact with
+		It's focused on persisting and interacting with the database or basic CRUD functions
+		It's also typically a one-to-one mapping with an object
+		It's also often a one-to-one mapping with the database table, but that's not always the case based off your design
+
+5.1 - Introduction (Creating Controllers in Spring MVC)
+	With the rise of RESTful applications though, and RESTful services, it makes more sense to begin to think of controllers in the sense of verbs or what I can do within an application
+	You really need to think of controllers as choosing what to do based off of a user's actions or requests, and then the view or the actual web page is just a result of doing some action
+
+5.2 - What is a Controller?
+	But here's what's happening as we're going through a request from the user
+	The request comes in and that's going to go to a particular controller based off of what the user's request was, and it's going to interact with some business logic
+	Now that business logic is going to produce some data, and it can theoretically be a web service or it could be our database or it could just be our businesss logic tier. That's going to produce some output
+	We can think of that as our model or our UI, and we'll eventually return that model back to our UI on our response
+	As we come out of our web service or request, we're going to hand that back to our controller, and then our controller is going to go in and decide which view is appropriate based off of what information was returned or what happened out of our request, and we're going to hand that back to the user
+	The controller can almost be thought of as a traffic cop
+	The reponsibilities of a controller are to interpret user input and transport that input into a model
+	To take that information that's going to come back from our business logic from our service tier and build that into a model to hand back to our UI
+	It's the gateway to our business logic, and will determine the correct views based off of that logic
+	One other key point thhat never really seems to come pu to play as far as  the duties of a controller is, is that it also interprets exceptions for the business logic and service tier, and how to handlele and navigate those correctly from there
+
+5.3 - @Controller
+	Controllers in spring mvc are very lightweight. They don't even actually require you to implement an interface
+	You only need 2 parts
+		@Controller annotation that told spring mvc that this is a controller and it hsould be included in the available controllers for it to route information to, and that we needed to have a request mapping associated with it
+		And teh request mapping, tells spring which method is going to handle which request
+
+5.4 - Demo: Registration Controller
+	@SpringBootApplication with class extending SpringBootServletInitializer - this tells the application server to go ahead and create a dispatcher servlet and start serving up things
+	And as part of that annotation of @SpringBootApplication, it goes and starts looking for our controllers and things with our annotation such as @Controller and @GetMapping
+	It's always centered around a dispatcher servlet
+	Spring creates it when we extend SpringBootServletInitializer
+
+5.5 - @ModelAttribute
+	To be able to pass data from our request, whether that's RESTful service or from a JSP page to our controller, we're going to use some libraries provided to us by spring mvc
+	We could actualy just use the standard HTML input tags but spring provides us a library making it easier to interact with our controllers
+	Historically, we've always just passed HTTP parameters that have gone on an HTTP request, and those parameters can then be accessed much similar to like a hash map where I just grab a parameter based off of its name so every HTML element would be named
+	Well, there's tags that spring provides us to take these values from our input page and make them available to our controller through the model hash map, bind them to a specified object, which is actually the approach we're going to do, or just be able to grab them off the request
+	So we could always pass in the servlet request into our method name and access it that way
+	The model can actually be a bit confusing, as you'll notice in our controller box that our model for accessing parameters and returning data is actually the same model and view object
+	The binding object attribute approach that I just spoke about is used when we want to send data to our controller or retrieve data from our controller that's bound to an object or represented by an object
+	The nice thing about spring mvc is that it's all done with basic POJOs and not using a class that's only specific to our UI like in some of the other frameworks such as Struts or WebWork or Stripes
+	So we'll use the @ModelAttribute when we want to do an HTTP GET to get back data
+
+5.6 - Demo: Passing Parameters
+	In JSP page,
+		Adding a <%@ tagLib ...> will help you auto-complete stuff inside the defined tag
+		Defining a modelAttribute attribute value and then referencing that attribute with @ModelAttribute
+
+6.1 - Introduction (Creating Views in Spring MVC Applications)
+
+6.2 - Demo: View Configuration
+	Although not required, there's a convention of placing view pages under WEB-INF directory so that they cannot be deep-linked or bookmarked to
+	This way all requests must be directed through our application, and we can guarantee the user experience
+	(demo referring to creating WEB-INF folder) Now, why would we do this? As I mentioned it so that people can't deep link to our application
+		And if I switch over to my browser, we have our page that we've set up links to but if you remember when we added these links, there were a reference to the service call
+		So we were doing a call to the controller to route us back to the page that we wanted
+		What happens if we come over here (address bar) and we just in "registration.jsp"? It won't serve that up, and we don't want it to serve that up. That's by design
+		So putting those pages underneath our WEB-INF folder and a JSP folder makes it so that they have to be served up internally and turned back to our end user, thus making it to where we control the state of how they flow through the application, and they can't bookmark into things that we don't want them to
+		It's a lot better design for us
+		All we had to do was just move that under that WEB-INF folder
+
+6.3 - Demo: View Resolver
+	In our first demo, we configured an InternalResourceViewResolver, and didn't even realize it
+	We've used that in all of our controllers since then
+	We simply return a string (in controller method) and that is what's used by the ViewResolver to find the JSP page named and in the location specified with our resolver
+	We can also return a view object that wraps a string that is the view name as well
+	Our controller cna build a model is necessary and return that to our ViewResolver with data that is needed in the view
+	We can also have multiple ViewResolvers as well as multiple view types in our application
+	Let's look closer at that ViewResolver we've been using and not really realizing that we had created it
+	(demo - method in controller returns a string which a page name) You may or may not recall that we configured 2 lines inside of our application.properties and this tells where those files are located and what extension to look for
+		Now, how did it know how  to do that? In our main method class, we have this @SpringBootApplication and we extended SpringBootServletInitializer and this configures it for us
+	But let's show you how to override that
+		Create a new class and add @Configuration on top of class
+		Inside class create
+			@Bean
+			public ViewResolver viewResolver() {
+				InternalResourceViewResolver bean = new InternalResourceViewResolver();
+				bean.setPrefix("WEB-INF/jsp");
+				bean.setSuffix(".jsp");
+				bean.setOrder(0);	// if you have multiple ViewResolvers, to fire in which order
+				
+				return bean;
+			}
+	This is all of the configuration that's done for us behind the scenes with that main method class
+
+6.4 - Resolving a View
+	Views are resolved in spring mvc by the controller building a model that it passes to a view resolver, which then determines the correct view that we want to display and choose the appropriate view based off of the request
+	And there are various view resolvers that are provided by spring. You can create your own custom view resolver, since they just extend the ViewResolver interface
+	Some of these resolvers are used for templating tools like Thymeleaf or FreeMarker
+	It just configures where it should be looking for those templates and then executes the bindings and writes the output
+	The ResourceBundleViewResolver is used for internationalization purposes and it's used for things like templated layouts
+
+6.5 - Resolve Static Files
+	There are actually a lot of reasons why we would want to host up static files from inside of our spring mvc application
+	We may want to implement security on them, we want to make sure they're logged in, we could possibly do some caching stuff
+	Regardless, it's really easy for us to do. It's very similar to what we just did with the view resolver, except we're goin to add a resource handler
+	We have to implement one interface but then we just add it to the registry of the Resource Handler Registry and we say that, hey, any request to /files, I want to go ahead and look in this directory, and we've created a WEB-INF/pdf/ directory and we can host up static files from therer that are PDFs
+	To host up static PDFs
+		Add a folder WEB-INF/pdf directory
+		For your class with @Configuration, implement WebMvcConfigurer interface
+		Then add addResourceHandler()
+	Now you can go to your browser and enter .../files/ps.pdf, it will serve up our PDF
+
+7.1 - Introduction (Using Java Server Pages with Spring MVC View)
+
+7.2 - I18N and Interceptors
+	If you weren't aware, I18N stands for internationalization. It literally means there's 18 characters before the beginning "i" and the trailing "n" of the word internationalization
+	To this point in our course, we haven't been internationalizing our pages to accept other languages. Everything has just been hardcoded
+	Interceptors are used to allow us to intercept calls to our server and perform special tasks on a call
+	Common uses for interceptors are
+		logging - we can change the log level on an application without having to redeploy it. Not useful to end users but very useful for debugging a specific problem in an environment without having to restart the application
+		Security - when we want to intercept each call or direct them to a page, make them log in and redirect them back to that page that they were trying to access, it's a very common use of an interceptor
+		I18N - internationalization of sites and catching their requests to change locales is a very common use of interceptors
+		Performance monitoring - similar to logging, this is not something we're going to display to the end users, but we may want to intercept each call to perform some metric gathering on a request
+
+7.3 - Demo: Adding Internationalization
+	To add internationalization
+		In file with @Configuration, add a SessionLocaleResolver and this will just use the LocaleResolver interface but the SessionLocaleResolver's what ties our current session to a locale
+			@Bean
+			public LocaleResolver localeResolver() {
+				SessionLocaleResolver slr = new SessionLocaleResolver();
+				slr.setDefaultLocale(Locale.US);
+				return slr;
+			}
+		Next bean we're going to add in here is the LocaleChangeInterceptor, and the LocaleChangeInterceptor just looks for a parameter, either through a hidden element or on our URL string as a query parameter, however we want to pass that in, but it looks for that to see if it should intercept that change
+			@Bean
+			public LocaleChangeInterceptor localeChangeInterceptor() {
+				LocaleChangeInterceptor lci = new LocaleChangeInterceptor();
+				lci.setParamName("lang");
+				return lci;
+			}
+		Next thing we add isn't going to be a bean. It's going to be a feature that we override from the WebMvcConfigurer and it's interceptor we're going to add
+			@Override
+			public void addInterceptors(...){
+				registry.addInterceptor(localeChangeInterceptor()); 
+			}
+	Those are the 3 things we had to add to the config
+	Now we want to go ahead and create 2 properties file in resources folder (name matters here)
+		messages.properties
+			#labels
+			name=Name
+			#buttons
+			save.changes=Save Changes
+		messages_es.properties - for spanish
+			#labels
+			name=Nombre
+			#buttons
+			save.changes=Guardar cambios
+	In the jsp file, add the tag
+		<%@ tagLib ...>
+
+7.4 - Post-Redirect-Get
+	The Post-Redirect-Get pattern or PRG is a technique used to help eliminate form resubmission
+	The user's POST to the controller does whatever intended action was requested but before returing the view back to the user, it does an internal redirect and issues a GET back to itself to display the page to the user
+	This makes sure that all the variables of state have been cleared, so a back button then resubmitted is disabled or stopped
+	In controller method, change string from "registration" to "redirect:registration"
+	This will tell the view resolver to go ahead and do a complete redirect and a GET back to the registration and it will clear that form out for us
+	Now, yes, you can still back up, but it will be a new, completely separate POST. It won't be reposting the same information, if that makes sense
+
+8.1 - Introduction (Using Thymeleaf in Spring MVC Views)
+	Thymeleaf - templating framework
+	Thymeleaf has some of the best integration with spring of any of the templating frameworks out there
+
+8.2 - Demo: Thymeleaf Configuration
+	To add Thymeleaf, add dependency to pom.xml
+		groupId - org.thymeleaf
+		artifactId - thymeleaf-spring5
+		version - 3.0.11.RELEASE
+	Add it underneath spring-boot-starter-tomcat but above spring-boot-starter-test. And yes, order does matter in your dependencies. It will load those onto your class path in the order in which you have them in pom.xml
+
+8.3 - Template Resolver
+	A template resolver is not the same as a view resolver
+	When first looking at the template resolver, it actually feels just like a view resolver that we've seen quite a few times in this course now
+	But this configuration in here is actually where to locate the template files and how they should be resolved
+		@Bean
+		public SpringResourceTemplateResolver templateResolver() {
+			SpringResourceTemplateResolver templateResolver = new SpringResourceTemplateResolver();
+			templateResolver.setApplicationContext(applicationContext);
+			templateResolver.setPrefix("WEB-INF/views/");
+			templateResolver.setSuffix(".html");
+			
+			return templateResolver;
+		}
+	The view resolver, which we will configure later, just sets the order and references this template resolver will use
+	Let's configure the template resolver in our project
+		In @Configuration file, add the method above
+		To fix the applicationContext, add this to the top file in class
+			@Autowired
+			private ApplicationContext applicationContext;
+	So we have our template resolver in here now. Now we can go configure a template engine that will utilize this resolver
+
+8.4 - Template Engine
+	We didn't have to create an engine of any sort when we were using JSP pages, so this is a little bit unique to Thymeleaf
+	We have to create a Spring template engine that will process the pages and substitute in the model values from spring into our pages to be displayed
+		@Bean
+		public SpringTemplateEngine templateEngine() {
+			SpringTemplateEngine templateEngine = new SpringTemplateEngine();
+			templateEngine.setTemplateResolver(templateResolver());
+			templateEngine.setEnableSpringELCompiler(true);
+			return templateEngine;
+		}
+	Notice that this code makes a call to that templateResolver method that we just created
+	Add this in @Configuration file
+	It has also enabled spring expression language compiler, the EL compiler, and that just makes it so we can use the shorthand syntax of accessing spring variables and passing them in
+	Now we can add the actual view resolver for those templates that the controller can navigate things to
+
+8.5 - View Resolver
+	The ViewResolver is a little big different because the template resolver looked up the actual template. The view resolver just takes whichever template was loaded and returns that based off the name, so they kind of work in conjunction
+		@Bean
+		public ViewResolver thymeleafResolver() {
+			ThymeleafViewResolver viewResolver = new ThymeleafViewResolver()
+			viewResolver.setTemplateEngine(templateEngine())
+			viewResolver.setOrder(0)
+			return viewResolver
+		}
+	I will tell you now though, that the view resolver.setOrder that you can see, that has to be before the JSP page in this example for it to work
+	So we're going to change the order of our JSP view resolver to 1, and this to 0. If not, it'll look for the JSP's name this way
+	It is possible to configure them to work together, but it's kind of outside the scope of this course
+	As I mentioned earlier, and I'm going to mention again, we're currently breaking the JSP functionality of our application to show you the thymeleaf resolver
+	It's outside of this course to show both Thymeleaf and JSP working together in the same application and it's really not a common occurence
+	Add a html page in the WEB-INF/views/ folder
+		At the top of the file add
+			<html xmlns:th="http://www.thymeleaf.org">
+		And use namespace "th" in html page
+
+9.1 - Introduction (Validating Objects in Spring MVC Applications)
+	Validation is always an interesting subject in applications and doesn't ever seem to be really handled cleanly
+	When I first recorded this course, the spec for this was JSR 303. Since then, they've made subsequent JSR releases to work with newer JVMs
+	JSR 303 was the original specification for bean validation and although it worked this past release, its target was really for JSE 5
+	In keeping up with the java specification releases, JSR 349 targeted java 7. It cleaned up ambiguities with bean spec 1.0 and 349 is version 1.1 of the specification
+	JSR 380 was released as of java 8 and focuses on the modularity changes that were introduced in java 9 and later
+	It is version 2.0 of the bean validation spec and tere are a few major changes with 380
+
+9.2 - Validator Interface
+	There is another approach that we're not going to show but I want to spend a minute talking to you about it and that is the Validator interface
+	It was the approach that we used before the JSR 303 and subsequent releases came out. It works fine, just as it did 10 years ago when it was released but it's very programmatic. You have to type out every line of code that you want to have it execute
+	It is not deprecated and you can in fact still use it in  modern spring applications today
+	I personally try to avoid it because business logic tends to creep into these validators
+	The separation of concern that we spoke about in an earlier module becomes a little hazy in these validator classes that implement the Validator interface
+	For this reason, I tend to avoid Validator interface and implementing classes and just use the JSR
+	More advanced validation i move into my own custom class inside the service tier and handle it appropriately there
+
+9.3 - Demo: Validator Configuration
+	The bean validator reference implementation is actually an instance of hibernate-validator
+	To configure it for spring, add in pom.xml
+		groupId - org.hibernate.validator
+		artifactId - hibernate-validator
+		version - 6.1.1.Final
+	It doesn't matter if you're using Hibernate the ORM tool, the validator is actually just the reference implementation and has nothing to do with databases
+	Add the dependency below the spring-boot-starter-tomcat but above spring-boot-starter-test
+
+9.4 - Demo: Validation
+	Validation in our project requires us using the @Valid annotation before our model, essentially saying that we want this model object to be valid upon entering the method
+		public String submit(@Valid @ModelAttribute("person") Person person, BindingResult result, ModelMap modelMap) {...}
+	The other thing to note though is the reference passed in of the BindingResult. It contains any errors and a flag to notify you that there was a verification error so we can direct that to the correct view
+	From there, we can direct back to the appropriate page, in this case the from which it would've been submitted from, we can add form:errors tag taht will only show when an error is present
+	So we're going to change the controller signature in our controller, and we can add an errors element inside of our JSP page all by adding specific attributes on our model object
+
+9.5 - Custom Error Messages
+	In messages.properties, add
+		<annotation>.<name of instance>.<variable of instance>=<custom message>
+
+10.1 - Introduction (Using Client-Side JavaScript in Spring MVC Applications)
+	The @RestController annotation is the heart of serving up RESTful services
+
+10.2 - Demo: @RestController
+
+10.3 - Postman
+
+10.4 - Demo: @PostMapping
+
+10.5 - Demo: jQuery Integration
+	As we mentioned before, jQuery has stayed pretty tried and true for accessing data, especially for some RESTful services

@@ -1,0 +1,81 @@
+
+2.2 - CI and CD Concept (Setting up a Master Node)
+	CI - starts with dev pushing code, jenkins automatically compiles source code upon a push. On success, deployment artifacts are assembled and distributed to one or more envs. Usually, a dev env where a number of automated tests are run. Unit, integration and functional feature tests and regression tests are common and are fully automated or manually triggered by dev. Next step is to deploy the artifact to QA env where testers subject them for testing
+	CD - may or may not be followed by a formal review that usually involves customer acceptance testing. The artifacts are then deployed to a staging env that has same/similar characteristics to the prod env but is still used for testing. Here artifacts undergo even more rigorous tests like performance and torture tests. The staging env is often used as non-active env during blue-green deployments. Finally, artifacts are marked for release and ready to be deployed for the prod env. The final step is part of CD where business decides when new features and fixes will be released to end users
+	Jenkins is used to partially or fully automate the workflows from detecting new source code in the shared repo, all the way up to production
+	
+2.7 - Demo: Install Plugins via CLI
+	Go to Jenkins user profile and setup your ssh public keys
+	Now, navigate to Jenkin's public URL an append "/cli" and hit enter
+	download the jenkins-cli.jar
+	Run the .jar file with Jenkin's URL as parameter
+
+2.8 - Integration iwth SCM - Github
+	Webhooks aka web callbacks, HTTP API, Reverse API. Regardless of terminology, principle is very simple - when a specific type of event occurs in one app, it notifies other apps that need to know about the event so they can perform some sort of processing
+
+2.9 - Jenkins Security
+	Role-based Aurhotirzation Strategy plugin
+
+3.4 - Preparation (Leveraging Distributed Builds)
+	Generally, storing credentials in clear text and saving the documents to version control is considered bad practice. Keep credentials in a secure password vault. For scaling this process, take a look at Hashcorp vault solution or other similar products
+
+4.3 - Job Parallelization (Building Pipeline Optimizations)
+	Checkbox to run multiple (concurrent) builds at the same time
+
+4.4 - Pipeline Parallelization
+	Multibranch pipeline plugin
+	In Manage configuration, set number of executors
+	In Jenkinsfile/pipeline script, run parallel(task1 : {...}, task2: {...}, ...)
+
+4.5 - Supporting Multiple Software Versions
+	Multibranch pipeline plugin - allows you to build all branches in your repo automatically
+
+4.6 - Pipeline best practices
+	Keep only the minimally required build history and back up old builds ASAP and if really necessary
+	Delegate builds to agents when you have a large number of builds per day
+	Keep the number of 3rd party integrations to a minimum
+	Disable or completely uninstall unused plugins - this will speed up your garbage collection
+
+4.7 - Java Application Performance Tips
+	 Java Garbage collection - memory management mechanism that Java apps use to release and use memory. The more memory Jenkins uses, the longer it takes for garbage collection to run. Consequently, the more plugins you install, the more memory you're using
+	 Most of the efforts focus on shortening the GC pulse time. The most prominent setting here is the GC algorithm. Make sure G1GC is enabled. It is default for JDK 9+ but for Java 8, enable manually with "-XX:+UseG1GC"
+	 [List of GC Tuning Settings]
+	 Tune heap size - don't forget to enable UseCompressedOops - increase heap size past 32 GB
+	 Ask a Java performance engineer for help
+	 Trace transactions - many Jenkins plugins rely on transactional interactions with other systems. This can cause major bottlenecks and hurt performance if you do not monitor and resolve issues proactively
+	 Find out what types of workloads you're running - are they CPU memory or network intensive? What are your available Jenkins server resources? Can you scale them dynamically?
+		To answer these questions, it is best to rely on commercial-grade tools like New Relic, Dynatrace, Zabbix and solarwinds or leverage the freely available performance tools that come wit cloud subscription
+	Throttle down logging
+
+5.3 - Monitoring Disk Usage (Managing Distributed Build Farms)
+	Bird's eye view of disk space consumption in Jenkins - Disk usage plugin
+	In configuration Jenkins page, under Disk usage plugin section - select checkbox for showing usage trend graph on project page
+
+5.4 - High Availability
+	You can set up 2 Jenkins master nodes that share common storage (on AWS?). The nodes are fronted by a load balancer that in the case of failures, ensures a transparent failover to the healthy Jenkins master node
+	Avoid restart (of the passive node) with Jenkins CLI over SSH
+
+5.5	- Setting up HAProxy
+	Keep in mind that any running jobs when the active node crashes, they may not be recoverable on the passive node and you will likely have to rerun the builds
+
+5.6 - Backup and Recovery
+	Backup plugin
+	It is considered best practice to stop your Jenkins server before you run the backup process when the server experiences minimum load. Otherwise, the backup process may slow your jobs and pipelines
+	Schedule regular backups - ThinkBackup plugin
+
+6.1 - Intro (Triggering Builds Remotely)
+	Jenkins exposes API that allows apps to access its rich functionality and orchestrate complex workflows in order to satisfy evolving business requirements
+
+6.2 - Executing Jobs Remotely
+	In configure Jobs page, select "Trigger builds remotely (e.g. from scripts)" - you can also call from apps and not just scripts
+	Appending "&cause=Cause+Text" - jenkins will record build cause. This optional parameter may seem unimportant but it will be vital in the future when you try to debug and analyze complex system setups where Jenkins is called from a number of different apps
+	Create a production grade token with your favorite password vault
+
+6.3 - Executing Multiple Jobs Remotely
+	In Chrome Browser, open Developer Tools > Network Tab. Select "Preserve log" checkbox. Copy and paste the URL in browser to run Jenkins job
+	Right click on the request in network tab > Copy > Copy as cURL
+	In postman, select Import > Raw Text > paste curl
+	Best practice - provide a different token for each Jenkins job
+	To publish results - fortunately, postman comes with a publishing feature built in, but it only exports to JSON. We can easily provide enhanced report capabilities by installing Node.js and npm and then installing a packaged called Newman with a couple of related report packages
+		npm install -g newman newman-reporter-html newman-reporter-htmlextra
+	Once you export the file (e.g. as Jenkins1.json), run "newman run Jenkins1.json -r htmlextra". Find the html export

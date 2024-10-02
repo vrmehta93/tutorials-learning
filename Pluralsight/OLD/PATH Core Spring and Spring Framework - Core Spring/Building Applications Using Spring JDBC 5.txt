@@ -1,0 +1,177 @@
+Bryan Hansen
+June 3, 2021
+
+2.1 - Version Check (Introduction)
+	Spring JDBC 5
+
+2.2 - Introduction
+
+2.3 - What is Spring JDBC?
+	Spring JDBC is a framework for working with the standard JDBC API that java provides
+	JDBC by itself is very error prone and not really user friendly
+	Spring JDBC is also pattern-based relying heavily on the template method pattern where you just need to focus on the portions of the code that deal with the business logic
+	Spring JDBC also builds on top of spring and its dependency injection libraries
+	Templates that we create can be injected into other classes very easily
+	It's also an ORM, much like Hibernate and JPA
+	Using Spring JDBC still encourages the use of an object
+	I would argue that one of the best reasons for using it is that it works very well with existing database structures where many of the other ORM tools struggle in this regard
+
+2.4 - The Problem
+	What problem is spring JDBC trying to solve? Whenever I'm going to introduce another framework or tool into my code base, I want to look at what this is actually buying me
+	These are the big questions I ask, what is it trying to solve for me?
+	Well spring JDBC fixes quite a few problems over standard JDBC and is simpler to work with than an ORM like Hibernate and JPA
+	The biggest thing it fixes, and for me this is reason enough to use it, is the reduced complexity of my code base
+	Although not a full featured ORM like Hibernate, it still encourages the use of OOP in its design
+	Since it's written using the spring framework, configuration information is injected into our application making our application more portable
+
+2.5 - Business Focus
+
+2.6 - The Solution
+	So the solution we're looking to get out fo the spring JDBC is that we can remove configuration code or lookup code and developers can focus on business needs
+	Our code can also focus on testing
+
+2.7 - Business Focus Revisited
+
+3.1 - Introduction (Setting up the JDBC Project)
+
+3.2 - Prerequisites
+	Java 11
+	Maven
+	Spring STS
+	Tomcat 9
+	MySQL
+
+3.3 - Demo Outline
+
+3.4 - Exercise Files
+
+3.5 - Github
+	https://github.com/bh5k/ride_tracker
+
+3.6 - Github Demo
+
+3.7 - MySQL
+
+3.8 - MySQL Install Demo
+
+3.9 - Configuration
+
+3.10 - JDBC Templates Configuration Demo
+	In pom.xml, add these dependencies
+		groupId - org.springframework
+		artifactId - spring-jdbc
+		version - 5.2.7.RELEASE
+	And
+		groupId - mysql
+		artifactId - mysql-connector-java
+		version - 6.0.5
+	In application context xml file, create beans for data source and jdbc template
+
+4.1 - Introduction (Creating Records in the Database)
+
+4.2 - CRUD
+	In this module, we'll focus on create
+	There are couple of ways in which we can create records using Spring JDBC
+		We can execute an insert statement using the update method of the JdbcTemplate. The JdbcTemplate looks just like a datbase insert that you would execute from a SQL workbench or another SQL editor
+		Another option is the SimpleJdbcInsert. Using the simple insert we don't actually write SQL, but rather setup the call. It's a little more code, but it acts a lot more like an ORM
+
+4.3 - Demo Outline
+
+4.4 - Create Database Table
+
+4.5 - Create Database Table Demo
+
+4.6 - Create Test
+	Using RestTemplate for tests
+
+4.7 - Create Test and Controller Demo
+
+4.8 - Modify Service and Repository Demo
+	Repository layer is used inside of Service layer. And inside Repository layer, you use JdbcTemplate
+
+4.9 - JdbcTemplate Insert Demo
+	(demo of using JdbcTemplate - you explicitly write out the query)
+
+4.10 - SimpleJdbcInsert Demo
+	SimpleJdbcInsert uses JdbcTemplate
+	A little more verbose but you essentially write java code
+
+5.1 - Introduction (Reading Records from the Database)
+
+5.2 - CRUD
+	There are a couple of ways in which we can read records using spring jdbc
+		We can execute a read statement using the JdbcTemplate and one of the mapping techniques, such as the primarily used RowMapper
+		Similar to the create methods that used a SimpleJdbcInsert, we will also look at an alternative option with the SimpleJdbcCall. Using the SimpleJdbcCall, we will still need to use a RowMapper to map the result sets to objects
+
+5.3 - Demo Outline
+	It's not uncommon for you to just implement an anonymous inner class to map these result sets for RowMapper
+
+5.4 - Read All Demo
+
+5.5 - Modify Test
+	Need to use POST if you expect a return object
+
+5.6 - Modify Test Demo
+
+5.7 - RowMapper
+
+5.8 - Externalize RowMapper Demo
+	Moving implementation of RowMapper in another class
+
+5.9 - Modify Create Ride
+
+5.10 - Create Ride Read Demo
+	Use of KeyHolder, GeneratedKeyHolder and PreparedStatement
+
+5.11 - Read SimpleJdbcInsert Demo
+	If you don't like the KeyHolder approach, there's SimpleJdbcInsert
+
+6.1 - Introduction (Updating Records in the Database)
+
+6.2 - CRUD
+	batchUpdate - manipulate multiple rows in one call
+
+6.3 - Demo Outline
+
+6.4 - Select One
+
+6.5 - Select One Demo
+
+6.6 - Update One
+
+6.7 - Update One Demo
+
+6.8 - Batch Update
+	jdbcTemplate.batchUpdate()
+
+6.9 - Batch Update Demo
+
+7.1 - Introduction (Deleting Records from the Database)
+
+7.2 - Demo Outline
+	We'll look at JdbcTemplate and NamedParameterJdbcTemplate to delete records from the database
+
+7.3 - Delete JdbcTemplate Demo
+
+7.4 - NamedParameterJdbcTemplate
+
+7.5 - Delete NamedParameterJdbcTemplate Demo
+
+8.1 - Introduction (Exceptions and Transactions)
+
+8.2 - Overview
+	Spring handles exceptions differently than you're possibly used to. They do not use checked exceptions
+	Spring rather handles everything through runtime exceptions
+	Runtime exceptions are not a check exception and thus don't require you to catch them, but they can still be thrown by your code
+	An ExceptionHandler is what we use to capture exceptions that are thrown from other tiers in our application and still return an acceptable message to our front end
+
+8.3 - Demo Outline
+
+8.4 - Handling Exceptions Demo
+	Using @ExceptionHandler
+
+8.5 - Transactions
+	If we want to implement transactions across multiple calls, we need to create an instance of TransactionManager (DataSourceTransactionManager)
+
+8.6 - Transactions Demo
+	@Transactional

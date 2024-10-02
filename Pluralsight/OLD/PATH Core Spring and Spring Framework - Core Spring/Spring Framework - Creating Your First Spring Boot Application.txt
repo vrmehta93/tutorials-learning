@@ -1,0 +1,200 @@
+Dan Bunker
+Oct 30, 2019
+
+2.1 - Introduction (Using Spring Boot to Create Applications)
+
+2.2 - What is Spring Boot?
+	Opinionated framework
+
+2.3 - Demo: Creating a Spring Boot App with Spring Initializr
+	https://start.spring.io/
+
+2.4 - Demo: Importing and Setting up a Spring Boot App
+	Using JDK 12
+
+2.5 - Demo: Overview of a Spring Boot App
+
+2.6 - Demo: Creating a Spring Boot App with IntelliJ
+	With paid version of IntelliJ
+
+2.7 - Demo: Using the Spring Boot CLI
+	Spring documentation has steps to install spring CLI
+
+2.8 - Understanding the Spring Boot Starters
+
+3.1 - Introduction (Building Apps with Spring Boot)
+
+3.2 - Application Overview
+
+3.3 - Setting up the Database
+	https://github.com/dlbunker/ps-first-spring-boot-app
+
+3.4 - Demo: Connecting to the Database
+	Maven dependency for JPA
+		groupId - org.springframework.boot
+		artifactId - spring-boot-starter-data-jpa
+	Postgres DB driver dependency
+		groupId - org.postgresql
+		artifactId - postgresql
+		scope - runtime
+	In application.properties, need to add database info
+		spring.datasource.url
+		spring.datasource.username
+		spring.datasource.password
+		spring.jpa.database-platform
+		spring.jpa.hibernate.ddl-auto
+		spring.jpa.hibernate.show-sql
+
+3.5 - Demo: Creating JPA Models
+
+3.6 - Demo: Working with JPA Relationships
+
+3.7 - Demo: Working with Binary Data Types
+	For lob, add in application.properties
+		spring.jpa.properties.hibernate.jdbc.lob.non_contextual_creation
+	This property is needed so the Postgres JDBC driver can create a lob correctly on the java side
+
+3.8 - Demo: Creating JPA Repositories
+
+3.9 - Demo: Creating Spring API REST Controllers - Part 1
+
+3.10 - Demo: Creating Spring API REST Controllers - Part 2
+
+3.11 - Demo: Handling Serialization Issues and Running the App
+	So sometimes your cyclical payload serializations will actually get so large that you'll get exceptions because it'll just go infinitely, and it'll blow up the stack on your java stack
+	So to help with this, you can jump into your models and place some annotations on there that Jackson library will look at and help to serialize your payload
+	The other option that you could do is to create DTOs or data transfer objects, but I'm simply going to use my entities for entities as well as data transfer objects
+	@JsonIgnore
+	For exception with ByteBuddyInterceptor - add @JsonIgnoreProperties
+
+4.1 - Introduction (Working with Spring Boot Config and Environment Needs)
+
+
+4.2 - How to Customize and Override Spring Boot
+	The good news with spring boot is that it provides a lot of ways to override and cutomize your application. In fact, there's more than a dozen ways to set a property value for your app
+	The bad news is there is an order of precedence that spring and spring boot uses to properly set your values
+	There are 2 basic places that you can put your configuration
+		You can use something external to the app like command line parameters, environment variables or JNDI stores
+		Or you can use something internal to your application like servlet parameters, property files, and java configuration
+	Since there are a variety of ways that you can set up your configuration, you should be aware of how spring boot handles reading and setting them. Here's the basic order excluding test configuration setup (order of precedence)
+		Command line arguments
+		SPRING_APPLICATION_JSON args
+		Servlet parameters
+		JNDI
+		Java system properties
+		OS environment variables
+		Profile properties
+		Application properties
+		@PropertySource annotations
+		Default properties
+	The main rule of thumb is external property sources override internal property sources with the exception of servlet config and servlet context parameters. Those take precedence over JNDI, system properties and environment variables
+	So here's my advice and a side note on how you should think about properties. You should pick one internal source, like property files, to setup your application defaults and then pick external source to provide overrides
+	This keeps configuration in one of two places, allows for sensible defaults, and then gives you the ability to use external sources for sensitive data like credentials and passwords
+	I'm going to follow my advice in this course and use OS environment variables as the external source and application property files for the internal source 
+
+4.3 - Demo: Locating and Working with Config Files
+	https://docs.spring.io/spring-boot/docs/current/reference/html/application-properties.html
+
+4.4 - Demo: How to Change Database Connections
+
+4.5 - Demo: How to Handle Different Environments
+	Spring boot uses a combination of spring profiles and profile specific application.properties. e.g. application-{profile}.properties
+		application-dev.properties
+	To specify the profile, you have to use -Dspring.profiles.active=dev
+
+4.6 - Demo: Setting Properties with YAML
+	Let's see what it would take to use newer YAML based files
+	These files will pretty much work just like a properties file in the sense that it needs to live on the class path and it needs to be named application.yml
+	The nice thing about spring boot is that you can mix and match property and YAML file types
+	Last, environment profiles also work with the YAML files. We could simply append a -dev or -prod to a YAML file, and it would work exactly like application property files do using a spring profile from the command line
+
+4.7 - Demo: How to Use Spring Properties in Code
+	To inject a custom property you added in application.properties
+		@Value("${app.version}")
+		private String appVersion
+
+4.8 - Demo: Overriding Spring Boot with Java Config
+
+4.9 - Creating Your Own Auto-configuration Class
+	If you're a company that has lots of projects, you'll probably want to have some core JAR files that provide utility or helper classes that all of your other applications can use
+	Auto-configuration classes are useful in this scenario
+	These classes work very similar to the java configuration class that we just built
+	You'll need to create a basic class and annotate it with @Configuration annotation
+	Next, you can add methods that define beans and functionality that you want to provide for your starter
+	Last, you'll need to declare in the resources/META-INF/spring.factories file that you're registering in auto configuration
+	Spring boot will inspect JAR files on your classpath for this springs.factories file and then bootstrap your auto configuration files
+	Finally, there are a host of annotations that Spring boot provides that allow you to specify conditions on your auto configuration. Some examples
+		@ConditionalOnClass
+		@ConditionalOnBean
+		@ConditionalOnMissingBean
+
+5.1 - Introduction (Deploying Spring Boot Applications)
+
+5.2 - Spring Boot Containerless Architecture
+	The default container spring boot uses is Tomcat out of the box. You can switch that out to Jetty or Undertow if you prefer a different embedded container
+
+5.3 - Demo: Switching out the Spring Boot Embedded Container
+	In pom.xml, spring-boot-starter-web is the dependency that brings in the tomcat embedded container
+	So the first thing that needs to happen is we need to switch out the container by excluding tomcat from this dependency
+	In maven, you can do that by adding this dependency declaration
+		<groupId>...
+		<artifactId>spring-boot-starter-web
+		<exclusions>
+			<exclusion>
+				<groupId>org.springframework.boot
+				<artifactId>spring-boot-starter-starter-tomcat
+	This will no longer load in this dependency when you include the spring-boot-starter-web
+	Next, we need to bring in the new container dependency. Spring provides starters for Jetty and Undertow. I'm going to use Jetty, so all I need to do is add the following dependency
+		<dependency>
+			<groupId>org.springframework.boot
+			<artifactId>spring-boot-starter-jetty
+
+5.4 - Demo: Creating Executable JAR Deployments
+	Running mvn package - creates jar files
+	The second way that you can create your JAR file to run your app is to create a standalone executable JAR file
+	In pom.xml, add configuration tag to the spring-boot-maven-plugin plugin
+		<plugin>
+			<groupId>...
+			<artifactId>spring-boot-maven-plugin
+			<configuration>
+				<executable>true
+	Now if you run mvn package again, it will create a JAR file
+	And this time, you'll notice that we're not going to start the JAR file using the "java -jar". It's not a standalone executable JAR file
+	You can execute it directly from the terminal
+	Unfortunately, this particular command only works with UNIX or Linux based systems. So if you're on windows, this obviously isn't going to work the same because it's not going to create an EXE file to execute, but you still have the original way of running with a java -jar command on the original JAR file
+
+5.5 - Common Cloud Supported Platforms
+	Common cloud platforms that spring boot works with are
+		Cloud Foundry
+		Heroku
+		Google Cloud
+		AWS
+		Microsoft Azure
+	Each of these platforms require setting up different configuration files so the platform knows how to deploy it on its own infrastructure
+	You can also Dockerize your application
+
+5.6 - Demo: Deploying Spring Boot to the Cloud
+	(example of deploying on Heroku)
+
+5.7 - What About WAR Deployments?
+	Since our application is a maven based application, we need to make some modifications to the pom.xml file to package the app a little differently
+	Currently, when you build a project, maven will generate a standalone executable JAR file, and this also contains the embedded container that spring boot uses by default, which is Tomcat
+	The first thing that will need to happen is to flag the embedded container as "provided"
+	This will tell maven to not package tomcat or whatever embedded container that you're using in the final packaged artifact
+	Second, we need to tell maven to package our app as a WAR instead of a JAR file
+	There's also one small java coding change you'll have to make
+
+5.8 - Demo: Creating a Spring Boot WAR Deployment
+	in pom.xml, remove dependency for jetty and the exclusion for tomcat
+	Add spring-boot-starter-starter-tomcat dependency with scope "provided". That means that maven won't package the tomcat starter in the build
+	It expects something externally to provide it
+	With these changes in place, you won't have an embedded container side of your application anymore
+	And the final thing we need to do is to change the packaging type of the maven artifact to a WAR. We can do that by adding the following line
+		<packaging>war
+	Go to your file with main method and add "extends SpringBootServletInitializer" to the class
+	When you deploy a WAR file to an external container, it expects a context to be available. It also expects a web.xml file, which defines how the app will get deployed
+	Since the spring boot doesn't have a web.xml file in it, this class provides that value and information to the external container
+	When you run mvn package, you'll get an error
+	So ultimately, what happens when the test runs is it's looking for everything to be setup correctly. We're currently setup to use our database by using an environment variable
+	(make changes to java config file and hard code DB url; run mvn package again and it builds)
+		

@@ -1,0 +1,91 @@
+
+
+2.1 - Introducing the Jenkins Plugin Model(Understanding Jenkins and the Plugin Model)
+	Just like VS Code, Jenkins ships with a bunch of features and has this well known interface third-party can write extensions for. But, the big difference is that the core feature set of Jenkins doesn't really do all that much
+	Jenkins doesn't call itself build server. It calls itself automation server and out of the box, all you can really do is automate few scripts. All major functionality that you really want to use Jenkins for comes from plugins and they cover all the major areas that you might want to automate in a workflow
+	There are really broad categories on the plugins that come in and that's what makes Jenkins such a flexible system
+	These plugins all come from a central online catalog and on that centralized place gets used for installation and also for ongoing updates - both features updates to our new functionality to the plugins and security fixes if there are any vulnerabilities in the plugins
+	Authors of Jenkins plugins are very keen on re-use, so if they want to use some functionality that's already available in anotehr plugin, they just take a dependency on that plugin. What you end up with is this huge dependency graph where you only install 5-6 plugins yourself but you end up with 50-60 that are actually deployed
+	The real problem with that is that after about a week of setting up your Jenkins server, you'll quite likely have hundres of different security vulnerabilities in plugins that you've never heard of
+	So, in this course, you're going to learn how to use plugins and how to maange them effectively so you don't end up with issues like this
+
+2.5 - Understanding Job Dependencies on Plugins
+	The problem can come in when you find you need an update to a plugin that has a bunch of jobs that depend on it. Jenkins will take care of automatically updating the plugin for you but it won't validate that there isn't a breaking change and that can cause some serious problems
+	When you find yourself in a position where new updates are breaking everything and you can't roll back, you have to balance out the risk of having a vulnerable plugin which works for all the jobs or rolling out an update to patch the vulnerability with the risk of breaking every single one of your jobs. That's not a great choice but this is a very real problem
+
+2.7 - Strategies to Minimize Plugin Dependencies
+	[Problems with updating] You see this especially with older Jenkin servers that haven't had any love for a little while and they've got lots of plugins installed that are way out of date. So, there's a longstanding security vulnerability that needs to be fixed and the only way to fix it is by skipping 10 versions to the latest version and you just don't know if that's going to work
+	3 strategies for working effectively with plugins
+		1. Reduce Surface area - don't install all the suggested plugins. Make sure you're only installing what you need because that's going to significantly reduce your dependency graph
+		2. Repeatable deployment - you should treat your update to Jenkins itself or any plugins in the same way you would treat an update to your production system and that means being able to roll back to a fixed position every time you do an update
+			a. There are different ways you can approach this and we'll look at some during the course but Jenkins keeps all of tis state in a single place. So, it might be simple as just doing a backup of your jobs folder and plugins folder before you do an update
+		3. Minimize requirements - This piece of guidance is to really examine the tools you are using and see if you can strip that down
+
+3.1 - Approaches to Installing and Using Plugins (Installing and Using Plugins)
+	1. Standard approach - Freestyle job, shell steps, manual plugin setup
+	2. Portable scripts - Freestyle job, scripted steps, offline plugin setup
+	3. Self-contained - pipeline job, declarative steps, automated plugin setup
+
+3.5 - Demo: Jenkins Build with Portable Scripts and Offline Plugin Setup
+	You can download older/current version of plugins. They're .hpi files. But, they're just zip files. You can verify that by appending .zip to the file and opening it
+	So, if you don't have access to the internet, you can download all the .hpi files for all the plugins you need and add them to a specific folder
+		Make sure to get all the dependencies and not just the top level plugins
+	If you've selected automatic upgrades and that's broken your jobs, you can download the .hpi for a previous version and install it (in Plugin Manager)
+	Unlike standard approach where you explicitly write all the shell commands in the job, in portable scripts approach, you run .sh files in shell commands. This way, they're source controlled and not hidden away inside freestyle jobs in XML somewhere on the server
+	
+3.7 - Demo: Self-contained Jenkins Build with Automated Plugin Setup
+	You can define plugin in a groovy script
+	Workflow aggregator - name of pipeline plugin
+	.jpi files - expansion of the API plugin which is the download format
+	Use Jenkinsfile
+
+4.1 - The Plugin Builder's Toolkit (Writing Custom Plugins)
+	First piece of advice - try not to build a jenkins plugin. There are over 1500 plugins
+	3 main areas
+		1. Development tools - Java + Maven, Plugin templates, Dev Jenkins instance
+		2. Jenkins integration - Extension points, Web UI, resources, Job definition, runtime
+		3. Plugin publishing - Building the HPI, installing manually, testing in Jenkins
+
+4.2 - Demo: Building a "Hello, World" Plugin
+	Jenkins template for Maven - "mvn -U archetype:generate -Dfilter="io.jenkins.archetype""	
+	"mvn hpi:run" - run dev Jenkins server
+
+4.5 - Publishing Your Plugin
+	To publish this project on Jenkins plugin website, there's an established procedure to follow
+	1. Code needs to be in a public Github repo so that anyone can review it
+	2. Open JIRA ticket asking Jenkins team to host that plugin for you
+	3. If they approve, they'll ask you to move the code into JenkinsCI org on Github
+	4. Setup your project so that it builds on Jenkins team's Jenkins servers
+	5. Permission to be hosted on artifactory
+	This is a well documented process
+	
+4.6 - Demo: Deploying Custom Plugins
+	"mvn hpi:hpi"
+
+5.1 - Understanding Plugin Update Issues (Managing and Upgrading Plugins)
+	With dozens of plugins, which all have different release schedules, many of which depend on each other and all of which depend on Jenkins itself, which has its own release schedule. To manage that effectively, you need to understand exactly what can go wrong with plugin updates
+	Problems can manifest in different ways:
+		1. Breaking changes - failing jobs, manual fixes
+		2. Failed updates - minimum versions, successful jobs
+		3. Repeatable Jenkins install - OS & Java, Jenkins & plugin versions
+
+5.3 - Managing Breaking Changes
+	Your options are pretty limited because you need plugin for your builds to work. You could roll back and manually install the old version of the plugin in the form of HPI
+	But, you'll also need the update especially if there's a security fix in there
+	This is where staging deployment of Jenkins (dry-run in a separate env) is useful because it tells you about the problem in a safe env while your builds are all still running just fine on the old plugin verion in prod. That gives you a chance to dig into the issue and try to find a mitigation
+	There's a really useful plugin called "Plugin usage" plugin that shows your which jobs use a particular plugin. So, you can use that to build a list of the jobs that you know will need to fix. If you're lucky, you might be able to script that with updates to all job conflict XML files editing/adding data for the new plugin. If not, then you'll need to manually edit the jobs but at least you've got advance warning
+	Breaking changes to plugins is a real problem but fortunately, it's not too frequent
+	
+5.4 - Demo: Failed Updates and Successful Jobs
+	[reference to running a job where the plugin output was displayed; looking at the same build after the plugin update failed] If I look at the original build, which had Docker hub link, that's gone too because even though the data is stored for that run on the job, there is no plugin that could generate the UI to show me the link anymore
+	In config.xml, you'll see that the plugin info is still there and in the build.xml (for run #1 for example), the data is still there. But, Jenkins stores the identifier for that plugin in that will execute this action on that will execute this action on that plugin doesn't exist in my Jenkins server  anymore. Because the installation failed, there's nothing that can execute this step. So, Jenkins just silently ignores it
+	It took a manual rollback to get my plugin working again
+	
+5.5 - Managing Update Failures
+	There isn't a nice way of dealing with installation failures, except by manually rolling back to the old plugin version and that's where scripting your Jenkins deployment is the real fix. The idea is you have all yoru installation steps automated with known versions of Jenkins and all of your plugins. You don't deploy updates by clicking around the UI in your production Jenkins. You build a new env to test it out first. So, when you hit one of these issues, either you'll know about it in advance or you'll be able to roll back to a previous version easily
+	
+5.6 - Demo: Repeatable Jenkins Deployments
+	Separate the Jenkins data (storing in machine) from where the Jenkins is running (container)
+	(Talking about shutting down Jenkins) Because I ran my Jenkins container using a volume for the jobs nad that volme lives on my local machine, I've still got all the data
+	So, I could be running this update in a staging env where I've taken a copy of my Jenkins job folder, deployed it to another machine, run my container using that same Jenkins job folder and verify that all those updates - OS, Java, Jenkins itself and plugin that thye all still work with my jobs
+	And if I rolled out this release to production by running a new container from my new container image and I did find an issue, I can always roll back using the same process. So, removing the container with the new version running container from the old version on attaching that same directory. So, all the jobs exists in between upgrades and rollbacks. Using Docker like this gives you a really nice way of managing your Jenkins updates

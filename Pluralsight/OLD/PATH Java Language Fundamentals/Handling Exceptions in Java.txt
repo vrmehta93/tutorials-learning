@@ -1,0 +1,100 @@
+Jim Wilson
+
+2.1 - Introductions (Handling Exceptions)
+	Exceptions provide a non-intrusive way to signal errors
+	try/catch block
+
+2.2 - Working with try/catch
+
+2.3 - Handling Cleanup
+	e.g. close file, database, etc. May be needed even if exception occurs
+	Finally block - runs in all cases following try or catch
+
+2.4 - Implementing try/catch/finally
+
+2.5 - Automating Cleanup
+	Manual cleanup can be cumbersome. Often requires null checks and requires additional exception handling within finally block
+	There's 2 parts to automating cleanup. First, a type has to indicate that it supports automated cleanup and then working with those types, in our code, we have to code our apps in a way that will leverage that automated cleanup
+	Any type that supports automated cleanup needs to implement the interface AutoCloseable interface. And the role of this interface is really simple. It's simply to indicate the type supports automated cleanup. Now the AutoCloseable interface only has one method, which is close() method. So any type that implements this interface is responsible to put all the necessary cleanup code inside of its close method. So if we call close() on that type, it assures that the resource is properly cleaned up. 
+	Now it turns out that most types do not directly implement AutoCloseable. They generally implement other interfaces that inherit from AutoCloseable. The most common of those is the Closeable interface. Now as I mentioned, it inherits from AutoCloseable and it actually doesn't even add any other methods. It simply has that close method. So any time you're working with a type that inherits from the Closeable interface or any other interface that inhertis from the AutoCloseable, that means that type supports automated cleanup
+	Now when working with one of these types, we need to code our apps in a way that will leverage that automated cleanup and we do that by using the try-with-resources statement. And try-with-resources allows us to create an instance of a type, and when we're finished with that type, Java will generate the appropriate code to automatically call that type's close method. Now to use try-with-resources, we have to be using a type that implements AutoCloseable or any other interface that inherits from AutoCloseable and Java will generate the code necessary to automatically call that type's close method. And in addition to calling close() method, it will also automatically incorporate the necessary null checks. It will only call the close method if an instance of that type was successfully created
+	Now as we work with try-with-resources, the syntax is goingto look really familiar. It's going to look a whole lot like a regular try block, but with one key difference. The type that we want to clean up has to have a lifetime that's scoped within that try block itself. So when we're using try-with-resources, the type we want to automatically have cleaned up we'll need to create as part of the try block itself
+	Now try-with-resources, just like a regular try block, can handle exceptions. So we can optinally include catch blocks. And the really cool thing about try-with-resources is the catch blocks that you put on try-with-resources will not only the code that you put inside the try block, but they'll also handle any exceptions that are thrown as part of the automatic call to the close method
+
+2.6 - Transitioning from Manual to Automatic Cleanup
+	In IDE, replace "try {" with "try(BufferedReader reader = new BufferedReader(...)) {"
+	Now BufferedReader is scoped against that try and that makes this a try-with-resources, and as a try-with-resources, java will take care of all the cleanup work of the "reader" when we're done
+
+3.1 - Introduction (Understanding Exception Types)
+	Exceptions are represented by classes and it turns out that all classes that represent exceptions have a common base class, Exception class
+	Now from there, the classes actually represent different levels of exceptions. Some of these classes represent very broad categories of exceptions. Other classes represent very specific type of exceptions. So every error doesn't necessarily have its own individual Exception class and that's really a good thing because it allows us to decide just what granularity of error handling we want to put inside of our code
+	Now as I mentioned, all classes representing exceptions inherit from the Exception class. Exception class inherits from the Object class, but it turns out it doesn't directly inherit from the Object class. There is one class in between known as the Throwable class and the Throwable class provides the capabilities to allow the language to throw exceptions
+	Now there are other classes that inherit from Throwable but in general, we don't work with those a whole lot. The main class we're interested in is the Exception class
+	IOException class is a class that represents a broad category of errors. Pretty much any error related to input or output is represented by this class. But you want to handle errors more specifically, then there are exception classes that inherit from IOException. e.g. FileNotFoundException and SSLException
+	Now another important class that inherits from the Exception class is the RuntimeException class. This represents the kind of errors that could be thrown directly by the runtime. e.g. ArithmeticException
+
+3.2 - Exceptions Can Be Handled by Type
+	Place more specific exceptions before less specific exceptions
+
+3.3 - Checked and Unchecked Exceptions
+	Turns out that exceptions classes are divided into 2 broad categories - checked and unchecked.
+	Checked exceptions - compiler will actually raise an error if you don't handle that exception
+	Unchecked - compiler doesn't force error handling
+	This immediately raises the question, how do I know if a particular exception is a checked or unchecked exception? It turns out that the categorization is actually pretty simple. In the case of unchecked exception, that's any exception that inherits from  RuntimeException. Checked exceptions are all the rest
+
+3.4 - Handling Multiple Exceptions
+
+3.5 - Handling Unchecked Exceptions
+
+3.6 - Exceptions and Methods
+	Exceptions can cross method boundaries. If not handled, will propagate up the call stack. This has some really important implications on how we organize our exception handling because it turns out because these exceptions can travel up the call stack, it allows an exception throw in one method to be caught by a different method that called into the method that threw the exception
+	It turns out that exceptions are actually part of a method's contract. So each method is responsible to deal with any checked exceptions that might occur. Now one way to deal with a checked exception is to actually have a catch in place to handle that exception. If a method is not going to catch the exception, then the method is responsible to document that the exception might occur. And the way a method does that is by using the "throws" clause
+
+3.7 - Handling Exceptions Across Methods
+
+4.2 - Create and Throw an Exception (Creating Custom Exceptions)
+	"new" operator - remember exceptions are classes. Include info with constructor
+	
+4.3 - Throwing an Exception
+
+4.4 - Custom Exceptions
+	Now Java has a really rich set of built-in exception types. And in general, those built-in exception types will meet most of our needs, but there are times where we may need a type of exception that's not part of the built-in exception types. Well, in those scenarios, we can go ahead and create our own custom exception and the way we do that is by defining our own custom exception class. Now, as you recall, an exception is a class but not just any class can be an exception. Remeber, that all classes that represent exceptions have to inherit from the Exception class directly or indirectly.
+	The good news is most of the required features that we need to have as an exception are provided for us by simply inheriting from the Exception class. There's not a lot of additional work that we need to do when creating our custom exception, but there are some members we have to add.
+	Now in general, the only members we have to add are appropriate constructors. We want to make it so we can create an instance of our custom exception and provide the necessary info. Now if your custom exception require additional members such as methods, getters, setters, whatever, you're completely free to add those
+
+4.5 - Declaring a Custom Exception
+
+4.6 - Chained Exceptions
+	One of the options we have is the ability to chain exceptions together, and what that means is we have the ability to create one exception that, in effect, wraps another exception. 
+	Why would I want to do that? What comes up is ther may be situations where an underlying error which causes an exception to be throw, but you don't want to directly throw the underlying exception. You'll actually throw a more meaningful exception, maybe something that's more representative of the application-level work you're trying to do. So you want to throw that more meaningful exception, but you don't want to lose the underlying exception that represents the error that actually occured. So chaining exception allows us to throw that more meaningful exception, but maintain the info from the original exception
+	There are couple of options. One way we can chain one exception to another is to use the "initCause()" method that we inherit from the Exception class. And doing it that way is fine, but in practice, we generally don't do that so much. More commonly what we do is we use a constructor to pass in the original exception. So in the process of creating a higher-level exception, we can pass in the original exception to the constructor. Most exception types include just such a constructor
+	Once we chain these exceptions together, how do we access the chain exception? The Exception class provides a "getCause()" method. So calling getCause() on the current exception instance will return back an instance of that underlying exception
+
+4.7 - Chaining Exceptions Together
+
+4.8 - Accessing a Chained Exception
+	So if getCause() returns a non-null value (reference to that exception), that tells us that there is another exception wrapped
+
+5.2 - Exception Handling Organization (Developing an Exception Handling Strategy)
+	Now when it comes to orgnaizing our exception handling, broadly speakingk, there are 2 general ways  we can do it. We have a concept of centralized exception handling or more localized exception handling. Now, no app is generally going to go entirely in one direction or the other, but each one provides distinct benefits and has distinct considerations.
+	Now centralized exception handling means that we're grouping our exception handling together. So in other words, high up in the application logic, we may have a try block with a long series of catches that will deal with all the different exceptions that might occur during the execution of the code. The benefit of that approach is that it tends to simplify our exception handling because all of our exception handling tends to be in one place or at least a small number of places. But one of the key considerations of this approach is that it may make recovering from an exception a bit more difficult. Remember how exceptions work. When an exception gets thrown, it starts unwinding the call stack and will start working its way further and further up the code. As a result, the exception might actually cause yo uto exist your processing logic. And if you've exited your processing logic, continuing to do work after the error might be difficult, even if there was a way to recover and carry on.
+	Now the other option is more localized exception handling. In other words, we place our exception handling closer to the point in our code where the exception might occur. And one of the benefits of this approach is it makes it easier for us to recover from an exception because it we put the exception handling right inside of our processing loop, we can deal with that error, but then continue doing the work within that loop if we're able to do so after the error occurs. Because by having the exception handling right there in our processing loop, we don't exit out of the loop when the exception occurs. But something we have to consider in this approach is it can make our exception handling a bit more cumbersome because it means that our exception handling is spread throughout our code. So rather than having one area of our code with all of our exception handling, we may have lots of little bits of code to deal with exceptions spread throughout the entire app
+	Now when we're talking about centralized or localized exception handling, in general, we don't go 100% in either direction. We take the adv of the benefits of each
+
+5.3 - Reorganizing Exception Handling to Maintain App Flow
+
+5.4 - What to do with Exception Information
+	The real powers of exceptoins is they carry info on what exactly went wrong. So with all this info inside of the exception, what do we do with that info once we catch the exception? Something to keep in mind, exceptions actually have 2 different audiences - end user and developers/support team
+	So when you're reporting info to an end user, your fundamental goal is basically just to let then know that something has gone wrong, but they probably don't want a whole lot of detail. And something I think is very important, if the user is running data from a large dataset, it's really important to tell them where the problem occured, giving the info they need to look at their data and see if they made a mistake inside the data because there's nothing more frustrating than an error message that simply says "Something went wrong" but at the same time you don't want to overload them.
+	For developers and support team, things are very different. The info we provide must be detailed and complete. Info should be persisted, that's generally going to be the log system
+
+5.5 - Displaying User vs Developer Exception Information
+	Writing to the System.err.println() stream - in IntelliJ anything that is written to the err stream is displayed in a red font of instead of the standard white font
+
+5.6 - Do's and Don'ts of Exceptions
+	Do's
+		For indicating errors or other exceptional circumstances
+		Do include data in exceptions 
+	Don't
+		For standard app control flow or conditional logic
+		Don't include data as a way of bypassing parameters or method return values

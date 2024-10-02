@@ -1,0 +1,553 @@
+Jose Paumard
+Jan 7, 2021
+
+2.1 - Introducing the Course and Parallel Streams (Introducing Parallelism in the Java Stream API)
+	You may remember that Stream API has been introduced in 2014 as part of java 8
+	How can you go parallel in a stream? It's super simple. All you need to do is call this parallel() method somewhere on your stream and that's it. Your data will be processed in parallel
+	Now you must be aware that this simplicity hides a lot of very complicated details. There are many very complex algorithms triggered by this simple parallel call and this is what you're going to learn in this course
+
+2.2 - What Are You gong to Learn? What Do You Need to Know?
+	All the examples you're going to see have been made with java 11. Now if you're still using java 8, it's okay because most of them also work using java 8
+
+2.3 - Course Agenda
+
+2.4 - Measuring Parallel Streams Performance Reliably
+	Before we start, 2 words of warning about what you're going to see in this course. There are many things in this course that rely on the measurement of certain performance of some kind of code we're going to write together. Namely, we're going to measure the performance of sequential stream  and then the performance of the same stream executed in parallel and compare 2 performances
+	First of all, there is very little chance that you will observe the same performance, the exact same number on your machine than the one I'm going to show you on my machine
+	Second word of warning, during the live demo parts of this course, I'm going to show you how to launch benchmarks and how to get measurements from them. We're going to use JMH, which is the standard for doing these kind of things in java
+	So during the live demos you're going to see numbers, performances recorded during the live demo and those numbers are going to be different than the number I'm going to show you in the slides and on the graphs. Why? Because all the recordings have been made on my laptop and a laptop is not a very reliable machine to measure the performance of a piece of code.
+	A desktop PC is much more reliable and all the performances you're going to see in the slides have been measured on a desktop PC. Why is laptop not as reliable as a desktop PC? As you may know, there are many power saving modes on a laptop that can activate themselves in some kind of random way, which makes it very hard to measure the right performances of the code we need to bench
+	So if you want to measure the performances of your code, doing so on a laptopmay lead to not that reliable results. If you need to have reliable and reproducible results, your best choice choice is to do it on a desktop PC
+
+2.5 - Making a Regular Stream a Parallel Stream
+	Technically, theres 2 ways to do that
+		First one is to call parallel() on a stream that exists
+		Second one is to call parallelStream() instead of calling stream()
+	Now, what effect does it have on a given stream? Within a stream, it is going to set a special bit in the stream that will trigger the computations in parallel, the processing of your data in parallel, when you call the terminal operation
+	The parallel method itself is an intermediate operation, so you need to call a terminal operation after that
+	So once you've called the terminal operation,  the stream implementation will check this special bit. If it is set to 1, then the computation will happen in parallel and will trigger special algorithms for that, including fork/join framework that we'll see later on. And if it's not, it will be processed sequentially
+	Now you also have a sequential method on the Stream API. That is, if you have a parallel stream and decide in the end to process it sequentially, you can also do that. Odds ar ethat you're not going to use the sequential method a lot
+	The real question for you and your application is the following - is it a good idea to do that? If you want to answer that question, you need to measure performances
+
+2.6 - Measuring Performances Using JMH
+	First thing you should know is that you should definitely forget about calling some kind of for loop with a System.currentTimeMillis or System.nanoTime, make the difference and see what it gives. This is not going to give you any kind of reliable results
+	Why so? Because the JVM is a very smart piece of software that can trigger many optimizations on your code that is running, and those optimizations, including not going to process any computation that you've asked for, if the JVM realizes that you do not do anything with the result of this computation
+	So if you have a big for loop, and the JVM sees that the computation that you're doing in that is not used, then it will stop looping over your data
+	So if you try to measure that with a System.currentTimeMillis, you will get a partial result that is completely wrong. So forget about that, it just doesn't work
+	The only way so far to measure performance of a java application is a tool called JMH that is part of the OpenJDK and the source code is on github
+		https://openjdk.java.net/projects/code-tools/jmh/
+	JMH stands for Java Microbenchmark Harness, and it is as of today the standard tool you should use to measure the performances of your java code
+	JMH is not meant to measure performances of some kind  of code that would do input output operations, for instance. If you have disk operations or network operations, then there are other tools for that. JMH is not used for this kind of thing, and we're not going to use it for that
+
+2.7 - Using the Computation of Prime Numbers to Set up JMH
+	BigInteger.probablePrime(BIT_LENGTH, randomNumber)
+	The number of bits will give us the size of this probablePrime, and the random number will act as a seed to generate this prime number
+	This is a very easy way to compute prime numbers. Now it doesn't work all the time. That is the reason why this method is called probablePrime. But there is a very good probability that the number generated is going to be a prime number
+	What is interesting for us is that computing this prime number is going to be a very heavy computation
+
+2.8 - Setting up the Prime Numbers Computation in a Parallel Stream
+	We're going to use this probablePrime call in 3 ways
+		Put in a loop, a very classical loop
+		Use an IntStream.range call. That's not a loop, that's directly a stream
+		And third, We're going to go parallel in that stream
+	Just one more word about JMH. JMH is a tool that measures the performances of a computation done by the JVM. It can also measure performances of non-java applications, as long as those applications are run by the JVM
+	So you can use JMH for Kotlin, Groovy, Scala or Clojure and all the languages that compile bytecode that is going to be executed by a JVM
+
+2.9 - Setting up a Class to Be Benched by JMH
+	How to set up benchmark using JMH. It's very simple technically speaking
+	What you need to understand and to realize is that to proper measure the performance of a java application, you first need to run it a certain number of times, because within the JVM there is a special just-in-time compiler that can optimize your code a lot
+	This special compiler is called the C2 compiler, and this C2 compiler, to properly optimize your code, needs to observe how this code is run by the JVM
+	It needs to see your code in action, how this code is running, and what it is doing exactly
+	So by first running your code as a warmup, the C2 compiler will trigger itself, optimize it, and after this first phase, you will be able to measure the real performance of your application
+	So this is the kindof thing that you need to tell JMH so that JMH can run your code, wait a little while this code is running, and then measure the performance once the C2 compiler has done its job
+	How can you give those information to JMH? You just need to give them through the use of annotations
+	So here we have this first annotation @Warmup
+		@Warmup(iterations = 10, time = 1, timeUnit = TimeUnit.SECONDS)
+	This annotation is going to tell JMH "you need to run this code for 1 second 10 times before measuring it" and then you have the measurement run
+		@Measurement(iterations = 5, time = 1, timeUnit = TimeUnit.SECONDS)
+	Here we're telling JMH "you should run this code 1 second 5 times to measure the performances".
+	And then the the @Fork annotation tells the JMH, you should do this benchmark 3 times to compute more precise measurements
+		@Fork(value =3)
+	And the last 2 annotations are just here to tell JMH "hey, you should show the average of the measurements you have done, you have several options in that, and a result should be given in milliseconds, depending on what you're measuring"
+		@BenchmarkMode(Mode.AverageTime)
+		@OutputTimeUnit(TimeUnit.MILLISECONDS)
+	The very last annotation is the @State annotation
+		@State(Scope.Benchmark)
+	This has to do with the benchmark itself
+	Within the class that carries the method that JMH will run as a benchmark, you can put parameters annotated with this JMH annotation called parameter
+		@State(Scope.Benchmark)
+		public class ProbablePrime {
+			@Param("10", "100")
+			private int N;
+			
+			@Param("128", "128")
+			private int BIT_LENGTH;
+		}
+	So JMH is going to take 2 parameters, the different values we have defined, and will generate 4 runs of a benchmark with that
+	The code you want to measure has to be put in a method. You can call this method whatever you want, but it has to be annotated with this @Benchmark JMH annotation
+		public class ProbablePrime{
+			@Benchmark
+			public List<BigInteger> rangeParallel() {
+				return IntStream(0, N)
+					.mapToObj(i -> probablePrime())
+					.parallel()
+					.collect(Collectors.toList());
+			}
+		}
+	This is going to tell JMH ro run this method. How JMH is going to run that method really depends on the parameter you gave.
+	How is JMH going to run that really depends on the parameter you gave
+		@Warmup(iterations = 10, time = 1, timeUnit = TimeUnit.SECONDS)
+		@Measurement(iterations = 5, time = 1, timeUnit = TimeUnit.SECONDS)
+		@Fork(value =3)
+		@BenchmarkMode(Mode.AverageTime)
+		@OutputTimeUnit(TimeUnit.MILLISECONDS)
+		@State(Scope.Benchmark)
+		public class ProbablePrime {
+		}
+	Here we gave 1 second runs, 20 iterations as warmup, and 5 iterations for the measurement. That's already 25 seconds for each run of the method
+	We put 3 in the Fork annotation, so times 3, and we gave 2  parameters for a total of 4 configurations (N and BIT_LENGTH). So that's more runs for JMH to measure
+	So now we have a class that has been properly annotated, how are we going to tell the JMH "hey, you hsould be running this class?"
+	There is some magic code for that you just put in the main method
+		public class ProbablePrime{
+			main(){
+				Options options = new OptionBuilder()
+					.include(ProbablePrime.class)
+					.build();
+				
+				new Runner(options).run();
+			}
+		}
+	We first need to create an Options object, Options object from JMH, and pass this object to a Runner object also provided by JMH
+	This is the first way and probably the simplest one of running JMH benchmark. However, it is NOT the recommended way. We're going to see another way when we will be in IDE
+
+2.10 - Live Demo: Writing a JMH Class That Computes Prime Numbers
+
+2.11 - Live Demo: Running a Benchmark with JMH in the IDE
+	In pom.xml
+		<dependency>
+            <groupId>org.openjdk.jmh</groupId>
+            <artifactId>jmh-core</artifactId>
+            <version>${jmh.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.openjdk.jmh</groupId>
+            <artifactId>jmh-generator-annprocess</artifactId>
+            <version>${jmh.version}</version>
+        </dependency>
+
+2.12 - Live Demo: Using Maven to Run a JMH Benchmark
+	Therer is another way of running those benchmarks, which is the preferred way that allow your code to become independent of the IDE
+	How does the IDE interfere with the execution of your code? This is quite hard to say and it's not very easy to measure. But the fact is your IDE may be there to kind of modify the results you should have when you want to measure the performance of a given code
+	In pom.xml - magic plugin configuration of the maven shade plugin for JMH. This code is given in the JMH documentation itself
+		<build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>3.2.4</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                        <configuration>
+                            <finalName>${uberjar.name}</finalName>
+							...
+	It's a little tricky to understand. And this code is going to generate a special jar with everything you need to run your benchmark
+	The name of the jar is directly fixed in the properties of the pom.xml
+		<uberjar.name>benchmarks</uberjar.name>
+	Run in cmd
+	The result is the same kind of result as the one give in the console of IDE, but probably with more precision and at least with no interference with IDE
+	I just would like to stress out this word of warning that JMH is displaying along with all its results
+
+2.13 - Analyzing the Results of Sequential and Parallel Computation
+	Computing in parallel leads to much better performance by roughly a factor of 6
+	First thing, I would like to give you a word of warning. There is very little change, if any, that you will have exact same measurement on your machine than the one I'm giving you
+	Where does this factor of 6 come from? It comes from the fact taht I'm running that on a CPU that has 6 physical cores
+	Nowadays, CPUs are built with a certain amount of physical cores. The number of physica cores may be different than the number of cores that is written on your CPU. Odds are that if you have a 12-core CPU, it stands for virtual cores and not physical cores
+	What does count is not the number of virtual cores but the number of physical cores
+
+3.1 - Introducing the Module and Its Agenda (Getting the Best Performance Gains from Parallel Streams)
+
+3.2 - Boxing and Unboxing Values in Wrapping Types
+	Let us start with auto-boxing. Auto-boxing is an old feature from the java language. It has been introduced in java 5 in 2004. And it is something that has an impact on both the compiler, that is the code that we write, and the way the java code is executed by the JVM
+	So yo ucan see that this boxing and unboxing mechanism is, in fact, completely transparent. The compiler and the JVM are both taking care of this for me, which is very nice as a developer I do not feel like having to write all this technical code directly and explicitly in my code
+	But it may also have an impact on performances because this is work to do, objects to unwrap, value to wrap
+	And we need to ask ourselves, what is the cost of those boxing and unboxing operations?
+
+3.3 - Live Demo: Measuring the Cost of Boxing Values in a Loop
+	(demo of runing benchmark for an int array and Integer array)
+	And what you can see on this graph is that the cost of boxing and unboxing is, in fact, quite high. It's far from being negligible. It's a factor of about 7 or 8 on a normal application
+
+3.4 - Introducing Pointer Chasing and the Caches of a CPU
+	What is pointer chasing? Pointer chasing is something that is happening under the hood. It's completely invisible in your code. And it's due to the way CPUs are organized on the silicon
+	Usually, a CPU may have from 2 to 6 or more cores. Here in this example, we have a CPU with 4 physical cores
+	Now, all these cores need to access the main memory, to read data from this main memory and to write back the results of the computations
+	Those cores are pretty fast. And the main memory is not that fast. So to be able to feed those CPUs with data at the pace they need to compute it, there are several levels of cache on the silicon die itself
+	Usually, a core of the CPU accesses the first level of cache, which is rather small but also very fast. Access time is in the order of nanosecond. And then there's a second level of cache a little bigger and a little slower
+	The same is replicated for each core. So each core has access to 2 levels of cache, which are private to this core
+	And then there is a third level of cache, which is accessed a little slower but which is also bigger
+
+3.5 - Chasing Pointers to Transfer Object from the Memory to the CPU
+	How does a core of CPU access data from the main memory? This data will have to be transferred first to the L3 cache and then to L2 cache and then to L1 cache before being available by this core of CPU
+	But there's a second point here. The memory is not read in a random way. That is, if a core of a CPU wants to access just an int, for instance, in fact, what is going to be transferred from the main memory to the different levels of cache is not just that int, but merely a line of memory
+	The memory is transferred line by line from the main memory to the different levels of cache and each line is typically 64 bytes, that is 8 longs or 16 ints.
+	And this is how it works, whehter you want to transfer an int or a string of character or an array of references, it will be transferred to the L1 cache line by line
+	Let us examine more precisely several use cases.
+	First use case, we have an array of 16 integers, which happens to be stored on 2 lines of the cache. How much time will it take to transfer this data to the L1 cache so that we can process it? It's quite easy to see that all we need to trasnfer is only 2 lines of the main memory to the cache
+	So in 2 read operations, we will be able to transfer all this array
+	Now suppose that instead of having an array of ints, we have an array of Integers. Thsi time in the array, we don't have values. What we have are references to the instance of the Integer class, which are goin to hold the values
+	So in one read operation, we're only going to transfer the references to this object. And then to get all the values, well, it depends. It may be from several reads to maximum 16 reads to get all the values of those integers. And this is exactly what is called pointer chasing
+	To get all the values, we have, in fact, to follow pointers to other places in the memory, and this has a cost due to the way that data is transferred from the main memory to the cache of the CPU
+
+3.6 - Comparing the Iterating over an ArrayList and a LinkedList
+	So you can see that iterating over an array of int primitive type would be extremely efficient because we don't have to follow any pointer. Iterating over an array of Integers is going to be less efficient because for each value, we will have to follow one reference, that is, one pointer
+	And this is what's happening on ArrayList. So if you have an ArrayList of Integers, this is exactly how it will be working
+	But there is also this other implementation of the List interface, which is LinkedList and LinkedList is even worse because LinkedList does not store the references to the integers in an array. It stores them in a LinkedList of node objects. So first you need to get reference to the first node object, then you need to follow 2 pointers, the first one to the next node object and the second one to the integer itself
+	So iterating on a LinkedList will imply much more pointer chasing than iterating on an ArrayList
+	And of course, the question is, can we measure that?
+
+3.7 - Live Demo: Measuring the Cost of Pointer Chasing for Lists
+	(demo of benchmark for ArrayListList and LinkedList - setups for LinkedList contiguous in memory, shuffled in memory and scattered in memory)
+
+3.8 - Analyzing the Cost of Cache Unfriendly In-memory Structures
+	Let us have a look at the results on a graph
+	As expected, the winner is the ArrayList, which is really what we expected. Why? Because to reach the value of the integer when you have an ArrayList, all you need to do is follow one single pointer, which is far better than the case of the LinkedList
+	The second best structure is the plain LinkedList, the LinkedList which we have put the node object in contiguous places in memory. It's not great but it's not that bad
+	For shuffled LinkedList, you can see that in that case, we're losing some performance
+	But for scattered LinkedList, then the performance hit is really very bad. In that case, all the node objects have been voluntarily scattered all over the place in the main memory, and here we're paying a very high price for the pointer chasing
+	There is another mechanism at the CPU level that you need to be aware about, which is called Cache Miss
+	Whenever the core of a CPU needs a value and that value turns out not to be in the cache, then this is called cache miss, and during the cache miss, if the value is not in the L2 cache or L3 cache, then the CPU may decide to suspend the thread that is executing this computation and replace it by another thread
+	And this is a much bigger performance hit than just pointer chasing, but it is still a consequence of pointer chasing
+	And this is the reason why LinkedLists are called cache-unfriendly structures, whereas ArrayLists are called cache-friendly structures
+	In a nutshell, every time you have a data structure in memory that relies on the use of pointer, think about binary trees, for example, or skip lists. Those data structures are very cache unfriendly and will suffer important perforamnce hits due to the fact that you need to follow pointer to reach the real values
+
+4.1 - Introducing the Module and Its Agenda (Analying the Fork/Join Implementation of Parallel Streams)
+	How does parallel streams work under the hood? The answer is quite simple. They're built on top of the fork/join framework
+
+4.2 - Forking and Joining Computations to Implement Parallelism
+	Let us see first how forking and joining tasks is conducted in a fork/join framework
+	As we said, parallel streams are implemented on top of the fork/join framework. This framework has been introduced in java 7 and slightly modified in java 8
+	How does this framework work in a nutshell? First, you need see your computation as a single task that is going to produce a result. Going parallel means that this task is going to be split into subtasks and each subtask is going to produce a partial result
+	This is called the fork step of this fork/join framework
+	And then when those partial results have been computed, they're going to be sent back to the main tasks that has the resposibility of joining them, and this is the join step of this fork/join framework
+	All those tasks are sent to a special pool thread called precisely the ForkJoinPool
+	And this pool has special capabilities to enable the computations of those subtasks in parallel
+	This pool of threads, of course, handles several threads, and each of those threads is going to conduct the computation of one subtask
+
+4.3 - Splitting a Heavy Computation Task until It Becomes Small Enough
+	Let us see that on an example, suppose that our parallel stream is going to compute some kind of thing, some kind of statistics over an array, and this array is a massive array with 1 million cells in it
+	So the split step is going to split this array into 2 sub arrays of, let's suppose, 500k elements each, and those 2 subarrays are going to be given to 2 subtasks created by the fork step of the fork/join framework
+	Those 2 subarrays are still big arrays in themselves, so we can continue splitting them, just as we split the first array. And this split step will carry on, will continue to split those sub arrays until it reaches a given size and decides that this task is small enough to be computed in a small amount of time
+	This is a fork step and you can see that it is really up to the fork/join framework to decide whether this task is too big and should be split or small enough and should be computed
+
+4.4 - Using the Common Fork Join Pool of Threads to Compute Tasks
+	So we have 2 steps. First, the splitting of the tasks and then the computation of the small enough tasks
+	Where does this computation take place? It takes place in a special pool of thread, which is called precisely the ForkJoinPool
+	Now, there are several things you need to know about ForkJoinPool
+		First, it's a pool of thread, a classical pool of thread, instance of the ForkJoinPool class
+		Second, it is created when the JVM itself is created. This is part of the new features of java 8. And this ForkJoinPool is also called Common Fork/Join Pool. There is only one Common Fork/Join Pool (CFJP) in the JVM starting with Java 8
+		And it already has a consequence. All of your computation of parallel streams are going to take place in this CFJP. It means that if in different threads you have at the same time two parallel streams that are launched and computed, they will have to share the same pool of threads
+		So you're not going to have the same kind of gain performance wise as the one you observed when you benched your parallel computation all alone on one machine.
+		This CFJP is a common resource that is shared by all the computations. This is something very important to keep in mind
+		The last point to know with this CFJP is its size. The size of the CFJP is fixed at the start of the JVM. Now there are 2 ways to fix this size
+			You can let the JVM fix the size itself and it's going to do so by querying your CPU - give me the number of cores you have and I will size this CFJP according to this number of cores. There is a trick here that this number of cores is the number of virtual cores and not physical cores, which is not necessarily a good thing
+			The second way is to fix the special system property
+				java.util.concurrent.ForkJoinPool.common.parallelism
+	We're going to talk more about this CFJP. First to answer question that you probably have in mind, could I be able to launch my parallel streams in my own pool of threads instead of using this CFJP? And the answer is Yes and I'll show that to you in the live demo
+	And the second thing is if I'm going to use threads from this CFJP, will it have an impact on the overall performances of my application? And the answer is unfortunately, yes. Threads are a scarce resource. CPU cores are scarce resource and there are some cases in which you may not want to use them for parallel computations
+
+4.5 - Using Work Stealing to Keep the Fork Join Pool Busy
+	Now that we have the big picture of the fork step and that we know what a CFJP is, let us take a look at how things are working technically
+	Suppose we have a CFJP with 3 threads (T1, T2, T3) in it. It turns out that each thread is also associated with a waiting queue, a waiting queue that can accept tasks, precisely
+	Suppose we have a task to compute (Task A). This is our parallel stream of computation. So we saw that the first step is to divide, to split these tasks into subtasks. Let us call them A11 and and A12
+	At this point, we know that the parent task is waiting for the partial results computed by its subtasks. So since this task is just waiting for the results of other tasks, it will be put at the end of the waiting queue, thus freeing thread T1. That is going to be able to handle the task A11
+	But at this point, the task A12 is waiting for the thread to be available, which is a pity because we have T2 and T3 that do not have anything to do, and that could be able to handle A12
+	So at this point, the fork/join framework implements a trick that is quite classical in concurrent programming that is called work stealing
+	T2 and T3 are currently not working, so they're able to steal some tasks from another waiting queue. And this is what's going to happen. T2 is going to steal a task from T1, that is busy with another task
+	And then the fork step will be carried again by T1 and T2 and more subtasks are going to be spawned. The waiting queues are going to fill up
+	At some point, T3 will step some tasks from the other waiting queue, so the fork/join pool will be able to have all its threads kept busy by the fork/join framework
+	You can see at this point, there are 2 kinds of tasks. Ther are first the tasks that are going to be split and that are going to wait for partial results computed by their subtasks, and tasks that we could call terminal tasks that are going to be able to do some computation and produce partial results
+
+4.6 - Joining Partial Results to Produce a Final Result
+	Let us see now how the join step is working
+	We have a task, A8, that is going to do some computation, and this computation is just a sum. So inside A8, there is an array of elements, and A8 is supposed to sum them up
+	But the fork/join framework (FJF) decided to split A8 to A9 and A10, and then it decided that A9 and A10 are small enough to do their computations. So A9 is going to produce a result, and this result is going to be 3, and A10 is also going to produce a result turns out to be 14
+	The reduction step for those 2 tasks is just a sum, so it's quite easy to compute. This 3 and 14 are just partial results that the join step is going to send back to this A8 task
+	And what is this A8 task going to be with those 2 partial results? It's just going to reduce them as if it as a normal stream. So it's going to apply the reduce operator that it has on those 2 partial results
+	Remember that a reduce operator is just a binary operator, so this binary operator is going to be applied to those 2 partial results. A8 will produce a result which is going to be 17, 3+14, and will give this result to the task that spawned it
+	This is the join step of the FJF
+
+4.7 - Wrapping up the Fork Join Framework: What Is Its Overhead?
+	So, all this splitting, distributing tasks in threads, work stealing stuff, has obviously an overhead, and the question is, as always, is the overhead smaller compared to the performance gain or is it bigger than the performance we can expect?
+
+4.8 - Live Demo: Measuring the Overhead of the Fork Join Framework
+	(demo of using JMH to compare sum operation with and without parallel)
+	You can already see on this very small and very simple test that going parallel is in fact, absolutely not a good idea. If you have only 10 elements in your stream, going parallel is nonsense
+	The overhead is much, much bigger than the sequential computation
+	And of course, the question is, is there a sweet spot? The answer is yes, in the case of sum, of course, it's going to depend on your machine, but it's probably around several million
+	If you remember what we did with the computation of the prime numbers, the sweet spot was at a much lower level than that. In fact, this sweet spot,, quite obviously, depends on the kind of task that you have
+	If you're doing very heavy computation per iteration, then the sweet spot will be much lower than the contrary
+	So the conclusion is the following - You need to bench your own computation to be able to tell where your sweet spot is going to be in your use case. This is really up to your to answer that question
+
+4.9 - Indentifying Performance Issues wtih the Fork Join Frameworks
+	At this point, you can see that, indeed, things can go wrong or at least, not according to the plan when you go parallel with the stream API
+	We're not quite done with that and we're going to go a little further, a little deeper in the understanding of the problems that may arise if you se this API in a wrong way
+	We'll cover 2 main topics
+		First, the problem of hidden synchronization points within the stream API
+		Second, faulty reductions
+
+4.10 - Finding Hidden Inter-thread Communication Operations in Streams
+	What is synchronization in a nutshell? Synchronization is a feature within the java language which prevents two threads from executing the same piece of code
+	Now, we're not necessarily talking about real synchronization, but merely points in your data processing stuff at which threads needed to communicate between themselves
+	You see that this parallelism relies on concurrent programming, and as such, it relies on the fact that each thread can execute a task in isolation without having to exchange data or exchange information with the other threads
+	And the problem is that in the Stream API, there are operations, whether they are intermediate or terminal, that just need to do that
+	The first one is the findFirst terminal operation
+		stream.filter(number -> number % 7 == 0)
+			.findFirst();	// find the FIRST element
+	What does findFirst() really  mean? It means that you need to find the element element of a given stream
+	Now, suppose that you're processing a stream and there are many objects from that stream that are going to be filtered out by some kind of filtering operation, and you want to find the first element that is going to pass those filters
+	You don't want to find any element. You really need to find the first one
+	If you want to parallel with this kind of operation, it means that on several calls of your CPU, part of the data your stream is going to process is going to be processed locally. And if a given thread finds an element that is going to pass all your filter operations, it needs to talk to the other threads "hey, have you also found an element, just as I did?". And then they need to talk to each other to find out which one of those elements that have been found is going to be the first one
+	So this findFirst terminal operation requires some kind of inter-thread communication for it work properly in parallel
+
+4.11 - Couting Stream Elements with Parallel limit()
+	And this findFirst terminal operation is not the only one. If you check the limit() intermediate operation, the limit() tells you that if you call limit(100), for instance, on a stream, you're going to select the first 100 elements of that stream
+		stream.limit(100)	// takes the FIRST 100 elements
+			.sum();
+	So it means that, if you want to go parallel with the limit operation, the limit operation will have to handle some kind of shared counter among the threads, and every thread is going to increment this counter
+	And this counter is probably some kind of atomic counter, atomic integer or atomic long, but something that will create a bottleneck in your parallel computation
+	So the question is, what is goin to be the impact of findFirst() or limit() if you use this kind of operation on the stream and then want to go parallel on that stream?
+
+4.12 - Live Demo: Measuring the Overhead of limit() and findFirst()
+	(demo of using JMH for limit() and findFirst() in parallel and not parallel; for base comparison, not using limit() and using findAny())
+
+4.13 - Analyzing the Overhead of Parallel limit() and findFirst()
+	Let us first analyze the result in the case of the use of limit() intermediate operation
+	What we can see in a sequential case is that indeed calling this limit() intermediate operation has a cost. It's not much but it's still something 20% of the overall computation time. It's not completely negligible
+	Let us now go parallel. First, if we do not use limit(), we have a gain of roughly a factor of 10, which is a little high. It's probably a little overestimated. And if we go parallel, we're still gaining something, but the gain is halved compared to the case where we do not have this limit call
+	So in fact, this limit call has a cost, and this cost is about 50% of the computation time, which is quite a lot
+	So on this benchmark, we can see that calling limit, which probably handles some kind of atomic counter ot make sure that the right number of elements has been counted, has a cost. And this cost is a performance hit on our parallel computations
+	And what we're going to see is that the same kind of performance hit is observed with the difference between findFirst and findAny
+	Here are the measurements of findAny vs findFirst in a sequential case and we can see that there's barely any difference. Probably the difference exists but is negligible
+	If we go parallel, we can see that the performance gain is halved if we use findFirst against findAny
+	So here, once again, if you do not need this findFirst exactly, but if findAny is enough for you, you should definitely use the findAny because it will provide you with a much better performance gain than the findFirst
+	One more word of warning on these benchmarks. If you're trying to reproduce this benchmark on your machine, you may have different results, especially if the computations you're doing are not exactly the same as the one I'm doing
+	Those benchmarks have been tailored for many smaller operations, especially the limit one. And the limit one will show a performance hit bigger and bigger as the number of iterations increases. Here on this benchmark, we're in the one million also iterations
+
+4.14 - Avoiding the Use of the reduce() method to Reduce a Stream
+	The second point we need to see is the case of faulty reduction
+	What is a faulty reduction? The fact is, if you're doing data processing using the stream API, you don't necessarily have to use this reduce() method. In fact, you should not use it by default, you should try to use either the sum(), average(), max() and min() method defined on the streams of numbers, or try to use the collect() method if you're on a stream of T
+	If really none of these solutions are working for you, then you can try using the reduce method by providing first the identity element of your reduction operation, and then the reduction operation in the from of a binary operator
+	If this binary operator doesn't have any identity element, then of course you cannot provide it. But this reduce() method will then return an Optional and you will need to handle that in your code
+	What happens under the hood with this binary operator? Remember that your data is going to be split again and again until FJF decides that the amount of data it has to process is small enough to be indeed processed by a task
+	So, this small chunk of data is going to be reduced using your binary operator, and this is going to be fine
+	But then, in the join step, the partial results have been computed are going to be joined together with this binary operator, and this is where the trick is. If your binary operator is not associative, then you're going to compute wrong results, results that are not going to be the same as the one you would have by conducting your data processing sequentially
+	So this binary operator has to be associative
+
+4.15 - Reducing a Stream with a Non-associative Binary Operator
+	(theoretical example to explain associative binary operator)
+
+4.16 - Computing the Sum of the Squares with a Non-associative Operator
+	(Detailed walkthrough of an example that doesn't have an associative binary operator in sequential execution)
+
+4.17 - Getting Different Faulty Results Sequentially and in Parallel
+	(Detailed walkthrough of previous example for parallel execution)
+
+4.18 - Getting Random Faulty Results in Parallel
+	(Continue explanation of previous example where FJF decides to stop splitting array at different size)
+
+4.19 - Staying Away from Faulty Non-associative Reduction Operations
+	(Explanation that if your binary operator is not associative, it will compile fine, but you will get wrong results)
+	So here's the conclusion on this reduction step. The reduction step is meant to be used with associative binary operators. If you don't have associative binary operators, you may end up with faulty results and to know that those results are faulty, you're really on your own, the compiler will not warn you, the JVM will not help you in any kind, you will not have any exception, any error whatsoever
+
+4.20 - Live Demo: Displaying the Threads Executing Your Parallel Stream
+	Is it possible to run a parallel stream in a FJP that is different from the CFJP. It turns out that the answer is yes
+	Stream API's peek() intermediate method - takes a consumer as parameter
+
+4.21 - Live Demo: Executing a Parallel Stream in a Custom Fork Join Pool
+	There is a mention in the documentation of parallel streams that says that if a parallel stream is launched in a thread from a FJP, then this FJP is going to be used to handle parallelism
+	You can create instance of FJP
+		ForkJoinPool forkJoinPool = new ForkJoinPool()
+	It turns that a FJP is in fact an ExecutorService. It's an extension of the ExecutorService interface. So at the end of the day, we should not forget to shut it down if we don't want to have any problem
+		forkJoinPool.shutdown()
+	How can we submit tasks to this FJP? Remember that this parallel stream should be launched within that FJP, so we need to wrap that computation in the task and submit this task to the FJP
+		main() {
+			Set<String> threadNames = ConcurrentHashMap.newKeySet();
+			ForkJoinPool forkJoinPool = new ForkJoinPool(4);
+			
+			Callable<Integer> task = () -> {
+			int sum = IntStream.range(0, 1_000_000)
+				.map(i -> i * 3)
+				.parallel()
+				peek(i -> threadNames.add(Thread.currentThread().getName()))
+				.sum();
+					
+				return sum;
+			}
+			
+			ForkJoinTask<Integer> submit = forkJoinPool.submit(task);
+			submit.get()
+			
+			threadNames.foreach(sysout)
+			
+			forkJoinPool.shutdown()
+		}
+	This is a very easy way to really keep a fine control on what threads are going to execute your parallel streams
+
+4.22 - Live Demo: Counting the Number of Task Each Thread Executed
+	We could go one step further and see something that's really nice to see
+	Instead of gathering the names of the threads in the set, we are counting the number of tasks each thread is going to execute
+	So for that
+		main() {
+			Set<String> threadNames = ConcurrentHashMap.newKeySet();
+			Map<String, Long> threadMap = new ConcurrentHashMap<>()
+			
+			ForkJoinPool forkJoinPool = new ForkJoinPool(4);
+			
+			Callable<Integer> task = () -> {
+			int sum = IntStream.range(0, 1_000_000)
+				.map(i -> i * 3)
+				.parallel()
+				peek(i -> threadMap.merge(Thread.currentThread().getName(), 1L, Long::sum))
+				.sum();
+					
+				return sum;
+			}
+			
+			ForkJoinTask<Integer> submit = forkJoinPool.submit(task);
+			submit.get()
+			
+			threadNames.foreach(sysout)
+			threadMap.foreach((name,n) -> sysout(name + " -> " + n))
+			
+			forkJoinPool.shutdown()
+		}
+	So this is another way of going one step further analyzing which thread is executing what task and also how many tasks each thread has handled over the computation
+
+4.23 - Module Wrap up
+	For testing your binary operator - you can test it by moving elements around and testing it
+	The main takeaway for you is that parallelism is not suited for any kind of computations
+	First, if you just called the parallel blindly on the Stream API, odds are that you're not going to gain much because this overhead that FJF has may just ruin your computation
+	Second, you need to check your exact computations and see if going parallel will bring some performance gain, and you need to check that on a machine that is as close as possible as your production machine because your production machine may be very different than the one you're using for development. And if it's the case, the performance gains may be very different
+
+5.1 - Introducing the Module and Its Agenda (Choosing the Right Sources of Data to Efficiently Go Parallel)
+
+5.2 - Forking is About Splitting Any Source of Data
+	First of all, what does it mean to split a source of data? We know that this FJF first takes the data you want to process with your parallel stream and it's going to decide on how to split it in steps until it decides that the chunk of data it has to process is small enough to be processed in a task
+	And in fact, it turns out that a stream can be created on many different types of sources of data. The first one, and probably the most used one, is an arrays or ArrayList. But it can also be another implementation of List, namely LinkedList. It could also be HashSet which is also backed by an array but filters in a different way than the ArrayList
+	And we're not done with the sources of data because you can create streams on Iterators, on the lines of a text file, on the elements of a string of characters that has been split using a pattern
+	And since you can also create your own sources of data using the SplitIterator API, there's no limit with the kind of source of data you can use with the Stream API
+
+5.3 - Finding and Reaching the Center Position of a Source to Split It
+	How does splitting work under the hood? It works in a very simple and natural way
+	Suppose you have an array of 1MM elements and that FJF needs to split this array. It iwll just try to reach the center of this array and generate sub arrays again and again until FJF decides it's small enough
+	This step is working for 2 reasons or at least working on 2 assumptions
+		First, the number of elements you need to process is known before processing them. This is not the case if you're building a strema on an Iterator, on a pattern, or on the lines of a text file. So those 3 sources, Iterator, pattern, lines of text are not going to behave very well in this splitting step
+		That's not all. Being able to tell teh size of an array is nice but you must also be able to split it, and split it means 2 more things.
+			First, reaching the center of this array should be easy, reliable and efficient. For LinkedList for instance, it's not as easy as it is for the array
+			So you can already see that LinkedLists are not as good as arrays when it comes to going parallel
+
+5.4 - Storing Elements in a Set Implemented with a Backing Array
+	And what about the third data structure we have in the collection framework which is the Set?
+	Remember that Set is backed by HashMap and HashMap is backed by an array
+	Now this array is a special array and it is used in a special way which is very different than th way the ArrayList uses its array
+	First of all, size of array is always a power of 2
+	Second, the cells of these arrays are not really classical cells. They're merely called buckets
+	And How do I know in which bucket should I put an element of a set? You compute a special hashcode and this special hashcode will give me the cell in which it will be stored
+	Bucket collision - multiple elements that get stored in the same bucket
+	There is another optimization that has been added to the HashMap class. If this LinkedList becomes too big, if it becomes too long, then the values are not going to be stored in a LinkedList, but merely a red-black-tree, thus making the retrieval of those elements in complexity of ln(n) instead of nln(n)
+
+5.5 - Splitting a Set Backed by an Array, SIZED and SUBSIZED Properties
+	So now the question is, how this FJF is going to split this array? It's going to split it in a very natural way just by splitting this array in 2 pieces. First and second halves
+	How does FJF know? How can it be sure that there is same amount of data in the first and the second half?
+	Short answer is it icannot know that. This information is not available unless you count all the elements, one by one, in each half. And FJF just doesn't do that because it would be too costly
+	So there is hope here in this splitting that the amount of data in the first half is not too different from the amount in the second half
+	And now comes the second split operation. And then split again and again. You can see that the odds that some of the segments of this array are going to be empty become higher and higher, as the number of splitting increases, and this is a problem with sets like structures.
+	You know the number of elements there are in a set, but the way the API splits the set just by cutting this array by the middle makes it  so that you do'nt know the number of elements past the first split step. The number of elements in each split array cannot be known unless you count them
+	And this is in fact the property for data sources in the Stream API. You have the sizeable property (SIZED), which tells you that you can't tell in advance how many elements you have in your data structure
+	All the collections and the arrays are sizable but all the patterns, lines and  iterators are not sizeable
+	But then there is a second property which is called SUBSIZED, and subsize means that if you split your data structure in two halves, you know the number of elements you have in the first half, and number of elements in the second half
+	And as you can see it, this is a very important property for the parallel streams to be really performant. And you can also see tha tsets are indeed sizable, but they're not subsized because if you cut the array of a set in 2 pieces, you cannot know how much data you have in the first half and how much data you have in the second half
+
+5.6 - Live Demo: Showing the Problem of Sets for Parallel Streams
+	Before showing some results with the parallelism on lists and sets, I would like to show you something with the set that is probably unexpected
+	(demo of reading a file and adding them to a list, do some computation in FJP)
+		main() {
+			Set<String> lineSet = new HashSet<>();
+			try(Stream<String> lines = Files.lines(Path.of(filepath))) {
+				lineSet.addAll(lines.collect(Collectors.toSet()));
+			} catch {...}
+			
+			List<String> linesList = new ArrayList<>(lineSet);
+			
+			ConcurrentHashMap<String, Long> threads = new ConcurrentHashMap<>();
+			
+			ForkJoinPool forkJoinPool = new ForkJoinPool(8);
+			
+			Callable<Integer> task = () -> linesList.stream()
+				.parallel()
+				.mapToInt(String::length)
+				.peek(i -> threads.merge(Thread.currentThread().getName(), 1L, Long::sum))
+				.sum();
+			forkJoinPool.submit(task).get();
+			
+			threads.foreach(sysout)
+			
+			forkJoinPool.shutdown();
+		}
+	We're going to use the same trick to process this set of this list in parallel and check which thread of the forkJoinPool we have created here is going to process what task
+	(reference to task) So this is just going to add the name of the thread that processed this task and to count how many tasks this thread has been computing
+	(after running) You see that roughly the number of tasks processed by each thread is almost the same. In fact, you see that if you run this task again and again, the results you have here are not exactly the same
+	This FJF is acting kind of randomly. Probably the decision to stop the splitting is always the same, but what is really random is what thread is going to steal what task to its neighbors
+	Let me do the same with the set this time instead of list. Update the following:
+		Callable<Integer> task = () -> lineSet.stream()
+	(after running) You can see taht quite oddly all the tasks have been processed in the same thread. So in fact, in that case, not only are we paying the price of using fork join pattern, but this fork join pattern, as we saw it has another head?, but it did not give any performance gain, since all the tasks have been processed, in fact, the same thread
+	What is happening here? It turns out that those sentences have not been chosen randomly. It turns out that those sentences have the same hash code, that is 0 (references to lines from input file)
+	How can we see that? We're going to go in HashMap class in the JDK and look for hash method that is used by the HashMap to compute this special hashcode used to decide which bucket each object is going to be sored
+	It's not the same hash method as the one we have in Object class, and btw it calls this key.hashCode() method and this hashCode method from Object class
+	This trick is there to show you that, indeed, a set is not a good candidate t ogo parallel with a Stream API
+	If you have a set, maybe you could consider copying it in a list so that your parallel stream will work better
+
+5.7 - Live Demo: Comparing Performances of Lists and Sets
+	Now, let us use the sets and other data to really bench the difference on performances between using a list and set
+	First the sequential versions of processing an int list and int set. The set and list contain exactly the same element, and processing is the same, and we can see that we have a factor of 10 between the processing of the list and processing of set, which is far from being negligible
+	And then, if we go parallel, we can see that the situation is roughly the same, we have a gain that is almost the same in list and set case, meaning that we probably were lucky with the set, the integers were probably distributed evenly among the buckets of the set
+	And now if we look at the string example, remember that this is tricky set of strings
+	We can see that the processing when in list or in a set is almost the same and this is normal because this is a very small set
+	Going parallel will not bring any better performances because the overhead of the FJF is far too high on this small set of elements
+	But the interesting point is that going parallel brings a much bigger performance hit on this set than on the list. And here we can see that the splitting of this particular set turns out to be really terrible, since all the elements are in the same bucket
+
+5.8 - Analyzing the List and Set Benchmark
+	So what are the conclusions of this?
+	First conclusion is that processing dtaa from a list is much faster than processing data from a set because iterating over the elements of list is faster than iterating over the elements of a set
+	It may be a little unexpected because it is really during the sequential benchmarks taht we have seen that
+	Second conclusion is that going parallel as a list will bring you more performance gain than going parallel in a set. So whether you're doing comptation sequentially or in parallel, you should really stick to lists instead of sets
+	Third point is that with set you may get unlucky. You may have data to process that is not well spread over all the buckets of the array that is backing your set
+	And against that, there is not much we can do because this si show the HashMap is working
+	Fortunately, the probability to see that is very low. And be sure that this set of lines I just showed you has not been generated randomly. It has been carefully crafted
+
+5.9 - Wrapping up the List and Set Benchmark: Prefer Lists over Sets
+	To conclude this part, just pieces of advice
+	First, if you don't know the amount of data you're going to process, there is no use of going parallel, because the FJF will not be able to split your data source properly
+	Second, prefer lists over sets. I think that the examples I showed you are very relevant in this topic
+	And the conclusion of this is just choose your data source wisely
+	It has to be SIZED. So you need to know in advance how much data  you have in your source of data
+	Second, it has to be SUBSIZED, meaning that when you split your source of data, you need to know how much data you have in the first half and how much data you have in the second half
+	It doesn't have to be perfectly even, but at least you need to know that
+
+5.10 - Module Wrap up
+	There are sources of data that are parallel friendly and soruces of data that are not parallel friendly
+	First, all we saw in previous modules still apply. All the structures that are not cache-friendly should be avoided when going parallel. In fact, they should be avoided at all. You shouldn't try to use any LinkedList in your application. This is most probably a mistake
+		(lol) Josh Bloch, the man who wrote the LinkedList implementation back in the days. This is what he said on twitter few years ago "Does anyone actually use LinkedList? I write it, and I never use it"
+	Second point is that all cache-friendly structures are not necessarily parallel-friendly structures, and this is the example for the set, for instance
+	There are 3 points to define a parallel-friendly structure - it has to be SIZED, it should be easy to split, both should should be sized too (SUBSIZED)
+
+5.11 - Course Wrap up, One Last Advice, Links and Thanks
+	So what did you learn in this course? Despite its name, what you learned is more when NOT to use the parallel streams rather than when to use them. There are many cases where parallel streams are not going to give you any performance gain, and you should be able to tell those cases and to avoid going parallel in those cases
+	The last piece of advance I would like to give you is in the form of a question. The main point of parallel streams is that they consume threads from your applications, whether they're threads from the CFJP or from a FJP that you created, those are the threads of your application. And threads are precious resources on the server
+	So the question you need to ask yourself is the following - what are the threads of my server used for?
+	If what you're developing is a web application, whether a plain tomcat servlet application, or some kind of spring boot application, odds are that your threads are used to serve your HTTP clients, and you don't want those threads to be used for anything else, including parallel streams
+	And the same goes for threads that are used for SQL transactions, for instance. Those threads are precious resources that should not be used for parallel streams
+	So in a nutshell, just be extra careful when using parallel streams. Measure the performance gain, bench your application, your whole application, because you don't want a single not-that-seful parallel stream computation to consume all the threads you need to serve your HTTP clients

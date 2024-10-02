@@ -1,0 +1,23 @@
+Nicolae Caprarescu
+Jan 21, 2020
+
+2.1 - Version Check (Getting Started with EasyMock)
+	EasyMock 4.0.2
+
+2.2 - Introduction
+
+2.3 - Writing a Test without Mocks
+
+2.4 - What is Mocking and Why Use It?
+	Best use cases for mocking is for databases or web services
+
+2.5 - Adding Mocks to the Test
+	https://easymock.org/
+
+2.6 - Test Doubles
+
+2.7 - Advanced Mocking Concepts
+
+3.1 - Introduction (Configuring Behavior of Mocks)
+
+(SKIPPING SINCE EASYMOCK IS NOT THAT IMPORTANT)
