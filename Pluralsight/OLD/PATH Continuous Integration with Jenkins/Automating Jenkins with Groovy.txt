@@ -1,0 +1,186 @@
+
+2.2 - The Groovy Console (Groovy Fundamentals, Briefly)
+	Our ultimate target is going to be Jenkins itself. And short of that, Jenkins has an internal, groovy console for validating scripts. But, it's useful for us to have a groovy console that's entirely separate from Jenkins and from build engineering
+	Apache maintains Groovy. Tool link: https://groovy.apache.org/download.html
+		This console is a job application, specifically a swing application which is GUI toolkit for Java
+
+2.3 - Demo: The Groovy Console
+	Multiple way to install it. My approach - Once you download the zip, unzip and run "groovyconsole" in bin folder
+
+2.4 - Data Types
+	Groovy is an optionally typed language which means that we can either work with defined Java primitives or we can let the groovy runtime guess the type from the context
+	Third option - you can eliminate the type or def keyword entirely and simply declare the variable with no key word at all
+	Important data types - strings, integers, floats and boolean
+
+2.5 - Demo: Data Types
+	My recommendation - always define your data types explicitly
+
+2.6 - Control Structures
+	Loops and if-else statements are same in Java
+	each{} loops as alternative to standard loops
+
+2.7 - Subroutines
+	In all of computer science, there are 2 types of subroutines - Functions return a value and methods do not. Some languages make strong delineation between them but groovy, like Java and C# defines a method as a function with a void return type
+
+2.9 - Working with Classes and Objects 
+	Classes in Groovy are very similar to Java and C# . You declare class with the class keyword and declare the instance properties pretty much exactly the same way
+
+2.11 - Inheritance
+	You might not need it
+	Abstract classes have implementation
+
+2.13 - Working with External Packages
+	You get some external packages automatically with groovy
+	Every base groovy script imports the following packages:
+		java.io.*
+		java.lang.*
+		java.math.BigDecimal
+		java.math.BigInteger
+		java.net
+		java.util
+		groovy.lang.*
+		groovy.util.*
+	import statement
+
+3.1 - How Jenkins and Groovy Work Together (Working with Jenkins and Groovy Together)
+	Several times in the last section, I talked about Groovy runtime. There's no such thing. Groovy is just another way of generating bytecode for Java runtime which is really what's controlling what's happening
+	Groovy compiles to bytecode. Just like Java sourcecode -> Java compiler -> bytecode; Groovy sourcecode -> groovy compiler -> bytecode
+	This means that where Java goes groovy can go which is the basis for how groovy interacts with Jenkins
+	Groovy support implemented as a plugin
+
+3.2 - Demo: Configuring the Groovy Plugin
+	In Manage Jenkins > Script Console. We can execute groovy scripts right here with no plugin. This is part of Jenkins native install
+	Once you install Groovy plugin, in job config, you'll see 2 new steps in build steps:
+		Execute Groovy Script
+		Execute system Groovy script
+
+3.3 - Understanding System and Standard Groovy Steps
+	System scripts have elevated privileges
+	In pure terms, groovy system steps are executing inside teh Java VM along with Jenkins while standard steps are executed steps in a forked VM outside of Jenkins. This means that when you need to access stuff relating to the internal of Jenkins, for example, that must be executed as a system script
+	The groovy console executes commands as system scripts
+	Since most of what we need to automate is going to be inside Jenkins, don't be surprised if these are all system scripts but if you need to transform some text into a decision or something like that in a build, you could do that without a system script
+	Remeber the default imports we got in groovy? In script console and in script steps, we get some more default imports
+		Basically, this exposes the namespaces for working with the internals of Jenkins to you. Without them, in our groovy console for example, println(Jenkins.instance....) is going to blow up because it doesn't know what "Jenkins" means
+
+3.4 - Demo: A Groovy System Script
+	Looking at official docs at javadoc.jenkins-ci.org, you'll some packages with "hudson" which is what Jenkins was called until Oracle's issue with copyright
+	When you're trying to track down how to write a groovy script to do X in Jenkins, don't waste your time going through these docs. You won't find the answer there. The way you find the answer is you search the internet and find a sample script
+	We're going to work with inline scripts for simplicity. But keeping your code in external groovy files you can share and reuse is definitely a best practice
+	In Advance, we can specify variables for our script
+	With "Additional classpath" this gives us opportunity to include external job components so that our import statements work
+	"Use Groovy sandbox" - sandbox with limited abilities
+
+3.5 - Script Types Wrap-Up
+	In short, use non system scripts if you can because they carry far less security risk than godlike permissions that system script has
+
+3.6 - Executing Groovy Scripts on Startup
+	It can be helpful to run certain scripts immediately after Jenkins startup. This way you can your configuration as Code
+	Jenkins will execute groovy scripts it finds in a directory with a particular name - "init.groovy.d". With multiple scripts there, they will execute them in alphabetical order
+
+3.8 - Working with Exceptions in Groovy
+	One common scenario in the DevOps practice called Infrastructure as Code is to have a document of one sort or another that defines the desired start of your configuration, which you pair with a script or agent that ensures that the state is reached by executing changes until the target configuration matches the doc
+	"Exceptions should be exceptional"
+	Remember, at the end of the day, this is all going to be executing in Java VM and in Java VM, exceptions are costly performance wise compared to standard control flow. A big part of overhead of working with an exception is assembling the stack trace
+	try, catch, finally block
+	Interview question - You're reviewing another programmer's code and they have code inside a try block and code inside a finally block, but with no catch block. What can we assume about the programmer's intentions in implemting this model?
+		Answer something along the lines - the programmer had cleanup code they wanted to execute, but wanted any possible exception to be handled higher up in the stack
+		Classic example of this is when a DB connection cannot be opened. You may be dozens of level deep inside th stack when this happens: user click on button > button calls main() >main call business class > business class calls ORM code > ORM code calls low level code to open DB. If app fails at this low level and it handles the exception at this point, that means tha tevery level above it in this stack is going to have to be aware of this possibility which is a pain to remember when you're designing an app
+		Alternative is a top level error handling - rather than handling exception at the lowest level, you let the exception bubble up to the very top of the stack, where your top level exception handler catches the exception and presents a well formatted error message to the user and informs the relevant party of the problem so that it can be fixed. This is a virtuous design in my experience. There's also the worst case opposite of this, where everything isn't try catch finally blocks all the way up the stack which makes the code neither well performing nor readable or fluid. Exception must be exceptional and you must make intelligent decisions about the proper place to handle problems or else your performance and readability will roll off the edge of the table
+
+3.10 - Grabbing External Libraries
+	Just like npm and nuget package manager (microsoft), groovy has its own analog to this "grape" - a package manager which controls dependencies in groovy
+	@Grab syntax
+	There's some implications about where and how this gets used in terms of security and connectivity that we're going to take a closer look as we move forward
+
+4.1 - The Problem with Builds (Creating Builds with Groovy)
+	Problem 1 - Jenkins stuff is not in version control. You've got backups of the Jenkins system but that's not version control
+	Problem 2 - The build should reflect the state of code on your branch. The build has different content for different states of the code
+
+4.2 - Demo: A Look at Jenkins internals
+	My point with all of this is that all of this stuff is already in a format or near a format that we can store in version control. The key asset that's driving all of this is config.xml
+	What you could do is have a first step that simply restores config.xml from version control and execute the build but Jenkins isn't setup that way
+
+4.3 - The Solution: Jenkinsfile
+	Jenkinsfile are groovy scripts - build steps from top to bottom exist as pure groovy code
+	2 types - declarative and scripted
+
+4.4 - Demo: Configuring and Building with a Jenkinsfile
+	Jenkins has snippet generator
+
+4.5 - Making Our Jenkinsfile Do Some Real Work
+	@Grab will not work in pipeline scripts. What you need to do to achieve that effect is to ensure that a plugin for a step that achievess what you're trying to do is installed which you can do with a startup script
+
+4.6 - Demo: A Real Jenkinsfile Pipeline Build
+	In general, when you catch an exception in the build, you should re-throw it OR like we talked about, never catch it in the first place and simply have a try finally block
+
+5.2 - Reusing Groovy Code in Jenkins (Working with Shared and Plugins)
+	After a while, you'll find that you need your shared scripts to do something slightly different. At that point, you need to begin to create tear separation, breaking your business objects and file access out from your script logic. To do this, we need global pipeline libraries - trusted libraries, code which executed with a higher degree of trust than everything else and you can use the @grab syntax to pull external libraries
+	This is an important distinction to keep in mind if someone gets access to your library content they can pretty much do anything they want on your Jenkins instance. So keep careful track of your stuff
+	We want to create a separation for QA and build engineers in terms of access to Jenkins. We don't want to have a bunch of logins for QA people who aren't actually working with builds. To avoid this problem, we want to create a summary file that describes what's in the build
+	We need to shared libraries that will create some summary data about our build
+
+5.3 - Demo: Global Shared Libraries
+	Manage Jenkins > Configure System - add global pipeline libraries
+	In Jenkinsfile, call the functions/methods
+
+5.4 - How Groovy is Executed
+	Groovy CPS
+		Jenkins Pipeline uses a library called Groovy CPS to run Pipeline scripts. While Pipeline uses the Groovy parser and compiler, unlike a regular Groovy environment it runs most of the program inside a special interpreter. This uses a continuation-passing style (CPS) transform to turn your code into a version that can save its current state to disk (a file called program.dat  inside your build directory) and continue running even after Jenkins has restarted
+		While the CPS transform is usually transparent to users, there are limitations to what Groovy language constructs can be supported, and in some circumstances it can lead to counterintuitive behavior.
+		https://www.jenkins.io/doc/book/pipeline/cps-method-mismatches/
+	What this all means is that in an attempt to persist our script to a format that can survive the Jenkins reboot, our groovy script is being transformed in a way that can lead to unexpected results. The contents of our scripts may be moved around in a way that breaks our execution
+	(demo) The complex types in our withWriter(), In eachFileRecurse() methods have broken that transformation. There are 2 ways we can handle this:
+		1. Re-write our script without closures which is kind of a pain
+		2. We can designate our script block as non CSP, that it doesn't need the transformation that would be going on
+	Think about what this all means. If you wanted to persist a script to disc in the middle of execution, what would you do with the components inside the script?
+		- Scripts objects are serialized - take representation of state and write to file
+		- program.dat - but complex closures like our writer function our eachFileRecurse iterator and some others cannot be serialized to disk. At least not concurrently
+		- Not all objects can be serialized yet
+	That's what causes all this
+	When we annotate a function as @NonCPS, that means don't bother to try to serialize this to disc and that in turn means that this script cannot survive a reboot which is fine for our short script. But if you were dealing with a long running script that did need high survivability, you'd need to rewrite it without the closures and the @NonCPS annotation
+
+5.7 - Demo: Upgrading Our Release Notes
+	To mock Jenkins object - https://stackoverflow.com/questions/50165079/mocking-jenkins-pipeline-steps
+
+5.8 - Shared Pipelines
+	Let's say as you're developing all this stuff, you're using the same repo and you're developing in such a way that you want to have these 4 phases for all your code - SCM, build, test, deploy
+	You want to set this up for 2 reasons
+		1. You won't have to create separate build pipelines for all your projects
+		2. Your programmers are forced to follow conventions. If they know that as soon as their stuff is committed, their pipeline will have to have a test project that at least gets that for with getting your stuff tested
+	The good news is that our built pipeline script and shared are not different. They're both the same thing - pipeline scripts
+
+5.9 - Demo: Creating a Shared Pipeline
+	A key point here - our build is going to be calling releasenotes() which is NonCPS. So, this script will need to be NonCPS as well. If a child cannot be serialized, your parent is not going to be able to either. However, Jenkins figures this out on its own and if you do include a NonCPS directive, this script will blow up
+	In your Jenkinsfile, now you can just call genericBuild()
+
+5.10 - Wrap-Up: Working with Shared Libraries
+	Reusing code is fundamental
+	Reusing pipeline enforces standards
+	Make the script as smart as it needs to be
+
+5.12 - Demo: Working with Plugins in Scripts
+	Plugin I find really useful when working with classic non pipeline style builds - Job Configuration History Plugin
+
+5.13 - A Plugin Script Pattern
+	All of the plugins have security and maintenance impacts as well as potential performance issues. It's not uncommon to run with all those plugins disabled and only have a whitelist of allow plugins. You can place this whitelist with init groovy script and then disable these scripts, install what you need and then execute a scripted restart if necessary. Once the system is back up, the new plugin configuration should match what's in the whitelist and on
+	So no new restart will be necessary and you're good to go
+
+5.15 - And Now, a Warning
+	Assembling that whitelist is a lot of work and you can't simply go down the list of plugins you've got and pick out the ones you think you need. The reason for this is that these plugins rely heavily on each other
+	Take care in creating your own whitelist if this is what you want to do and know for sure the one you got for this project ain't the right one
+	To get a headstart - https://github.com/samrocketman/jenkins-script-console-scripts/blob/main/safe-restart.groovy
+	
+6.1 - Working with Credentials and Users (Managing Users and Credentials)
+	When we say credentials, we're talking about something very different than users in Jenkins. A user has a login and permissions into Jenkins and credentials are entirely different. Credentials are used by Jenkins to access something outside of Jenkins
+
+6.2 - Demo: Working with Users
+	Sample of creating a user with script in Script Console
+
+6.3 - Working with Credentials
+	The key to all this is a plugin which should be installed by default and assuming you've haven't accidentally disabled it
+
+6.4 - Demo: Working with Credentials
+	Add global credentials in Jenkins. You can use snippet generator
+
+6.6 - Managing Credentials in Script
+	Sample in Script Console to update password of credentials

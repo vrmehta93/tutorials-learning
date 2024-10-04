@@ -1,0 +1,272 @@
+Dustin Schultz
+Dec 18, 2019
+
+2.1 - Overview (Using Actuator Endpoints to Monitor, Manage, and Introspect)
+
+2.2 - What is Spring Boot Actuator?
+	Spring boot actuator helps you run your spring boot application in production
+	/actuator/health
+	In general, spring boot actuator provides a number of features that help you ensure that your application is running well in production
+
+2.3 - What is an Actuator?
+	In the traditional sense, an actuator is a component that's responsible for controlling a mechanism or system
+	Broadly and generally speaking, an actuator is triggered by a signal and generates some output and that output could be something like movement or motion and that movement or motion can then be used to control something
+	Well in the same sense as a real life actuator, spring boot actuator lets you monitor and interact or control your application
+	You can send it signals and it will output information like what's the current status of the application, is it healthy? is it unhealthy? or you can send it signals to cause it to do something, ot update configuration or to change something in the application
+	And one of the really nice benefits of spring boot actuator is that it comes with a number of features built-in by default
+	So these things that can signal, you don't have to develop them yourself. They're automatically included just by adding spring boot actuator into your project
+	https://docs.spring.io/spring-boot/docs/current/reference/pdf/spring-boot-reference.pdf
+		List of endpoints
+	And even better is that these features are production ready
+
+2.4 - What's Different between Spring Boot Actuator 1.x and 2.x?
+	Fundamentally, the concepts  in spring boot actuator 1.x and 2.x are the same
+	So 1.x and 2.x vary in implementation, but conceptually, they're the same
+
+2.5 - Getting Started Using Spring Boot Actuator
+	It's reall yeasy to get started using spring boot actuator. All you need to do is add it to your project as a dependency, and just by doing that without any configuration on your part, you'll get a lot of the built-in features
+	You can of course take it further and provide additional configuration and customizations which we'll explore throughout the course
+	For maven, in pom.xml
+		groupId - org.springframework.boot
+		artifactId - spring-boot-starter-actuator
+	For gradle, in build.gradle
+		dependencies {
+			compile("org.springframework.boot:spring-boot-starter-actuator")
+		}
+
+2.6 - Introducing Actuator Endpoints and How to Get the Demo Code
+	 https://github.com/dustinschultz/todo-app
+
+2.7 - Getting Acquainted with the Demo Code
+
+2.8 - What is an Actuator Endpoint?
+
+2.9 - Demo: Discovering the Built-in Actuator Endpoints
+	https://docs.spring.io/spring-boot/docs/current/reference/htmlsingle/#actuator.endpoints
+	To stay up to date on new endpoints
+
+2.10 - Exploring the Most Common Endpoints and How They're Used
+	Most commonly used endpoints
+		Health endpoint
+		Metrics endpoint
+		Loggers endpoint
+
+2.11 - Demo: Actuator Endpoints in Action
+	(demo) We need to add configuration that exposes the endpoints so that we can actually call them
+	In application.properties
+		management.endpoints.web.exposure.include=*
+	Typically, it's not recommended to expose all of the endpoints since it could pose a security risk, but in this case, we're just demoing so it should be fine for now
+	/actuator/health
+	/actuator/metrics
+	/actuator/loggers
+	/actuator/configprops
+
+2.12 - Taking a Deeper Look at the Most Commonly Used Endpoints
+
+2.13 - Deep Dive: Health Endpoint
+	The health endpoint is actually a rather sophisticated machine. The results may seem simple, but don't let that fool you
+	Under the covers, the health check results are actually an aggregation of a number of different smaller health checks
+	By default, spring boot makes the use of auto-configuration to automatically set up health checks for you
+	Lastly, the spring boot actuator health endpoint allows you to add completely custom health checks
+
+2.14 - Deep Dive: Metrics Endpoint
+	Out of the box, the metrics endpoint supports a large number of monitoring systems
+	So it supports everything from SaaS monitoring systems like New Relic and DataDog to self-managed solutions like Prometheus and Grafana
+	If you're wondering whether or not a particular monitoring system is supported by the metrics endpoint, be sure to check out the documentation
+	The documentation contains a list of all the default supported monitoring systems and how to configure them
+	One of the nice things about the metrics endpoint is that it supports both a push and a pull model
+	A lot of the SaaS offerings like New Relic and DataDog are push models. You send your metrics to them, they process them, they analyze them, and they graph them for you
+	There's also the pull model like what Grafana uses where the metrics are available in a certain format, so in this case it would be a Prometheus format, and Grafana continuously reaches out to the endpoint to fetch the data and record and analyze and graph it
+	The metrics endpoint also comes iwth a number of built-in metrics that it automatically collects and gathers. There are referred to as the core metrics and they include things like JVM metrics and CPU metrics
+	To get a list of all the available metrics that are exposed, be sure to check the documentation
+	Lastly, it should come as no surprise that you can add your own custom metrics
+	You can also augment existing metrics
+
+3.1 - Overview (Securing Actuator Endpoints and Creating Customizations)
+
+3.2 - Enabling and Disabling Actuator Endpoints
+	Each endpoint can be individually controlled to be enabled or disabled
+	Enabling or disabling an endpoint controls whether or not it's created and registered by spring boot and not whether or not it can be accessed
+	As we'll learn shortly, enabling an endpoint is only one of the step needed to be able to access it
+	It's important to note that by default all actuator endpoints are enabled and the only exception to this is the shutdown endpoint, which for security reasons, must be explicitly enabled
+	Within the application.properties or application.yml, you can control whether or not an endpoint is enabled or disabled by a configuration property
+	The property follows this standard scheme,
+		management.endpoint.<name>.enabled = true/false
+	https://docs.spring.io/spring-boot/docs/current/reference/html/actuator.html#actuator.endpoints
+		The <name> part of the configuration property is the name of the endpoint or more formally, it's ID and you can find the IDs of each standard built-in endpoint in the spring docs
+	 Previously, I'd mentioned that all endpoints, exception shutdown are enabled by default and this default behavior can be changed to disabling all endpoints by default and individually enabling specific endpoints
+		management.endpoints.enabled-by-default = false
+		
+		management.endpoint.health.enabled=true
+		management.endpoint.loggers.enabled=true
+		management.endpoint.env.enabled=true
+
+3.3 - Exposing Actuator Endpoints
+	In earlier versions of spring boot, enabling an endpoint meant that it was automatically exposed
+	Since spring boot 2.0, you must explicitly expose endpoints
+	Exposing an endpoint makes it available for consumption, so for instnace, if you wanted to be able to access the endpoint via HTTP, you would need to ensure that it's exposed via HTTP
+	Just like enabling and disabling endpoints, spring boot actuator allows you to configure what endpoints are included or excluded from exposure
+	As of recording this course, there are 2 supported methods for exposing actuator endpoints
+		HTTP
+		JMX
+	By default, all endpoints are automatically exposed via JMX
+	Consuming endpoint data via HTTP is typically the more popular method used and endpoints are not, however, exposed via HTTP by default and you must configure them to do so
+	The only exception to this are the health endpoint and the info endpoint
+	It's very important to point out the dangers of exposing endpoints if they're not secured, especially via HTTP
+	Depending on the endpoint, exposing it to the public without any security could unnecessarily expose sensitive data or even worse sensitive operations
+	It's really easy to expose endpoints via some configuration values. In this example, we'll use the application.properties to show the configuration but this same configuration can be equally applied to an application.yml
+	Just like enabling or disabling endpoints, the properties for exposing endpoints follow a standard naming convention
+		management.endpoint.<protocol>.expose.include=
+		management.endpoint.<protocol>.expose.exclude=
+	And remember <protocol> could be one of HTTP or JMX
+	For example, if you only wanted to expose the metrics endpoint
+		management.endpoint.http.expose.include=metrics
+	"metrics" is the ID of the metrics endpoint
+	Last, it's important to note that there is a special asterisk value which can be used to match all endpoints. For instance, you could use it to expose all HTTP endpoints at once
+		management.endpoint.http.expose.include=*
+	Also, just a heads up, if you're configuring these properties in an application.yml, instead of application.properties, make sure to surround your asterisk with quotes "*" as asterisks have a special meaning in YAML
+
+3.4 - Enabling vs. Exposing Endpoints
+	Let me reiterate, enabling an actuator endpoint is not the same as exposing an actuator endpoint, they're 2 different things
+	Enabling an endpoint is mainly about creation. It controls whether or not that endpoint is actually created as a bean in spring boot and exposing it on the other hand, controls whether or not you can consume the endpoint
+	Whereas almost all endpoints are enabled by default, almost all endpoints are not exposed by default, at least for HTTP
+	Enabling or disabling an endpoint is more of an efficiency thing than anything. Disabling an endpoint results in the application using slightly less memory whereas exposing  or not exposing an endpoint is actually related to security
+		As I mentioned previously, in prior versions of spring boot prior to 2.0, enabling an endpoint was the same as exposing it
+		In one case, security researchers found that one of the endpoints could be used for remote code execution, which is really, really bad. It's pretty much the worst case scenario for a security vulnerability
+		Luckily, this security vulnerability was closed rather quickly and in spring boot actualtor 2.0, they've improved the security greatly
+
+3.5 - Demo: Enabling and Exposing Endpoints
+
+3.6 - Securing Actuator Endpoints
+	Spring boot has made it extremely easy to add security to endpoints
+	In fact, if spring boot detects that you have spring security on the classpath, it will automatically secure exposed endpoints with HTTP basic authentication
+	There are 2 exceptions to this
+		Health endpoint
+		Info endpoint
+	With the default configuration, the health endpoint only returns whether the app is healthy or unhealthy if it's requested without authentication
+	It can however be further configured to show additional details if credentails are provided
+	And the info endpoint is not meant to contain sensitive data. There is, however, nothing that enforces this so please be aware that it's not secured by default and should not contain any sensitive information
+	So in short, adding security to your endpoints is as simple as adding a dependency to your project
+	For maven, in pom.xml
+		groupId - org.springframework.boot
+		artifactId - spring-boot-starter-security
+	For gradle, build.gradle
+		dependencies {
+			compile("org.springframework.boot:spring-boot-starter-security")
+		}
+	Without any additional configurations, spring boot will automatically create a random password if spring security is on the classpath
+	This random password is printed to the console on startup and the default username is "user"
+	Spring security can also be configured with the specific username and password. Simply set these properties application.properties or application.yml
+		spring.security.user.name=<username>
+		spring.security.user.passowrd=<password>
+	Since endpoint security is controlled by the spring security framework, it should come as no surprise that it's entirely customizable
+	To customize this security, create a new class annotated with @Configuration annotation that extends WebSecurityConfigurerAdapter
+		@Configuration(proxyBeanMethods = false)
+		public class ActuatorSecurity extends WebSecurityConfigurerAdapter {
+			
+			@Override
+			protected void configure(HttpSecurity http) throws Exception {
+				http
+					.requestMatcher(EndpointRequest.toAnyEndpoint())
+					.authorizeRequests( (req) -> req.anyRequests().hasRole("ADMIN"));
+				
+				http.httpBasic();
+			}
+		}
+	WebSecurityConfigurerAdapter has one method to implement called configure() and it passes in an HTTP security object that can be used to implement your customizations
+	In this example, we customize the endpoint to also require authorization in addition to authentication
+	In order to access this endpoint, the requestor must have authenticated, as well as have the role of admin
+
+3.7 - Customizing the Health Endpoint
+	The health endpoint allows for additional custom health checks to the already built-in health checks, and the great thing is that it's really easy to do so
+	Simply create and register a new bean that implements the HealthIndicator interface and implement its one method, the health() method, with any custom logic
+	The health() method returns a Health object which is used to indicate the appropriate status, such as up or down
+	Let's take a look at some example code
+		@Component
+		public class FooServiceHealthIndicator implements HealthIndicator {
+			
+			@Override
+			public Health health() {
+				// custom logic
+				
+				// health status 
+				return Health.up().build();
+				
+				// unhealthy
+				return Health.down().build();
+				
+				// To include more info
+				return Health.down()
+					.withDetail("response_code", "...")
+					.withDetail("num_retries", "...")
+					.build();
+			}
+		}
+	The health object also provides the ability to add additional details
+
+3.8 - Customizing the Info Endpoint
+	Customizing the info endpoint follows a very similar pattern to the health endpoint
+	Rather than implement a HealthIndicator, you create and register a new bean that implements the InfoContributor interface
+	This interface has one method called contribute() and passes in an Info.Builder argument
+	The Info.Builder argument that's passed in can then be used to add additional information to the response
+	Let's look at another code example
+		@Component
+		public class ProjectInfoContributor implements InfoContributor {
+			
+			@Override
+			public void contribute(Info.Builder builder) {
+				// add new info
+				builder.withDetails("project_name","...")
+					.withDetails("point_of_contact","...");
+			}
+		}
+
+3.9 - Customizing the Metrics Endpoint
+	We can customize it by adding our own metrics to the existing metrics
+	There's a couple of different ways to customize the metrics endpoint but the the easiest is to inject a MeterRegistry into the class that's generating the metrics and then use or record the metric in that class
+	Let's look at some example code
+	Suppose we have some really complex service that had a long-running operation. We know that the method takes a long time to execute and we want to regularly record how long so we can keep track of it over time and make sure it's not getting worse
+	We can do that by injecting a MeterRegistry and creating a new named timer metric
+		@Service
+		public class ComplexService {
+			private Timer timer;
+			
+			public ComplexService(MeterRegistry registry) {
+				//give the timer a name
+				timer = registry.timer("long.running.op.timer")
+			}
+			
+			public void longRunningOperation() {
+				timer.record(() -> {
+					// a long running operation
+				}
+			}
+		}
+	The MeterRegistry class comes from the micrometer library, which is a technology agnostic library for collecting metrics. It supports things like timers which we just used, as well as other metric collectors, such as counters or gauges
+
+3.10 - Demo: Writing a Custom Health Indicator
+
+3.11 - Creating Your Own Actuator Endpoints
+	In typical fashion, spring boot makes it very easy to create your own custom endpoints
+	Simply create and register a new bean annotated with the @Endpoint annotation
+	Then utilize one of the @ReadOperation, @WriteOperation, @DeleteOperation annotations to annotate operational methods that expose, record, or delete information
+	Let's take a look at some example code
+	Suppose you wanted to create your own actuator endpoint that you gave you information about the docker container that your application was running in. As we just learned, we'll need to create a new class registered as a bean with the @Component annotation and then add the @Endpoint annotation to designate that it's an actuator endpoint
+		@Component
+		@Endpoint(id = "container")
+		public class DockerEndpoint {
+			@ReadOperation
+			public String foo() {
+				// gather and return information (e.g. get info about the docker container)
+			}
+			
+			@WriteOperation
+			public void bar() {
+				// do some action (e.g. restart the docker container)
+			}
+		
+		}
+	Then we create methods for gathering information and performing actions
+
+3.12 - Demo: Implementing a Custom Actuator Endpoint
+	Don't forget that we need to expose the endpoint

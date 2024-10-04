@@ -1,0 +1,468 @@
+Bryan Hansen
+Sept 29, 2020
+
+2.1 - Version Check (Configuring an Application to Use Spring Security)
+	Spring Security 5
+
+2.2 - Introduction
+	Spring Security was called Acegi
+
+2.3 - What Is Spring Security?
+	Spring Security is a framework written on top of the spring framework that will provide you security features inside your web application
+	It handles things like authentication and authorization for web apps, as well as web services, and can tie into just about any authentication store or authorization store that's out there
+
+2.4 - Integration
+	One of the best reasons to use spring security is its integration strengths. Its roots are in just securing web applications, but it's a great client when used in CAS installation as well
+	Many people thing that when using CAS that you just have to use their client tools. The hooks in spring security are actually great for integrating with CAS and are one of their preferred methods
+	Similar to CAS, spring security makes handling the tokens of OAuth great. OAuth can be a very complex animal, but spring security can help manage its complexities
+	LDAP is also great authentication mechanism. Using spring security, we can authenticate and authorize against LDAP or just use it for authentication and then authorize against a database
+	This is, in fact, one of the most common uses of spring security for internal apps. And not to leave out web services, spring security is great for wrapping them with security as well
+
+2.5 - Architecture
+	Spring security is built on top of and uses spring
+	It is centered around web apps and uses a filter entry point (servlet based)
+	It is built around multiple authentication models and handling the various roles inside an app
+	It also encourages apps to be inherently more secure through encouragin the use of salts. We'll cover salts later but suffice it to say it helps hackers not be able to crack stored passwords
+	It helps avoid session hacking. Session hacking, or a main in the middle (MitM) attack, is where someone can fool the server into thinking it's someone else
+	Spring security has a few mechanisms in place that help safeguard against that
+	Lastly, spring security is very fully featured, from authentication and authorization to "Remember me" services and email confirmation. It's all baked into the framework
+
+2.6 - Prerequisites
+	Java 11
+	Maven
+	IntelliJ Ultimate)
+	Tomcat
+
+2.7 - Getting the Code
+	https://github.com/bh5k/spring-security-conference
+
+2.8 - Demo: GitHub
+
+2.9 - Demo: Project Import
+	Load repo into IntelliJ
+	Execute mvn package
+	Add run configuration > Tomcat server > local > Make sure current tomcat is selected
+		In Deployment tab > Add artifact > the war file
+
+2.10 - Demo: Exercise Files
+
+2.11 - Spring Security Vocabulary
+	The entry point of security is authentication, and that is where we will begin defining our vocabulary
+	Authentication is determining I am who I say I am
+	After the app has authenticated us, we need to see what we are authorized to do
+	There 2 pieces are the key components of our app
+	Ther other things that we talk about are how we honestly do these 2 activities
+	The entry point to our application is through a filter. The filter is a standard JEE filter, it really isn't important if you haven't written one before
+	Just realize that it's the entry point of our app, and we will configure things to utilize it
+	Once you've entered the application, you have specific roles that you can perform or rights inside of the application
+	From here, roles are defined and stored in the User. This is the basic information about the logged-in user, while more specific details and the contract of what we can do is accessed through UserDetails
+	The last 2 items that we're going to cover aren't specific spring security terms, but rather more general spring terms, the first being a Service, not a web service, but the Service tier where business logic is stored
+	The second is a repository tier, and this is how we access data and work with it
+
+3.1 - Introduction (Securing Your Spring MVC Application)
+
+3.2 - Architecture
+	The architecture or process that is associated with securing an application is typically broken down into two parts
+		Authentication
+		Authorization
+
+3.3 - Authentication
+	Authentication is all about determining that I really am who I say that I am
+	A lot of authentication is typically done using LDAP or an Active Directory server for the authentication store
+	But we can simply use a database or flat file and determine who we are based off the credentials that are entered into our system
+	For development purposes, there's an in-memory authentication mechanism that we can use to get up and running quickly
+	Making the distinction between authentication and authorization is one of the more confusing parts of security
+
+3.4 - Authorization
+	Authorization is what we can do inside of our application. Once the app is determined who we are, it now looks to see what we can do
+	Authorization will always follow authentication. We first need to determine who we are and then determine what we can do inside of that app
+	What we can do can be very coarse-grained descriptions like web application or it might be as fine-grained as a user being able to see specific field or button on a page or possibly perform a certain action inside of our application
+	It can even be used to filter the data we are able to view
+
+3.5 - Maven Dependencies
+	Since our app started as a spring boot app, and we broke it out to be standalone app, we can continue to use the spring boot dependencies for security
+	Doing this will give us a few things pre-configured that we can build upon
+	There are 2 dependencies that we need to add
+		groupId - org.springframework.boot
+		artifactId - spring-boot-starter-security
+		
+		groupId - org.springframework.security
+		artifactId - spring-security-test
+		scope - test
+	spring-boot-starter-security has transitive dependencies for the other libraries we need, and spring-security-test provides us with libraries that we can utilize to set up our app and get up and running quickly
+
+3.6 - Gradle Dependencies
+	Although we aren't using gradle, the dependencies for gradle are 
+		implementation 'org.springframework.boot:spring-boot-starter-security'
+		implementation 'org.springframework.security:spring-security-test'
+
+3.7 - Demo: Adding Maven Dependencies
+
+3.8 - Configuration
+	Using java config and not XML config
+
+3.9 - Demo: Configuring Minimal Application Security
+	Add another dependency in app
+		groupId - javax.servlet
+		artifactId - jstl
+	spring-security-test gives us some sample libraries to create an in-memory database or LDAP server
+	jstl library allows us to do some simple navigation things inside of JSTL like including and excluding fields and some binary logic that way
+
+3.10 - Demo: Configuring Security Using Java
+	Create a class that extends WebSecurityConfigurerAdapter with @Configuration and @EnableWebSecurity annotations
+	Now this sets it up for spring to know this is a configuration file and to start looking at it and see that it is supplying these specific pieces for web security so we can go through and start modifying this java file to tie into those pieces
+	Then, override the methods
+		@Override
+		protected void configure(final HttpSecurity http) throws Exception {
+			// use builder style syntax
+			http.authorizeRequests()
+				.antMatchers("/anonymous*").anonymous()	// allow people to anonymously access this section of code
+				.antMatchers("/login*").permitAll()
+				.antMatchers("/assets/css/**", "assets/js/**", "/images/**).permitAll()
+				.antMatchers("index*").permitAll()
+				.anyRequest().authenticated()
+				.and()
+				.formLogin()
+				.loginPage("/login")
+				.loginProcessingUrl("/perform_login")
+				.defaultSuccessUrl("/", true);
+				
+		}
+		
+		@Override
+		protected void configure(final AuthenticationManagerBuilder auth) throws Exception{
+			auth.inMemoryAuthentication()
+				.withUser("bryan").password(passwordEncoder().encode("pass"))
+				.roles("USER");
+				// what this does is gives us our default user
+		}
+		
+		@Bean
+		public PasswordEncorder passwordEncoder() {
+			return new BCryptPasswordEncoder();
+		}
+
+3.11 - Demo: Configuring the Login View
+	In your @Configuration class (that existed in the project) that implements WebMvcConfigurer, override the method
+		@Override
+		public void addViewControllers(final ViewControllerRegistry registr) {
+			registry.addViewController("/login");
+		}
+
+3.12 - Fixing Maven Errors
+
+4.1 - Introduction (Configuring Spring Security to Use a Database)
+
+4.2 - In Memory Storage
+	We're going to start off this module with a simple in-memory database. This is a great way to get things up and running and try some things within your application, but not really something that you should deploy your application to production in the long run with
+	The good thing about it is switching to a different database from the in-memory version should require very few code changes, in fact, usually just some basic configuration changes
+	Spring enables you to add a couple lines of configuration and not need to know anything else about the underlying data store
+	And this is the code that we will configure in our app
+		auth.inMemoryAuthentication()
+			.withUser("bryan")
+			.password(passwordEncoder().encode("pass"))
+			.role("USER");
+
+4.3 - Demo: In Memory Storage
+	The configure() method from 3.10 is for in-memory database
+	Let's talk about how you change this auth.inMemoryAuthentication into JDBC authentication
+
+4.4 - Database Storage
+	Switching to a real database is not much more difficult than what you already had configured
+	We're going to use Docker to install a container and access the database through the docker instance
+	Code for JDBC authentication
+		auth.jdbcAuthentication()
+			.dataSource(dataSource);
+
+4.5 - docker-compose.yml
+	(sample docker-compose.yml file)
+
+4.6 - Demo: Docker Database Setup
+
+4.7 - Docker Tips
+	"docker-compose up -d" - start a docker container and instance
+	"docker-compose down" - shut it down
+	"docker ps" - running processes
+	"docker inspect <pid>" and "docker inspect <pid> | grep "IPAddress" - see what's running inside of container
+
+4.8 - Demo: JDBC Configuration
+	To configure our application to talk to a database, there's 3 steps we need to do
+		In pom.xml, add 2 dependencies
+			groupId - org.springframework.boot
+			artifactId - spring-boot-starter-data-jpa
+			
+			groupId - mysql
+			artifactId - mysql-connector-java
+		In application.properties, add these 4 lines
+			spring.datasource.url=jdbc:mysql://localhost:3306/conference_security
+			spring.datasource.username=root
+			spring.datasource.password=pass
+			spring.datasource.driver-class-name=com.mysql.jdbc.Driver
+		In java file with @Configuration and @EnableWebSecurity, add @Autowired
+			@Autowired
+			private Datasource dataSource;
+		In configure() method, replace with
+			auth.jdbcAuthentication()
+				.dataSource(dataSource);
+
+4.9 - Demo: MySQL Configuration
+
+4.10 - Demo: Configuration Recap
+
+5.1 - Introduction (Authenticating Users Against LDAP)
+
+5.2 - Maven Dependencies
+	There are 3 dependencies we need to add to our app in order to use LDAP
+		groupId - org.springframework.ldap
+		artifactId - spring-ldap-core
+		
+		groupId - org.springframework.security
+		artifactId - spring-security-ldap
+		
+		groupId - com.unboundid
+		artifactId - unboundid-ldapsdk
+	spring-ldap-core - this dependency is used for all LDAP libraries and interactions for Spring
+	spring-security-ldap - it contains just the interfaces to deal with LDAP and security-related protocols
+	unboundid-ldapsdk - this is actually the LDAP server we're going to use for testing our app out. It'll create an in-memory LDAP instance for us to test against
+
+5.3 - Demo: Adding Maven Dependencies
+	(explanations from the demo)
+		spring-ldap-core - this is for our spring application to do any type of interaction with LDAP, and it's actually the libraries that the spring security artifact that we're going to copy will require to do those interactions
+		spring-security-ldap - this is just what does the binds and searches and things that we're expecting underneath the hood in LDAP for our spring security application to authenticate our user against it
+		unboundid-ldapsdk - it's actually the preferred LDAP server if you go researching the spring security documentation about what to test your spring security LDAP against
+
+5.4 - ConferenceSecurityConfig.java
+	The change we'll need to make to our ConferenceSecurityConfig.java file is very similar to what we did for jdbcAuthentication
+	We're going to swap that out with ldapAuthentication
+		auth.ldapAuthentication()
+			.userDnPatterns("uid={0},ou=people")
+			.groupSearchBase("ou=groups")
+			.contextSource()
+			.url("ldap"//localhost8389/dc=pluralsight,dc=com")
+			.and()
+			.passwordCompare()
+			.passwordEncoder(passwordEncoder())
+			.passwordAttribute("userPassword");
+
+5.5 - Demo: Security Config for LDAP
+	Replace configure() method with 5.4
+
+5.6 - application.properties
+	To start test server that we created the dependency for and referenced in our ConferenceSecurityConfig file, we need to add 3 properties to our application.properties file
+		spring.ldap.embedded.ldif=classpath:test-server.ldif	# This is not how you would typically populate a production server but we have to have a starting point to test something inside of our application. This is will populate our server with some default users that we can run against
+		spring.ldap.embedded.base-dn=dc=pluralsight,dc=com
+		spring.ldap.embedded.port=8389
+
+5.7 - Demo: Creating the Embedded Server
+
+5.8 - test-server.ldif
+	(sample ldif file)
+
+5.9 - Demo: Creating the LDIF File
+
+5.10 - Demo: Authenticating Against LDAP
+
+6.1 - Introduction (Customizing the Spring Security Object)
+
+6.2 - Authentication - Authorization
+	In almost all the production implementations of spring security that I've done, we've had to authenticate from one and authorize from the other
+	The combination of LDAP plus a database is one of the wider used approaches that I've experienced when creating a spring security based application
+
+6.3 - Custom User Details
+	The beginning of the steps to customize our spring security object is to build our own UserDetails Object
+	We actually chose to do this the more realistic approach and a scenario very common whichyou may run into in your own app and that is to extend the user object which is also the default object from spring security
+	You can see here in this snippet of code that we had to fully qualitfy the package to the User class
+		public class ConferenceUserDetails extends org.springframework.security.core.userdetails.User {
+			private String nickname;
+			
+			...
+		}
+	The reason for that is that we already have a class inside of our app named User, so we had to sepcify which one we're extending
+	Also, you can see in this code that we're going to add a property named nickname
+	A nickname is a common attribute in an app because people might not always user their given name as to what they prefer to be called
+
+6.4 - Demo: Creating the Custom User Details Object
+	Once you extend spring User class, you need to implement a constructor. Use default super call
+
+6.5 - Context Mapper
+	The most complex part of customizing the spring security object when dealing with LDAP is the context mapper
+	The context mapper is required to take hte user that has been authenticated and build the object that gets returned
+	We're going to import the data source we have defined for our database, pull the username of the authenticated user out of that LDAP search, then user the context to see what that username is inside that variable ctx, and finally query the database to return the results we want, in this case, the extra fields we're storing
+		@Service
+		public class ConferenceUserDetailsContextMapper implements UserDetailsContextMapper {
+			...
+			public UserDetails mapUserFromContext(DirContextOperations ctx, String s,
+				Collection<? extends GrantedAuthority> collection)
+			{...}
+			...
+		}
+
+6.6 - Demo: Adding Columns to Our Database
+	Once you implement UserDetailsContextMapper, you need to implement 2 methods
+		mapUserFromContext()
+		mapUserToContext()
+	We really care about is mapUserFromContext(). The second one is if we're going the other direction and we don't care about that
+
+6.7 - Demo: Creating the LDAP Context Mapper
+
+6.8 - Security Config
+	Now that we've created our mapper, we need to configure our spring security config to inject this new service
+	We defined our mapper as a service and that service, since it's registered as a spring bean, can now be autowired
+	Lastly, our LDAP configuration, we need to add the ContextMapper to our configuration, so that when it builds our user, we can intercept and make the appropriate calls
+
+6.9 - Demo: Authenticate Against LDAP Authorize Against the Database
+
+7.1 - Introduction (Creating a Custom Login Page for Spring Security)
+
+7.2 - Demo: Error Message
+
+7.3 - failureUrl
+
+7.4 - Demo: Configure Login Error Handling
+
+7.5 - Displaying Errors
+
+7.6 - Demo: Login Error Messages
+	One word of caution is that it's generally good advice to send back ore generic errors that doesn't expose any of your security model
+
+7.7 - Remember Me
+	Remember Me services apply a cookie in the app to verify that we are who we saw we are
+	And as long as the user allows cookies, your app doesn't require you to continually log in
+
+7.8 - Remember Me Frontend
+
+7.9 - Demo: Remember Me UI
+
+7.10 - Remember Me Configuration
+
+7.11 - Demo: Remember Me Security Config
+	HttpSecurity class has rememberMe() method
+
+7.12 - Remember Me SQL
+
+7.13 - Demo: Performing Remember Me Example
+
+7.14 - Logout
+
+7.15 - Logout Configuration
+	Logout configuration is very similar to Remember Me configuration
+
+7.16 - Demo: Logout Configuration
+
+7.17 - Display Success
+
+7.18 - Demo: Logout
+
+8.1 - Introduction (Creating a Custom Registration Process for Spring Security)
+
+8.2 - Registration Workflow
+
+8.3 - Authentication
+	To make this easier, we're going to swtich back to having authentication and authorization done through just the database so that we don't have another moving part
+	What we're going to do though would work just as good with LDAP for authentication and the database for authorization
+
+8.4 - Email Configuration
+
+8.5 - Demo: Email Configuration
+	If you use Gmail accounts, you do need to make sure that you have this "Less Secure app access" turned on to allow it
+
+8.6 - Account UI
+
+8.7 - Demo: Create Account UI
+
+8.8 - Account Controller
+
+8.9 - Demo: Create Account Controller
+
+8.10 - Account Post
+
+8.11 - Account Service
+
+8.12 - Demo: Create Account Service
+
+8.13 - Sending the Eamil
+	We will need to send an email to the user to confirm the account. And you might be tempted to do this in a synchronous method, and it can work, but it has the option to block your user and also make for a slow user experience
+	Instead, it's better to use an event model that has listeners disconnecting our app. By firing off an event, it can happen in an asynchronous way and not block the app, while also enabling it to eventually deliver the email in a guaranteed fashion
+	Add dependency in pom.xml
+		groupId - org.springframework.boot
+		artifactId - spring-boot-starter-mail
+	And what this does is it brings in all the dependencies that we need inside of our application to send emails from
+	In application.properties
+		spring.mail.host=smtp.gmail.com
+		spring.mail.port=587
+		spring.mail.username=
+		spring.mail.password=
+		spring.mail.properties.mail.smtp.auth=true
+		spring.mail.properties.mail.smtp.starttls.enable=true
+	Create a class that extends ApplicationEvent
+	Then you need to publish that object through ApplicationEventPublisher
+
+8.14 - Processing the Eamil Event
+	To create an event listener
+		Create a class that implements ApplicationListener<(class you create that extends ApplicationEvent)>
+	JavaMailSender
+	SimpleMailMessage
+
+8.15 - Confirming the Account
+
+9.1 - Introduction (Handling a Forgotten Password in Spring Security)
+
+9.2 - Password Workflow
+
+9.3 - Data Gathering
+
+9.4 - Password Controller
+
+9.5 - Sending the Email
+
+9.6 = Password Service
+
+9.7 - Obtain New Password
+
+10.1 - Introduction (Securing Methods in Spring Security)
+
+10.2 - Enabling Annotations
+	The annotations we're going to use are already included in the JARs that we have in the application, but we need to enable them
+	First, we need to actually annotate our code to use annotations, and we're going to enable this by adding @EnableGlobalMethodSecurity annotation to the top of our security config
+	This actually allows us to then configure specific attributes. These attributes are
+		prePostEnabled - which we can use aspects to affect our method before or after it's going to execute
+		securedEnabled - this will just allow us to wrap our code with a secured element
+		jsr250Enabled - this is just a different way of us doing the same thing as secured. Jsr250 is java's way of adding the secured annotation that is generic across frameworks. Either way, it works the same
+
+10.3 - Annotation Configuration
+
+10.4 - Demo: Configuring Security Annotations
+
+10.5 - Method Security
+	With our security enabled nwo, it's time to annotated our method
+	For our basic example, we're going to add @Secured annotation that you see here on our addRegistration method
+		@PostMapping("registration")
+		@Secured("ROLE_ADMIN")
+		public String addRegistration(...) {...}
+
+10.6 - Demo: Implementing Method Security
+
+10.7 - Demo: Permission Denied
+
+11.1 - Introduction (Securing UI Elements Using Spring Security)
+
+11.2 - UI Elements
+
+11.3 - Demo: Implementing UI Security
+	Add dependency in pom.xml
+		groupId - org.springframework.security
+		artifactId - spring-security-taglibs
+
+11.4 - Obtaining the Current User
+	Newer technique
+		@PostMapping("registration")
+		@Secured("ROLE_USER")
+		public String addRegistration(..., Authentication auth)
+		{
+			sysout("Auth: " + auth.getPrincipal());
+		}
+	Methods that are called by Spring, not necessarily methods that you call in your code, but methods called by spring can inject the authentication object with no change to your app
+	And this code here in our addRegistration method, this is called by the spring MVC framework, and the Authentication object is injected into that instance named "auth"
+	We can then access that in our code and use it however we see fit
+
+11.5 - Demo: Principal Injection

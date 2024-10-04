@@ -1,0 +1,131 @@
+Dustin Schultz
+May 14, 2018
+
+2.1 - Introduction (What is Spring?)
+	Goal of this course is to provide a high level overview of spring
+
+2.2 - What is Spring?
+	Spring could mean
+		Spring framework
+		Spring Boot
+		Spring Cloud
+		Spring Data
+		and more
+	However, when people say spring, they're actually referring to the entire family of projects or the Spring ecosystem
+
+2.3 - Meet the Spring Family
+	The spring family all began with the creation of the spring framework, which was built largely in response to the complexity of developing applications using J2EE, it's not called Java EE
+	And the spring framework aimed at removing the complexity and helped make things like web development and data access easier for developers to implement
+	It also aimed at reducing boilerplate code
+	The success of spring framework led to the creation of several spring projects that were build on top of the spring framework but tailored to specific needs and domains
+	The spring framework and spring projects continued to evolve and thrive, eventually resulting in the creation of a particularly impactful project called Spring Boot
+	Spring Boot was a real game changer. It provided a new and drastically faster way of building spring based applications
+	Lastly came the Spring Cloud project. Spring Cloud was built on top of Spring Boot and simplified the development of applications that make use of distributed architectures
+
+2.4 - Why Spring?
+	One of the common answers is that it's a good alternative to Java EE, and while that was true in the beginning, today's Spring is so much more than just an alternative to Java EE
+	In fact, it's actually complimentary to Java EE and makes use of several standard specifications like the Java Persistence API
+	The question of why you would want to use spring is a completely valid and reasonable question that actually has a very simple answer, and that's that creating software can be hard and spring helps make it easier
+	You'll notice that regardless of the project within the Spring family, they all share a common theme and that's to make developing java applications easier
+	Other reasons
+		Spring is really great at being flexible, modular and especially backwards compatible. So Spring is far from an all or nothing type of choice
+		Large and active community
+		Open source project and backed by company called Pivotal
+
+3.1 - Spring Boot Makes Spring Both Quick and Easy (Getting to Know Spring with Spring Boot)
+
+3.2 - Understanding Spring Boot's Key Features
+
+3.3 - Intelligent Auto-configurations
+
+3.4 - Standalone Applications That "Just Run"
+
+3.5 - An Opinionated View of Spring
+	https://start.spring.io/
+
+3.6 - Where Can I Learn More About Spring Boot?
+
+4.1 - The Spring Framework is a Software Framework (Understanding Spring's Foundations: The Spring Framework)
+
+4.2 - This is Where It All Began
+
+4.3 - The Six Key Areas of the Spring Framework
+	The Spring Framework can be broken up into 6 different key areas
+		Core
+		Web
+		AOP
+		Data Access
+		Integration
+		Testing
+
+4.4 - Spring Core
+	Spring Core is considered to be a dependency injection container
+
+4.5 - Spring Web Overview
+	Web support within the Spring Framework is provided via the web module. And simply put, the web module, or Spring Web is a framework for handling web requests
+	Web requests can be handled in one of 2 different ways, either via Spring Web MVC or via Spring Webflux
+
+4.6 - Spring Web MVC
+	The java language introduced very basic support for interacting with the web via a built-in framework called the Servlet API, and the Servlet API is named after the key component called a servlet
+	In simple terms, a servlet is an object that receives a request and generates a repsonse based on that request
+	Let's take a look at what a standard web request looks like using a Servlet API
+		We start off with a request to the web server which is initially handled by the Servlet API and then passed on to the actual application logic or business logic as it's called
+		The business logic is executed and produces some result, and those results are handed back to the Servlet API to generate a response
+	Servlets are great but they don't come without their own set of challenges
+	Specifically, the servlet API is considererd to be somewhat low-level API
+	Let's look at what a request looks like using the Spring Web MVC Framework
+		The request starts off the same, entering the web server and passing throug the Servlet API
+		However, instead of going directly to the business logic, it's sent through to the Spring Web MVC Framework
+		The business logic can then make use of Spring Web MVC, generate a result, and pass control back to Spring Web MVC, which in turn can pass control back to the Servlet API, and ultimately generate a response
+	The advantage of the Spring Web MVC Framework is that it provides a higher level API for the develop to interact with
+
+4.7 - Spring Webflux
+	Reactive programming is a declaractive programming paradigm concerned with data streams and the propagation of change
+	So in other words, it's a way of programming that focuses on streams of data and how they change
+	And the key idea behind reactive programming is that you react to change rather than wait for change
+	Spring Webflux primary purpose is still to handle web requests, but the way in which it handles them is different
+	Specifically, web requests are executed asynchronously, and they don't block or wait, and this results in better resource utilization
+
+4.8 - Spring AOP
+	AOP is Aspect-oriented Programming
+
+4.9 - Spring Data Access
+
+4.10 - Spring Integration
+	Integration is all about making different systems nad applications work together
+
+4.11 - Spring Testing
+	There are many different levels at which software is tested and the spring framework focuses on 2 different areas
+		Unit testing
+		Integration testing
+
+5.1 - The Projects We'll Be Exploring (Exploring Other Spring Projects)
+	https://spring.io/projects
+
+5.2 - Spring Data Project
+	https://spring.io/projects/spring-data
+	How is Spring Data different than the Spring Framework's Data Access support?
+	The Spring Data project extends the data access capabilities provided by the Spring Framework, whereas the Spring Framework is focused on one particular type of database, particularly relational databases
+	The Spring Data project adds new ways of interacting with relational databases, as well as support from many different type of databases
+	Spring Data is actually an umbrella project meaning that it itself is not actually a project but a series of subprojects, specifically a subproject per supported datastore
+
+5.3 - Spring Cloud Project
+	https://spring.io/projects/spring-cloud
+
+5.4 - Spring Security Project
+	https://spring.io/projects/spring-security
+
+6.1 - Is Spring a Good Fit for What I'm Doing? (Is Spring a Good Fit?)
+
+6.2 - The Advantages of Using Spring
+
+6.3 - The Disadvantages of Using Spring
+	One of the most common disadvantages that you'll hear about Spring is that Spring is too magical
+	Steep learning curve
+	Increases the size of the deliverable
+	Hard to debug
+	Add memory overhead
+	Complexity has grown over time
+
+6.4 - Making the Decision
+

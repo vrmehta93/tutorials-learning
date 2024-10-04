@@ -1,0 +1,1141 @@
+Jose Paumard
+
+2.1 - Introduction, What Are You Going to Learn in This Course? (Introducing the Executor Pattern, Futures and Callables
+	This course is about advanced concurrency in java, and mainly, how to improve the Runnable pattern in different ways
+
+2.2 - What Do You Need to Know to Follow This Course?
+
+2.3 - Introducing Executors, What is Wrong with the Runnable Pattern?
+	Let us take a look at this code
+		Runnable task = () -> sysout("hello world")
+		Thread thread = new Thread(task);
+		thread.start();
+	This code is an example of the Runnable pattern in action
+	Let us take a closer look at this pattern and try to understand what's wrong with it
+	The first point is that the thread is created on demand by the user, the user being the developer. Now, the risk is that everybody can create new threads freely and you might end up with thousands of threads crated in your application, thus killing it. This idea is not a great idea
+	Second, a new thread is created for each task, and when the task is done, the thread dies. This is how this start() method works. The problem is that a thread might be a resource given by the OS and we all know that these resources are expensive both to create and kill
+	So in fact, this pattern, even if it works from a pure technical point of view is not that great and should NOT be used in real applications
+	In fact, if you're developing in a Java EE application, you should not use it at all. In java ee application, you're not allowed to create new threads on your own
+
+2.4 - Defining the Executor Pattern: A New Pattern to Launch Threads
+	The first goal of the Executor pattern is to fix precisely these issues
+	How can we improve the use of threads as resources? We can think about creating pools of ready-to-use threads, this is a very classical solution, and use them on demand
+	So instead of creating a new thread with each task as a parameter, we will create tasks as we did by implementing the Runnable interface and we're going to submit them to pools of thread that will execute it. It will be the role of the pool of threads to take a task, choose an available thread, pass this task to this thread and execute it in this thread
+	So we need at least 2 patterns
+		First one is to create a pool of threads
+		Second one ot pass a task to this pool of threads
+
+2.5 - Defining the Executor Service Pattern, a First Simple Example
+	In java, a pool of thread is an instance of the Executor interface. This executor interface is very simple. It has only one method that takes a runnable task
+	We do not have to implement this interface ourselves. There are several implementations readily available in the JDK
+	We have a second interface called ExecutorService that extends Executor. ExecutorService has about 10 more methods than Executor, but it turns out that all the implementations of Executor are also implementations of ExecutorService. The implementations are the same for both interfaces
+	To create instances of those implementations, we have a factory method called Executors with an "s" with about 20 methods to create executors
+	For instance, let us build a pool of thread with only one thread in it
+		ExecutorService singleThreadExecutor = Executors.newSingleThreadExecutor()
+	How does this pool of thread  works? Whhen we create it, this thread is created also and will be kept alive as long as this pool of thread is alive. Then when we pass this task to this ExecutorService, this task will be executed in that thread and this thread will not be destroyed once this task is done
+	It brings the question of how we're going to free the threads of this ExecutorService. There is a set of shutdown method that we're going to see at the end of this module
+
+2.6 - Comparing the Runnable and the Executor Service Pattern
+	We're not going to see all the methods from the Executors factory class
+	The 2 most used methods from this class are the following
+		ExecutorService singleThreadExecutor = Executors.newSingleThreadExecutor();
+		ExecutorService multipleThreadExecutor = Executors.newFixedThreadPoolExecutor(8);
+	newSingleThreadExecutor is to create a pool of thread with only one thread in it. It is very useful for
+	reactive programming when you just want to execute a single task in another thread
+	newFixedThreadPoolExecutor - it is a pool of thread in which you can fix the number of thread, 8 in this example
+	To run a task
+		Executor executor = Executors.newSingleThreadExecutor();
+		Runnable task = () -> sysout("I run");
+		executor.execute(task);
+	So we can compare those 2 patterns
+		// Executor pattern
+		executor.execute(task);
+		
+		// Runnable pattern
+		new Thread(task).start();
+	Basically, the Executor pattern doesn't create a new thread and this is exactly what we wanted to do, but the behavior is the same
+
+2.7 - Understanding the Waiting Queue of the Executor Service
+	Now suppose we run this code
+		Executor executor = Executors.newSingleThreadExecutor();
+		Runnable task1 = () -> someReallyLongProcess();
+		Runnable task2 = () -> anotherReallyLongProcess();
+		executor.execute(task1);
+		executor.execute(task2);
+	Obviously, task2 will have to wait for task1 to be done. So to hand this case, an Executor, whether it is single threaded or not, has a waiting queue
+	Now this waiting queue is precisely specified. How does it work?
+		First, a task is added to the waiting queue when no thread is available
+		The second rules is that the tasks are executed in the order of their submission. In our example, we have the guarantee that task1 will be executed before task2. This is very important in ordering our tasks
+	More questions
+		Can we know if a task is done or not? No. In fact, in this case, when we're using Runnable, it is not possible to query the Executor to know if a given task is executed or not
+		Can we cancel the execution of a task? In a certain way, we can. In fact, what we can do is remove a task from the waiting queue. If the task has been started by the thread, it is NOT possible to cancel it
+
+2.8 - Wrapping-up the Executor Service Pattern
+	First of all, building an Executor is more efficient than creating threads on demand
+
+2.9 - From Runnable to Callable: What is Wrong with Runnables?
+	Let us take a closer look at the Runnable interface itself
+	Now there are several caveats in the Runnable
+	First, the method we write cannot return anything. And what does it mean? It means object can be returned and no exception can be raised
+	In fact, there is no way we can know if a task is done or not, if it has completed normally or exceptionally
+
+2.10 - Defining a New Model for Tasks That Return Objects
+	So we have several questions
+		First, how can a task return value?
+		Second, how can we get the exception raised by this task? e.g. SQLException
+		Third, How can this value or excpetion go from one thread to another?
+			We need a way to transmit this value or the exception from one thread to another. Why? Because a task is created in a given thread, passed to a thread of an ExecutorService, and it is in this last thread that the result or the exception is created
+	So we need a new model for our tasks. What is okay with the runnable interface is that a task is a method of an interface, but this method has to return a value and must be able to throw an exception
+	It is not the case of the run method of the runnable interface
+	And we also need a new object that will act as a bridge between the executing thread belong to the Executor and the main thread in which task is created
+
+2.11 - Introducing the Callable Interface to Model Tasks
+	The Executor pattern usese another interface called the Callable interface
+		@FunctionalInterface
+		public interface Callable<V> {
+			V call() throws Exception;
+		}
+	The Callable interface is a generic interface. It has a single method just as the Runnable interface called call(). This call method returns an object of type V and may throw an Exception, so it does exactly what we need
+	As we saw, the Executor interface doesn't handle callable directly. It has a single method that takes a Runnable as a parameter. But the ExecutorService interface has a submit method that takes a Callable as a parmeter
+		<T> Future<T> submit(Callable<T> task);
+	So to use Callable tasks, we have to use ExecutorService instead of Executor
+	Now as we saw in the previous part, the implementations of the ExecutorService are the same as the implementations of the Executor interface
+	And this method returns a Future object that is also a generic object. In fact, this object is a wrapper on the object returned by the task, but it has also special functionalities that we're going to see
+
+2.12 - Introducing the Future Object to Transmit Objects Between Threads
+	How does this Future object work?
+	Suppose that we create a callable in the main thread. This is the task we want to execute in the Executor we have, so we pass this task to the submit method of this Executor
+	This task is then transmitted from the main thread to the ExecutorService
+	Now the ExecutorService is going to execute it in a thread of its own pool, which is of course, different from the main thread
+	This special thread wil create a result whether it is a normal result or an exception. Then the Executor will have to pass this object from its thread to the main thread that created the task
+	This is precisely the role of this Future object. In fact, the Executor will return a Future object that is going to hold the result of the execution of this task once it is available
+	How does it work in the code?
+		// In the main thread
+		Callable<String> task = () -> buildPatientReport();
+		Future<String> future = executor.submit(task);
+		String result = future.get();
+	I can execute some other code before calling this get method. What happens when I call this get method, two things can happen
+		First, the object produced by the task is available, so the get method will return that object immediately
+		Second, the object produced by the task is not yet available. In that case, the get method will not return immediately. It will block until the String, in our example, is available
+
+2.13 - Wrapping-up Callables and Futures, Handling Exceptions
+	Now if things go wrong, 2 exceptions can be raised
+		First, InterruptedException. This exception is thrown if the thread from the Executor that is executing this task has been interrupted. It is possible to interrupt such a thread by issuing a shutdown command to the Executor
+		The second case is that the task itself has thrown an exception. Imagine a query on a database and there has been some kind of error, so a SQLException has been raised in the task internally. Then in that case, the get method will wrap this root exception in an ExecutionException and throw it in the main thread
+	So in a nutshell, this get method may throw 2 kinds of exception, InterruptedException, meaning that something went wrong in the Executor itself, or ExecutionException to wrap an application exception thrown by the task
+	And there is also another possibility, we can also pass a timeout to the get call to avoid to be blocked indefinitely. So for instance, if we think that the result should be made available in less than a second, we can pass 1 second to this get method and past that time, the get method will throw an InterruptedException
+
+2.14 - Live Coding: Introduction, Runnable in Action
+	(demo showing that every time you call start() on Runnable, it creates a new thread)
+
+2.15 - Live Coding: Executor and Callables, How to Shut Down an Executor
+	(demo showing that using ExecutorService, same thread is used)
+	There is another detail I should mention is the fact that here I can see that the JVM that is executing my test is still alive (after executing all tasks). It has not been shut down
+	Why? Because ExecutorService is still alive, I did not shut it down, and since there are non-daemon threads in it, it maintains the JVM alive
+	So I need to add this code for my application to be correct
+		service.shutdown()
+
+2.16 - Live Coding: Using Futures to Handle Time Out
+	Now let us see what happens if a task takes too much time to produce its result
+		Callable<String> task = () -> {
+			Thread.sleep(300);
+			return "I'm in thread" + Thread.currentThread().getName();
+		}
+		
+		ExecutorService executor = Executors.newFixedThreadPool(4);
+		
+		for(int i = 0; i < 10; i++) {
+			Future<String> future = executor.submit(task);
+			sysout("I get" + future.get(100, TimeUnit.MILLISECONDS));
+		}
+		
+		executor.shutdown()
+	If we run this code, obviously, no task has the chance to be executed, so the concurrent TimeoutException will be thrown.
+	Now we can see that once again, the JVM that ran our little test did not shut down properly. Why so? Because this get method threw the exception and didn't let this shutdown method to be executed. So for this code to be correct, we need to wrap it in a try finally
+		...
+		try {
+			for(int i = 0; i < 10; i++) {
+				Future<String> future = executor.submit(task);
+				sysout("I get" + future.get(100, TimeUnit.MILLISECONDS));
+			}
+		} finally {
+			executor.shutdown()
+		}
+
+2.17 - Live Coding: Handling Exceptions in Callables with Futures
+	(demo of throwing an exception in callable task and during execution, ExecutionException being thrown along with the root exception)
+	Once again, I have to noce that this get method prevented my JVM to close properly. So I need to wrap this code in a try and finally
+
+2.18 - Live Coding Wrap-up
+
+2.19 - Wrapping-up Executors: Single, Fixed, and Cached ExecutorServices
+	Let us talk more about available ExecutorServices
+	We're going to see the categories of Executors we have
+	So as I told you, the JDK comes with several ExecutorServices available. The first we saw is the newSingleThreadExecutor()
+	Second one is the newFixedThreadPool(poolSize)
+	We also have newCachedThreadPool()
+		Those CachedThreadPools differed from the FixedThreadPools in a way that those executors create threads on demand. This is different from the FixedThreadPool. The FixedThreadPool, it created with 4 threads, will create those 4 threads immediately
+		The CachedThreadPool create those threads on demand and will keep them for a certain amount of time. Now if the thread created are not used for 60 seconds by default, then this thread pool will destroy them
+		This kind of pool is very efficient if you have from time to time an important number of tasks to execute but it turns out that you do not have to do that very often, for instance, once in several hours
+		So you can create the thread pool. It will not consume many resources since most of the time it will not have any threads at all, but when you need those threads, it will create them for you
+
+2.20 - Wrapping-up Executors: Scheduled ExecutorServices
+	And a fourth and last factory method that we see is the newScheduledThreadPool(poolSize)
+	It returns a special ExecutorService that is in fact an extension of the ExecutorService interface called ScheduledExecutorService
+	What does this special executor do? It does 3 things
+		First, I can schedule a task somewhere in the future by passing this task and a delay which is a spatial amount of time (with schedule())
+		Then I can call scheduleAtFixedRate(). It will execute this task after a certain delay and then execute it again and again after a certain period of time. So this task will be executed indefinitely starting in 5 minutes, and for instance, every 30 seconds
+		Last method is scheduleWithFixedDelay(). At a first glimpse, it works the same as the previous method. In fact, it does NOT work exactly the same. This task will be first executed after the initial delay and then executed again after a certain delay. The second delay is measured between the end of the execution of this task and the beginning of the next execution of this task
+
+2.21 - Shutting Down an ExecutorService: Patterns and Strategies
+	There are 3 methods to shutdown an ExecutorService
+	First, the shutdown method
+		It will continue to execte all submitted tasks including the tasks that are still waiting in the waiting queue
+		Once an ExecutorService has been shutdown, it will not accept any new tasks
+		And when all the tasks have completed, then it will shut down properly destroying and cleaning up all the threads that have been created
+		This is the soft way of closing an ExecutorService respectful of everything that has been submitted to it
+	Of course, if you needed to shutdown an ExecutorService quickly, you might not be able to wait for all the tasks to complete. So there is a second method for that, shutdownNow()
+		this method will halt running tasks, interrupting the threads that are executing them
+		It will not execute any waiting tasks
+		Of course, it will not allow any new submission and then it will shut down
+		This shutdownNow is the hard way of shutting down an ExecutorService
+	There is a third way between the first and secodn one, awaitTermination(timeout)
+		First, it will issue a shutdown(), so it will prevent the submission of any new task, then it will wait for the given timeout
+		During this timeout, it gives the chance of all the executing tasks to complete and of all the waiting tasks to be executed, and at the end of this timeout, if there are still remaining tasks, it will halt everything and cleanup the waiting queue if it is not empty
+
+3.1 - Introduction, Module Agenda (Using Locks and Semaphores for the Producer/Consumer Pattern)
+	This module is about synchronization
+
+3.2 - What Is Wrong with Intrinsic Locking and Synchronization?
+	Let us introduce intrinsic and explicit locking
+	If we want to synchronize a method, for instance
+		public class Person {
+			private final Object key = new Object();
+			
+			public String init() {
+				synchronized(key){
+					// do some stuff
+				}
+			}
+		}
+	The best way to do that is to create a key object
+	This is called the synchronized pattern in java and it's well known
+	Now what would happen if a thread is blocked inside the synchronized block of code, and when I mean block, I mean probably wrongly blocked? There is some kind of bug in the init method that will prevent a thread from exiting this guarded block of code
+	Well, it turns out that all the other threads are also blocked. No other thread will be allowed in this block of code. All the other threads waiting to enter this block of code are also blocked and there is no way in the JDK nor the JVM to release them
+	So when this kind of situation occurs, most of the time, the only way to solve this problem is to reboot the JVM, that is to shut down the application and to load yet again
+	Of course, this is something we want to avoid at all costs
+
+3.3 - Introducing API Locking with the Lock Interface
+	The Lock pattern is precisely here to bring a solution to this case
+	The lock pattern in fact, brings a richer API to handle exactly this case
+	Instead of writing this code that is creating a key object and passing this key object to a synchronized block of code
+		Object key = new Object();
+		
+		synchronized(key){
+			// do some stuff
+		}
+	We're going to write this one
+		Lock lock = new ReentrantLock();
+		try {
+			lock.lock();
+			// do some stuff
+		} finally {
+			lock.unlock();
+		}
+	We create an instance of the Lock interface, the JDK provides an implementing class which is ReentrantLock
+	Inside try finally block of code, we call the lock method and unlock method, thus guaranteeing that this unlock method will be called when exiting this block of code whatever happens after the lock call
+	Lock is an interface implemented by a ReentrantLock. It is part of java.util.concurrent API introduced in Java 5 in 2004
+	It offers exactly the same guarantees, that is execution explicitly and read and write ordering, that is visibility, happens-before link (HBL) between operation as the synchronize pattern
+	And it also provides more functionalities. Why? Because instead of being a language primitive, which is the case for the synchronized block, it is an API and on this API, we can have many more methods
+
+3.4 - Differences Between Synchronization and API Locking
+	Let us take a closer look at this pattern
+	One one hand, we have the synchronized pattern.
+	We create instance of any object to use the monitor defined on this object
+	And this object canbe used to guard as many blocks of code as we need
+	On this lock pattern, we create a lock object instead of the Lock interface and the biggest difference is that on this lock object we have the methods of the lock interface
+	And this is through the use of those methods that we will have more patterns and more functionalities for guarding blocks of code and for handling lock acquisition
+
+3.5 - Lock patterns: Interruptible Lock Acquisition
+	So what does this lock pattern bring to us?
+	First it brings interruptible lock acquisition. Let us see an example of that
+		Lock lock = new ReentrantLock();
+		try {
+			lock.lockInterruptibly();
+			// do some stuff
+		} finally {
+			lock.unlock();
+		}
+	We can call lockInterruptibly which has the same kind of semantic as the lock() call, that is the thread calling this method will be blocked until the guarded block of code can be executed
+	Now if another thread has a reference on it, it can call the interrupt() method on the thread and the lockInterruptibly method instead of letting it execute the code where through itself the InterruptedException, thus reading the waiting thread
+	This was not possible with the synchronized pattern
+	This can be costly. It can be hard to achieve from a pure implementation perspective, but it is possible. It is available as a functionality
+
+3.6 - Lock Patterns: Timed Lock Acquisition
+	The second thing we can do is called timed lock acquisition
+	What does it mean? It means that instead of calling the lock method, we can call the tryLock method and this time if a thread is already executing the guarded block of code, the tryLock called will return false immediately
+		Lock lock = new ReentrantLock();
+		if(lock.tryLock()) {
+			try {
+				// guarded block of code
+			} finally {
+				lock.unlock();
+			}
+		} else {...}
+	So instead of being block, our thread will not enter the guarded block of code and will be able to do something else immediately. Note that we can also pass a timeout to this tryLock method
+		lock.tryLock(1, TimeUnit.SECONDS)
+	For example, here our thread will wait for 1 second. If the guarded block of code is still not available after this timeout, it will execute the else block of code
+
+3.7 - Lock Patterns: Fair Lock Acquisition
+	And the third functionality we have is called fair lock acquisition
+	How does it work? Suppose we have several threads waiting for a given lock. Whether it is an intrinsic or explicit lock, the first one to enter the guarded block of code is chosen randomly. This is the default behavior of both the synchronized keyword and the Lock object
+	Fiarness means that the first to enter the wait line is the first to enter the block of code
+	Let us see that on an example
+		Lock lock = new ReentrantLock();
+		try {
+			lock.lock();
+			// do some stuff
+		} finally {
+			lock.unlock();
+		}
+	By default, a ReentrantLock build in the normal way is non-fair, meaning that if 2 threads are waiting to acquire this lock, we do not know in advance which one is going to execute the guarded block of code first
+	Now if we pass the "true" boolean when building this lock object
+		Lock lock = new ReentrantLock(true);	// fair
+	This lock object becomes a fair ReentrantLock or a fair lock. It means that if 2 threads are waiting to acquire this lock, the first one to the guarded block of code will be the first to enter that wait list
+	Achieving this is costly, so using fiarness is not activated by default and you should really use that if you need it absolutely
+
+3.8 - Wrapping-up the Lock Pattern
+	As we can see, using this Lock interface gives our code and our application some wiggle room
+	A lock can be interrupted. It's possible, it's hard to achieve, but it has been done and it is indeed costly in our application. But if we definitely need it, then it's available
+	The acquisition of this Lock object can also be blocked for a certain amount of time. I can ask this Lock object and tell "hey if in one second from now the lock is not available, then I prefere to leave and do something else"
+	And at last, this acquisition canbe fair letting in the threads on a first come, first serve basis and the same goes for the interruptible lock. It's a costly functionality to activate. So use it only when you definitely need it
+
+3.9 - Producer/Consumer Pattern: Wait/Notify Implementation
+	Let us see now how we can implement the Producer/Consumer pattern using this lock interface
+	The classical way to implement this with the intrinsic locking is probably to use the wait/notify pattern
+	Wait and notify are methods from the object class that should be called from inside the synchronized block of code
+	Obviously, since explicit locking doesn't work with synchronized block of code, the wait/notify pattern cannot work at all
+	So we need another pattern and this is what we're going to see now. Let us have a quick look on the classical way of implementing this pattern
+		(somewhere)
+		Object lock = new Object();
+		
+		class Producer {
+			public void produce() {
+				synchronized(lock) {
+					while(isFull(buffer)) {
+						lock.wait();
+					}
+					buffer[count++] = 1;
+					lock.notifyAll();
+				}
+			}
+		}
+		
+		class Consumer {
+			public void consume(){
+				synchronized(lock) {
+					while(isEmpty(buffer)) {
+						lock.wait();
+					}
+					buffer[--count] = 0;
+					lock.notifyAll();
+				}
+			}
+		}
+	These 2 classes are organized around synchronized block
+	One major caveat of this pattern is that one thread is in this wait state. Once it has called this wait method, it is blocked and there is no way we can interrupt it
+	So if no thread is ever calling notify or notifyAll, there is no chance that this thread will be awakened. The only way to interrupt it will be to reboot the application, reboot the JVM itself
+
+3.10 - Producer/Consumer Pattern: Lock Implementation with Condition
+	Let us address this problem and others by using this lock pattern
+		(outside)
+		Lock lock = new ReentrantLock();
+		Condition notFull = lock.newCondition();
+		Condition notEmpty = lock.newCondition();
+	
+		class Producer {
+			public void produce() {
+				try {
+					lock.lock();
+					while(isFull(buffer)) {
+						// wait
+						notFull.await();
+					}
+					buffer[count++] = 1;
+					// notify
+				| finally {
+					lock.unlock();
+				}
+			}
+		}
+		
+		class Consumer {
+			public void consume() {
+				try {
+					lock.lock()
+					while(isEmpty(buffer)) {
+						// wait
+					}
+					buffer[--count] = 0;
+					// notify
+					notFull.signal();
+				} finally {
+					lock.unlock();
+				}
+			}
+		}
+	(Referring to implementing wait and notify in this new lock pattern) How can this be done? It is done with a new object of type Condition and created from this Lock object by calling the newCondition method
+	The first condition here is called notFull. We're going to call notFull.await() on the producing side and notFull.signal() on the consuming side.
+	This await method is the equivalent of the wait method from the wait/notify pattern and this signal method is the equivalent of the notify  mehtod
+	To od it the other way, we can create a second condition object, this time called notEmpty. We're going to call notEmpty.await() if the buffer is empty and if a consumer wants to consume an object and notEmpty.signal() once a producer has added an object to the buffer
+	It looks like the wait/notify pattern, but doesn't use synchronize blocks
+
+3.11 - The Condition Object: Interruptibility and Fairness
+	This Condition object is the new object we introduce here. It is used to park and awake threads in this pattern
+	It is build from the Lock object and a Lock object can have any number of conditions linked to it
+	Now we need to be a little careful because this condition object has all the java objects, extends the object class so it has wait/notify methods. Those methods should not be taken for the await and signal
+	In fact, if we try to use them, they will not work since we're not in a synchronized block of code
+	What does this pattern bring to us? It brings many things
+		The await call is blocking, but, and this is the difference with the wait call from the object class, it can be interrupted. We can interrupt a thread that is blocked on this await call. It was not the case on the wait method from the Object class
+		In fact, there are 5 versions of this await method
+			await()
+			await(time, timeUnit)
+			awaitNanos(nanosTimeout)
+			awaitUntil(date)
+			awaitUninterruptibly() - if we don't want this await call to be interrupted. That will prevent the interrupt of a thread to interrupt this method call
+	So this API gives us ways to prevent the blocking of waiting threads with the Condition API
+	A last note, we saw that it was possible to create fair locks and and fair locks will generate fair Conditions. That is, if several threads are calling this await method one at a time, they will be awakened in the same order
+
+3.12 - Wrapping-up the Lock and Condition Objects
+	Lock and Condition is another implementation of the wait/notify pattern
+	It gives wiggle room to build better concurrent systems by providing a wayt to control interruptibility, to control timeouts in concurrent locking and lock acquisition, and to give fairness to our systems
+
+3.13 - Introducing the ReadWriteLock Pattern
+	Let us now talk about read/write locks
+	In some cases, not to say in most of the cases, what we need is exclusive writes. That is what I want to do is guard the block of code that is going to modify a variable or a collection, but I want to allow for parallel reads of this variable or this collection
+	This is not how regular locks work, that is if I guard the block of code that is going to modify this variable and the block of code  htat is going to read it, I will have exclusive writes and also exclusive reads
+	This is what the read/write lock does and this is hwat we're going to see now
+	ReadWriteLock is an itnerface with only 2 methods.
+		First method is readLock to get a read lock
+		Second method, very simple, is writeLock to get a write lock
+	Both readLock and writeLock are instances of Lock interface that we just saw
+	Now the rules are the following
+		Only one thread can hold the write lock
+		When the writeLock is held, no one can hold the read lock
+		And of course, as many threads as needed can hold the read lock
+	It means that if I  guard a block of code with write lock, the execution of this block of code would be exclusive. And if I guard another block of code with the read lock, this block of code will be available for as many threads as I need
+
+3.14 - Implementing an Efficient Concurrent Cache with ReadWriteLock
+	Let us see an example on that
+		ReadWriteLock readWriteLock = new ReentrantReadWriteLock();
+		
+		Lock readLock = readWriteLock.readLock();
+		Lock writeLock = readWriteLock.writeLock();
+	ReentrantReadWriteLock is the implementing class provided by the JDK
+	And since I got those 2 locks from the same readWriteLock, they form a pair of read and write locks. This point is very important. Those 2 locks can be used to create a thread-safe cache
+		Map<Long, User> cache = new HashMap<>();
+		
+		try {
+			readLock.lock();
+			return cache.get(key);
+		} finally {
+			readLock.unlock();
+		}
+	A cache can be implemented using a basic HashMap
+	Reading this cache is guarded by the readLock, by the same pattern as we saw using a basic Lock object
+	Knowing the semantic of this readLock object, we know that any number of thread can read this cache at the same time
+	Now this is the modification of the map guarded by the writeLock, once again, with the same pattern
+		Map<Long, User> cache = new HashMap<>();
+		
+		try {
+			writeLock.lock();
+			cache.put(key, value);
+		} finally {
+			readLock.unlock();
+		}
+	But this time, this writeLock protects the modification of the cache and will prevent concurrent read that could read corrupted value
+	It could also be achieved using a ConcurrentHashMap. We will see that in fifth and last module of this course
+
+3.15 - Wrapping-up the ReadWriteLock Pattern
+	Let us do a quick wrap-up on this read/write lock notion
+	It works on a single ReadWriteLock object that is used to get a write lock and a read lock
+	It's very important to understand that this pair of read and write locks must be created from the same ReadWriteLock object
+	It allows for extremely good throughput, especially if we have many reads and few writes, which is usually the assumption made when we create caches
+
+3.16 - Introducing the Semaphore Pattern, First Example
+	Semaphore is a well-known concept in concurrent programming. It doesn't come from java. It comes from the very early days of the linux OS
+	It looks like a lock, and in fact, it is some kind of a lock, but instead of allowing only thread in the guarded block of code, it allows for more than one, and in fact, a semaphore is built on a number of permits and this number of permits is the number of thrads allowed in this block of code
+	Let us see that on an example
+		Semaphore semaphore - new Semaphore(5);	// permits
+		try {
+			semaphore.acquire();
+			// guarded block of code
+		} finally {
+			semaphore.release();
+		}
+	We have a Semaphore class. When we create a semaphore in java, we have to fix the number of permits on which the semaphore is built and then there is an acquire method and a release method to acquire a permit and be allowed in a guarded block of code and to release this permit
+	A semaphore built in the normal way, and the default way, is non-fair. It merans that if there are threads waiting for permits, they will be accepted randomly in the guarded block of code
+	This acquire() method, of course, is blocing until a permit is made available. So in our example, only 5 threads will be allowed to enter the guarded block at the same time
+	A semaphore can be made fair and I can also ask for more than one permit at a time
+		Semaphore semaphore = new Semaphore(5, true);	// fair
+		try {
+			semaphore.acquire(2);
+			// guarded block of code
+		} finally {
+			semaphore.release(2);
+		}
+	acquire(2) here will ask for 2 permits, and if there is only 1 available, the thread executing this code will have to wait for a second one to be released
+
+3.17 - Semaphore Pattern: Interruptibility and Timed Permit Acquisition
+	This API has been build on the same ideas as the Lock API, so I can also handle interruptibility and tmeouts on the semaphore API
+		Semaphore semaphore = new Semaphore(5);
+		try {
+			semaphore.acquireUninterruptibly();
+			// guarded block of code
+		} finally {
+			semaphore.release();
+		}
+	If i call the interrupt method on a thread that is blocked by an acquire call, this thread will throw an InterruptedException at once. If I don't want this behavior, then I can call the acquireUninterruptibly method on this semaphore object, and in this case, this thread cannot be interrupted
+	The only way to free him is by calling its release method
+	Now if I interrupt this thread, it will not do anything at the moment of this method call. But if a permit becomes available, this thread will not be allowed in the guarded block of code. It will instead  throw this InterruptedException
+	Once again, following the same ideas as the Lock interface, acquisition can be made immediate
+		Semaphore semaphore = new Semaphore(5);
+		try {
+			if(semaphore.tryAcquire()) {
+				// guarded block of code
+			} else {
+				// I could not enter the guarded code
+			}
+		} finally {
+			semaphore.release();
+		}
+	tryAcquire will see if a permit is available, and if it is not the case, it will fail, return false, and I will be able to execute some other code than the guarded block of code
+	I can also pass a timeout to this tryAcquire method call so that this method return false after this timeout
+		semaphore.tryAcquire(1, TimeUnit.SECONDS)
+
+3.18 - Wrapping-up the Semaphore Pattern, Control of the Waiting Threads
+	We also have specific methods on this semaphore object that do not exist on a classical Lock object
+	Those methodes make a semaphore more than just a lock with more than one permit
+	In fact, we have methods to handle both the permits and the waiting threads
+	First, we can reduce the number of permits after the semaphore has been created. It is not possible to icnrease this number of permits
+	We also have method to check if there are waiting threads on this semaphore
+		Are there any waiting thread?
+		How many threads are waiting?
+		And we can also get the collection of the waiting thread, which is not possible in the Lock object
+	So now we can quickly wrap-up on this semaphore object
+	Semaphore is built on the number of permits. Those permits can be acquired in different ways and must be released by the threads
+	This part of the API is basically the same as the Lock API, the only difference being that a lock has only one permit and a semaphore has more than one
+	But beside that, it is also possible to query a semaphore for the number of waiting threads
+
+3.19 - Live Coding: Producer/Consumer Based on the Lock Pattern
+	(walk through of basic setup of producer/consumer with lock)
+
+3.20 - Live Coding: Setting up Conditions on the Producer/Consumer
+	(add Condition to setup; ExecutorService has 8 threads - 4 for consumers and 4 producers)
+
+3.21 - Live Coding: Setting up the Right Number of Threads
+	Let us see what happens if the ExecutorService is not set to the right number of threads. Suppose we only put 4 threads in it, let us run this code, and what we see is that nothing happens. Obviously our system is blocked
+	(Runs in debug mode now and paused execution) We can see that it is blocked on isFull.await()
+	What is happening in fact this await() call releases the lock of this object, but doesn't release the producing thread. It means that this thread is parked is still executing our task and cannot takes another task, for instance, the consumer
+	Since we have only 4 threads, what happened is that those 4 threads are running our 4 producers and there is no thread availble to run our consumers
+	So basically, our producers have filled the buffer waiting for some room to be made by a consumer but no consumer has any chance to be executed since there is no thread available
+	So when you design this kind of system, just be aware that this is the total number of threads available, and if you're in a producer/consumer pattern, you need to make sure that you have enough threads to run all your consumers and your producers
+	The only solution here is to kill the JVM
+
+3.22 - Live Coding: Dealing with Exceptions with Timeouts
+	Let us now suppose that there is a problem in our producer and for some reason it is not going to produce any data
+	(simulating exception by adding int i = 10/0 on the producer right before while loop)
+	What we can see is that once again our system seems to be locked. The JVM is running but nothing is happening
+	The exception is thrown here (reference to 10/0). Since we're in a try finally block, this code will be executed (refernce to lock.unlock()), so this producer will release the thread it is in and once it is done, no production of an element will ever occurs
+	So what happens on the consuming side? Our 4 consumers will be calling the await method but since no producer will ever call this signalAll method, the consuming threads will never be unparked from this await call and this is then just locked down
+	So how can we work around this fact? It is possible to add a timeout to this await method (on consumer side). If we add timeout to it, suppose 10 ms, it means that if after 10 ms nothing happened, it's probably that there is somethign wrong on the producing side, so this timeout has to be tuned to your application and for your needs
+
+3.23 - Live Coding: Setting up Timeout to Unlock a Producer/Consumer
+	So what we can do is the following, wrap this in an if call
+		while(isEmpty(buffer)) {
+			// wait
+			if(!isEmpty.await(10,TimeUnit.MILLISECONDS)) {
+				throw new TimeoutException("Consumer time out");
+			}
+		}
+	Now all exceptions are printed in the console
+	So this await method that takes a timeout is a very good way to handle errors in a producer/consumer pattern, and in other patterns, it can be used and should be used to avoid deadlock condition
+	This was not possible with the wait/notify pattern to implement the producer/consumer
+
+3.24 - Live Coding: Creating a Cache with a Race Condition on HashMap
+	Let us see how we can use ReadWriteLock to create thread safe and efficient caches
+	We all know that the HashMap class from the JDK is not thread safe
+	Collections.synchronizedMap() - that returns SynchronizedMap. If we check the methods of SynchronizedMap, we can see that they're all synchronized wrappers on the method from the HashMap
+	So indeed, this solution would work from a pure functional point of ivew, but it would be extremely inefficient allowing for minimal throughput on our cache. So we don't want to use this solution
+
+3.25 - Live Coding: Fixing the HashMap Cache with ReadWriteLock
+	Use ReadWriteLock
+
+3.26 - Live Coding Wrap-up
+
+4.1 - Introduction, Module Agenda (Controlling Concurrent Applications Using Barriers and Latches)
+	What we're going to see is 2 more concurrent primitives
+
+4.2 - Sharing a Task Among Threads and Merging the Results
+	Let us start talking about Barriers
+	Suppose we need to compute something that is a heavy computation and we want to share this computation among several threads. This is a very classical use case
+	What we could do is divide our data set among several threads. Each thread is given a subtask and what we expect is that each thread will be executed on a given call of our CPU
+	When all the threads are done, what we need to do is father all the results of the computations and merge them, so we need some subsequent task to be triggered to do this merging operation
+	Let us take a very classical example finding the prime numbers up to a certain value. Here we have 192 numbers to check
+	If we launch this task in the classical way, only one thread will be working and only one core of our CPU will be doing this computation
+	Of course, we have more than one core on our CPU nowadays, so we should be able to go much faster than that
+
+4.3 - The Problem of Synchronizing on the End of Tasks
+	How can we do that? We can divide this data set into 4 groups and send each group on one core of our CPU
+	Now there is very little chance that all those cores will end their computations at exactly the same time. The computations they have to do is not exactly the same. They will probably be interrupted by the OS to contact our tasks, so they will not end at the same time
+	But once they've all done their computation, what we need to do is to gather all the partial results and add them to the result list to compute the final result of this computation
+	So once everything is done, we need to trigger this kind of callback task to end the computation
+	So what do we need from this API?
+		First of all, we need a way to distribute the computation on several threads
+		And we need to know when all the threads have finished their tasks so that we can launch a callback, a post-processing task, at that moment
+
+4.4 - Creating Callable Tasks and Setting up a Barrier
+	Let us see how the code can be written
+		Callable<List<Integer>> task = () -> findPrimes(inputSet);
+	And we're going to use another object that is called CyclicBarrier
+		CyclicBarrier barrier = new CyclicBarrier(4);
+	The callable we just wrote is going to be launched several times wiht different input sets and each callable will be launched in its own thread in parallel
+	Now we nned to know when all the tasks are done and for that, we're going to use this CyclicBarrier object
+	The parameter passed down to the construction of this object is the number of tasks that will be launched and that the barrier will control
+	This CyclicBarrier type is a concrete class of java.util.concurrent package, part of the java.util.concurrent API
+
+4.5 - Understanding the CyclicBarrier Pattern
+	Let us see the full pattern of this task
+		Callable<List<Integer>> task = () {
+			Set<Integer> result = findPrimes(inputSet);
+			try {
+				barrier.await();	// Blocks until everybody is ready
+			} catch {...}
+			
+			return result;
+		}
+	barrier.await method is gong to block until everybody is ready, that is all the callables we just returned are done with their computation
+	This is the pattern we can use to tell the callable to wait for the barrier to open. In fact, this await call blocks until four calls have been made on it in different threads, 4 being the number we passed as a parameter when we built this barrier
+	So how does it work precisely?
+	We have 4 callables created in the main thread and a barrier object. All these callables are passed to the executor submit method that we saw in the Executor pattern
+	They're going to be executed in the ExecutorService and the barrier for the moment is closed, which is its default state when it's created. All those tasks are going to compute the dataset and we all call the await method on this barrier object
+	Now this barrier object is going to count how many times this await method has been called and when this number of call matches the number of which? this barrier has created, it will open and let the threads continue their execution
+	After that we can set up a callable task that will be triggered when the barrier is opened
+
+4.6 - Setting up the Full CyclicBarrier and Launching Tasks
+	Let us take a closer look at the code
+		public class Worker implements Callable<List<Integer>> {
+			private CyclicBarrier barrier;
+			private List<Integer> inputList;
+			
+			public void Worker(CyclicBarrier barrier, List<Integer> inputList) {
+				... (this. assignment)
+			}
+			
+			public List<Integer> call() {
+				List<Integer> result = findPrimes(inputList);
+				try {
+					barrier.await();
+				} catch { // error handling }
+				
+				return result;
+			}
+			
+		}
+	We're going to create a Worker class that implements Callable. And the call method just does what we saw in the previous slide
+	This is the code of the main thread
+		CyclicBarrier barrier = new CyclicBarrier(4);
+		ExecutorService service = Executors.newFixedThreadPool(4);
+		
+		Worker worker1 = new Worker(barrier, inputList1);
+		// more workers
+		
+		Future<List<Integer>> future1 = service.submit(worker1);
+		// more submissions
+		
+		List<Integer> finalResult = new ArrayList<>(future1.get());
+		finalResult.addAll(future2.get());
+		// more results
+
+4.7 - Waiting for the Barrier with a Time out, Dealing with Exception
+	We just saw that this await call is a blocking call. Now this barrier API has been designed in the same philosophy as the previous APIs we saw in the previous module, mainly the lock and semaphore
+	And we have 2 versions of this await method
+		await() - blocks indefinitely
+		await(time, timeUnit) - returns exceptionally with an InterruptedException in case the barrier didn't open
+	Once opened, a barrier is normally reset, that is it will open, let the thread go through and then close again
+	There is a reset method on the barrier so we can call reset manually on the barrier. It will open the barrier, but open it exceptionally. So all the waiting thread, all the waiting tasks on this barrier are going to throw  a BrokenBarrierException in that case
+	There are other cases where this BrokenBarrierException may be thrown
+		It can be thrown if a thread is interrupted while waiting on the barrier, so interrupting a thread that is waiting on a given barrier will cause the other thread to throw this BrokenBarrierException
+		And if the barrier is reset manually, as we just saw, while some threads are waiting for it to open
+
+4.8 - Wrapping-up the CyclicBarrier
+	A CyclicBarrier is a tolld that we can use to synchronize several threads between them, and let them continue with their word when they have reached a common point
+	A cyclic barrier is closed when created and will open when all the threads have reached this common point, and then will close again allowing for cyclic computations
+	It can also be reset manually, but in this case, the waiting threads on this barrier will throw a BrokenBarrierException
+	And at last, it is also possible to set timeouts on the threads that are waiting for a barrier to open. So if something goes wrong in our computation, the system is not blocked, the threads can still be freed with, of course, InterruptedException
+
+4.9 - Introducing the Latch, a Barrier That Cannot Be Reset
+	Latches are objects that closely look like barriers, but it is not the same, and we're going to see the differences between them
+	Let us examine a new use case
+	We need to start our application and this application is a quite complex one. It depends on many services, suppose AuthenticationService, DataService to access the DB, OrderService to handle orders from our customers, probably many more
+	And of course, we need to make sure that all those services have already started before we start our main application
+	So before serving clients, our application needs to make sure that all those resources are properly initalized
+	It looks like it is a problem for the CyclicBarrier. The problem is that once all the services are available, once they have all properly started, we need to start our application, but we do not want the barrier to reset. We don't want the barrier to close again because it could block everything, the system will have impression that some services have not been properly started
+	So it is the fact that this barrier is cycling that we cannot use this object in this case. What we need is a kind of barrier that once opened cannot be closed again and this is exactly the job for this new object called countdown latch
+
+4.10 - Understanding the CountDownLatch Pattern
+	The countdown latch works almost the same as a CyclicBarrier
+	Suppose we have 3 tasks in callble in the main thread and a Latch object we're going to see how to create in the next slide
+	We pass everything to the ExecutorService and our tasks are going to execute. At some point all our tasks will be waiting on the latch and this will have the same effect as the barrier. It will open the latch and let the task continue their execution
+	But the big difference is that the latch doesn't reset. It doesn't close again
+
+4.11 - A CountDownLatch in Action to Start an Application
+	How this is going to work in the code
+		public class ServiceWorker implements Callable<List<Integer>> {
+			private CountDownLatch latch;
+			private Service service;
+			
+			public boolean Worker(CountDownLatch latch, Service service) {
+				this.latch = latch;
+				this.service = service;
+			}
+			
+			public void call() {
+				service.init();
+				
+				latch.countDown();
+			}
+		}
+	On the main thread
+		CountDownLatch latch = new CountDownLatch(3);
+		ExecutorService executor = Executors.newFixedThreadPool(4);
+		
+		ServiceWorker worker1 = new Worker(latch, dataService);
+		// more workers
+		
+		Future<Boolean> future1 = executor.submit(worker1);
+		// more submissions
+		
+		try {
+			latch.await(10, TimeUnit.SECONDS);	// blocks until the count reaches 0;
+			server.start();
+		} catch { ... }
+	CountDownLatch class is from the java.util.concurrent package
+	This await method will block until the count of the latch reaches 0, and when this is the case, I can call my server.start() method that will start my overall server and that will trigger the servicing of my customers
+	Now here I have used the await with timeout method
+
+4.12 - Wrapping-up the CountDownLatch Pattern
+	This latch is just a tool to check that different threads did their task properly
+	Once this is the case, we can synchronize the beginning of subsequent tasks on the last one to complete
+	The difference with the CyclicBarrier is that once open, the CountDownLatch cannot be closed again. So it makes it a very good tool to control the firing up of an application
+
+4.13 - Live Coding: A CyclicBarrier with a Callable Task in Action
+	(walkthrough of a sample application with CyclicBarrier)
+
+4.14 - Live Coding: Setting up the ExecutorService, Using TimeOut
+	(walk through of error cases) e.g. not having enough threads. Workaround by adding timeout to await()
+
+4.15 - Live Coding: Using Future TimeOut and Task Cancellation
+	The second way of dealing with this is the following - instead of adding timeout on await(), timeout to future.get(), in other words, future.get(200, TimeOut.MILLISECONDS)
+	Here we can see that our problem is partially resolved.	Why? Becase all our future have timed out. So our main thrad is not waiting for any result anymore. But our tasks are still waiting for the barrier to open and our two unexecuted tasks are still waiting in the ExecutorService
+	And we can see that here the JVM is still running because threads are still running in the ExecutorService executing tasks
+	So timing out this get method doesn't always cancel the running task, the corresponding running task, and in that case, it is only a partial solution
+	The proper way to handle this case completely with this solution is once this TimeoutException has been thrown, cancel the corresponding task by calling future.cancel(true) and pass true since we want to interrupt the currently running tasks and the tasks waiting in the ExecutorService for an available thread
+	Now the application exits properly
+
+4.16 - Live Coding Wrap-up
+
+5.1 - Introduction, Module Agenda (Understanding Casing and Atomic Variables)
+	This module is all about CASing
+
+5.2 - Understanding Casing: Do We Always Need Synchronization?
+	CASing = "Compare And Swap"
+	The starting point is a set of assembly instructions that is very low level functionalities given by the CPU
+	Those low level functionalities have been exposed at the API level in the JDK on the many other languages so that we can leverage them in our applications
+	What is CASing? Let us first state the problem. The problem it addresses is a classical concurrent problem that we saw in detail
+	It is concurrent access to shared memory. What does it mean? It means that several threads are trying to read and write, so read and modify the same variables of the same objects
+	Now the tools we have so far are synchronization tools, whether it's the classical synchronized block or the user of the Lock interface. It works very well. It prevents several threads from modifying the same portion of memory at the same time
+	But in certain cases, we have more tools that would prove more efficient. In fact, synchronization has a cost and we can ask ourselves the question, is it really always essential to use it?
+	In fact, we use it to be sure that our code is correct. But if we didn't use it, are we really sure that our code would fail? In fact, there are many cases where people forget to synchronize the modification of memory and the code still works. What it means is that, In fact, there are many cases where concurrency is rare
+
+5.3 - Understanding Casing: An Example of False Concurrency
+	Let us examine a real problem of a portion of memory which access has been synchronized
+	We have a first thread T1 that reads a variable, suppose it's long, value is 10, and that we'll modify it. And then another thread is going ot read it after that and modify it also. Here we have a shared portion of memory
+	Since we want to be sure that this memory is correct, we have synchronized its success. But in fact, when our application is running, the thread T1 and T2 are not accessing this portion of memory at exactly the same time. They are accessing it one after another
+	So since we learn our concurrent stuff well and we know that we need to write correct code, we have used a synchronized block to protect this memory. This protection by lock is essential because if we do not do that and 2 threads are writing and reading the code at exactly the same time, we will have concurrency issues, race conditions
+	But in fact, when our application is running, there is no real concurrency at runtime because in the case we just saw, the thread T1 are not accessing this portion of memory at exactly the same time. And this is exactly the case where CASing can be used
+
+5.4 - Understanding Casing: How Does It Work?
+	How does CASing work? This compare and swap stuff works with 3 parameters
+		A location in memory, so basically an address
+		Second parameter is existing value supposedly written at this location. So this is the value we think should sit at that location
+		Third is the new value that we want to write at that location. So this new value will replace the existing value
+	And the semantic is the following -
+		If the current value at that address is the expected value, then it is replaced by the new value and returns true. It means that between the last time we read this address and now, no other thread has modified this location
+		If not, it returns false. If it is not the case, it means that between the last time we read this location and read the expected value and now, some of the thread has modified this location. So we're observing real concurrency. So since the expected value is not the value at that location, we do not do any modification and we return false
+	And all this comparison and modification are made uninterruptible, are made in a single atomic assembly instruction. So during this time, we're sure that no toher thread can interrupt our process. This is essential for CASing to work
+	So we can see that with such a functionality, we can modify values at a given location in the memory without synchronization, and if there is no real concurrency, as we saw in the previous example, it will be much more efficient than synchronization
+
+5.5 - How to Use the AtomicLong Class and How Does It Work
+	Let us see an example of code with the AtomicLong class
+		// Create an atomic long
+		AtomicLong counter = new AtomicLong(10L);
+		
+		// Safely increment the value
+		long newValue = counter.incrementAndGet();
+	AtomicLong is a wrapper on long. It can be used to create counters. So let us do that. We create an AtomicLong on the value 10 and we just increment and get this counter, which is a safe way of incrementing the value we have.
+	So this pattern allows us to safely, in a concurrent way, increment the value of the counter without synchronization
+	What is happening under the hood? The Java API is going to try to apply the incrementation. The CASing implementation will tell the calling code if the incrementation failed or not
+	How can it fail? It just fails if another thread modified the counter in the meantime. If the incrementation fails, then the API is gonig to try again until this incrementation is accepted by the CASing mechanism
+	So if we hvae several threads incrementing the same counter, CASing ensures that no incrementation is lost. If we have 4 threads incrementing a counter 25 times, this counter will hold 100 as a value at the end of the day
+	The counter part is that more than 100 incrementations will be attempted most probably. Some of them will not be taken into account due to concurrency
+
+5.6 - The Java Atomic API: The AtomicBoolean Class
+	We have several classes with different functionalities, whether this class is wrapping a Boolean, a number or a reference
+	There are many methods in each of those classes and it makes things a little tedious, but I think it is still important to see that to have a good idea on how things have been designed and how they work
+	So we have at first AtomicBoolean. What we can do on that, we can get and set the value of course. And we have this getAndSet(value) method that will return the current value and update this value to the passed value
+	And the last method compareAndSet(expected, value), which is basically the CASing mehtod wtih an expected value and new value to be set if the expected value is matched
+
+5.7 - The Java Atomic API: The AtomicInteger Class and AtomicLong Classes
+	After that, we have the AtomicInteger and AtomicLong ot make counters
+		get() and set() - same as previously
+		getAndSet(value) - same kind of method
+		compareAndSet(expected, value)
+		getAndUpdate(unaryOp) - will return the current value and do the update
+		updateAndGet(unaryOp) - will do the contrary, first update and then get a new value
+		getAndIncrement() - increment the current value with passed value
+		getAndDecrement()
+		getAndAdd(value) - return existing value
+		addAndGet(value) - return updated value
+		getAndAccumulate(value, binOp) - 
+		accumulateAndGet(value, binOp)
+	A unary operator is implemented using the lambda expression and it is just an operation on the current value that will compute the new value
+	Binary operator will operate on the current value at that location and the passed value as a parameter to compute the new value to be set in this AtomicInteger or AtomicLong
+
+5.8 - The Java Atomic API: The AtomicReference Class
+	And then the lat Atomic class that exists is the AtomicReference
+	All the previous ones, AtomicBoolean, AtomicInteger and AtomicLong were wrappers on java primitive types
+	This AtomicReference<V> is a wrapper on the refernce that is on a pointer
+	The set of method is almost the same
+		get() and set()
+		getAndSet(value)
+		getAndUpdate(unaryOp)
+		updateAndGet(unaryOp)
+		getAndAccumulate(value, binOp)
+		accumulateAndGet(value, binOp)
+		compareAndSet(expected, value)
+
+5.9 - Wrapping-up the Atomic Objects
+	So one final word about CASing. CASing works well when concurrency is not too high. In fact, if the concurrency is high, then the update operation of the memory will be tried again and again until it is accepted by all the thread and at one given point of time, only one thread will win. All the other ones will be retrying again and again
+	And the conclusion is that the behavior of a CASing system is very different from the behavior of a synchronized system
+	If you synchronize a portion of memory, it means that all your threads between are going to wait to access this memory
+	In the case of CASing, all the threads at the same time are going to access this memory, but only one will be the winner
+	So if CASing is not used in the right use case, it may create a very heavy load both on the memory and on the CPU
+	Let us do a little wrap-up on Atomic variables
+	Atomic variables are based on CASing. CASing is another tool to handle concurrent read and write operaion on memory
+	This tool works in a very different way than synchronization. It is not the same at all, and if it has been introduced, it is because it can lead to better performances
+	Now it should be used with care because in the case where the concurrency is very high, it will generate a heavy load both on the CPU and the memory
+
+5.10 - Understanding Adders and Accumulators
+	Let us now talk about adders and accumulators
+	Adders and accumulators are an introduction of java 8. These classes are not available in java 7 and before
+	The starting point is a fact that all the methods we saw on Atomic variables are built on the "modify and get" or "get and modify" concept and the fact is that sometimes we do not need the get part at each modification
+	Suppose we're just creating a counter and we just want to count a certain number of events, we want to make it in a thread-safe way so we are using an AtomicLong, for instance.
+	Each time we increment this AtomicLong, we also get teh current value of this AtomicLong, but the fact is we do not need this value at this time. All we need is the value once our process is done at the end of it
+	This is precisely the role fo the LongAdder and LongAccumulator classes introduced in java 8
+	The LongAdder can be seen as an AtomicLong that doesn't expose the get functionality at each modification and that can optimize things
+
+5.11 - Browsing Through the Adder and Accumulator API
+	So LongAdder and LongAccumulator work the same way as an AtomicLong
+	The difference is that it doesn't return the updated value at each modification, so it can distribute the update on different cells if there are really many threads trying to do the modifications
+	And at the end of the day, when we call the get method, all the results from those different cells can be merged on that call
+	Thosoe classes have been created to handle very high concurrency, a huge number of threads, it is quite useless to use them if it is not the case
+	Let us browse through the methods we have on the LongAdder
+		increment() and decrement()
+		add(long)
+		sum(), longValue(), intValue()
+		sumThenReset()
+	And for the LongAccumulator
+		built on a binary operator
+		accumulate(long)
+		get()
+		intValue(), longValue(), floatValue(), doubleValue()
+		getThenReset()
+
+5.12 - Live Coding: Fixing a Race Condition on a Simple Counter
+	(demo of using multiple threads to update a normal int counter; then changing the counter type to AtomicInteger)
+
+5.13 - Live Coding: Counting the Number of Retries in an AtomicInteger
+	(demo to show how atomic works under the hood)
+
+5.14 - Live Coding Wrap-up
+
+6.1 - Introduction, Module Agenda (Leveraging Concurrent Collections to Simplify Application Design)
+	We're going to talk about the Concurrent part of the Collection framework
+
+6.2 - Implementing Concurrency at the API Level
+	Let us first talk about the notion of concurrent interfaces and why they have been added to the collection framework mainly in java 5
+	We saw in the previous modules of this course that it was possible to implement the Producer/Consumer pattern at the application level by dealing with concurrency inside our application and we used synchronized blocks of code or we used the Lock interface to do that
+	The idea of those concurrent interfaces is to provide tools to implement that at the API level, that is to hvae API that are themselves, thread safe
+	For that we need new definitions of interfaces of the Collection framework and new implementations of those interfaces
+	We have 2 branches in the Collection Framework, the collection branch and the Map branch
+
+6.3 - Hierarchy of Collection and Map, Concurrent Interfaces
+	So the collection framework has been released in java 2 in 1998 with 4 interfaces for collection - Collection itself, List (extends Collection), Set (extends Collection), and SortedSet (extends Set)
+	In java 5, 4 more interfaces have been added - Queue and Deque (extends Queue), which stands for double-ended queue, and 2 concurrent structures, BlockingQueue (extends Queue) and BlockingDeque (extends BlockingQueue)
+	In java 6, the NavigableSet not concurrent has been added (extends SortedSet)
+	In java 7, TransferQueue (extends Deque), which is an extension of BlockingQueue has been added to the Collection Framework and it is indeed a concurrent structure
+	As for the map, the first version of the collection framework was released with Maps and SortedMaps (extension of Map), not concurrent
+	In java 5, the ConcurrentMap (extension of Map) has been added
+	And in java 6, NavigableMap (extension of SortedMap) not concurrent, and ConcurrentNavigableMap (extension of ConcurrentMap), obviously concurrent
+
+6.4 - What Does It Mean for an Interface to be Concurrent?
+	What does it mean to have concurrent interfaces? An interface in itself is not an implementation, so it cannot be inherently thread safe
+	In fact, being concurrent for an interface means that it defines a contract for concurrent environments
+	In the specification of its method, it tells that calling this method should be thread safe
+	And of course, the JDK provides implementations that follow these contracts
+	And if we want to implement those concurrent interfaces ourselves, we also have to follow those contracts
+	But concurrency is complex
+	And dealing with 10 threads is not the same as dealing with thousands of threads
+	So we need also different implementations, some ofthose are adapted for low-level concurrency and others adapted to very high-level concurrency
+
+6.5 - Why You Should Avoid Vectors and Stacks
+	Let us begin by examining the concurrent lists of the Collection Framework
+	First of all, we have 2 classes, Vector and Stack, that are well-known for being thread-safe
+	In fact, those classes are legacy structures from the early days of the JDK. They were there before the Collection Framework itself. It turns out that they are indeed thread safe, but very poorly, or at least, very basically implemented
+	If you check the source code of these classes, you will see in fact that all the methods are synchronized, so allowing for the basic level of concurrency when one thread is reading a vector, no other thread can access it whether for rad operations or write operations
+	So these structures should not be used anymore. If you're building a new application, do NOT use them. And if you're handling existing applications with vectors and stacks in them, you can consider removing them and replacing them with the new structures we're going to see now
+
+6.6 - Understanding Copy on Write Arrays
+	The first structure we're going to examine is the Copy on Write structure. This copy on write structure exists in 2 forms, one for lists and the other one for sets
+	Let us see hwo those structures are working
+	The nice thing is that it doesn't rely on any locking for read operations. So yo ucan read a copy on write structure with any number of thread freely and in parallel
+	Write operations create, in fact, internally a copy of the existing structure and the new structure replaces the previous one by just moving a pointer from the old structure to the new one in a synchronized way
+
+6.7 - Wrapping up CopyOnWriteArrayList
+	So for copy and write structure, the thread  that are already reading this copy on write object will continue to do so without seeing the modification
+	Whereas, the new threads, of course, will see the modification
+	We have 2 structures implementing this concept
+		CopyOnWriteArrayList - it is an implementation of List wiht a semantic of List
+		CopyOnWriteArraySet - implementation of Set, thus with semantic of a set
+	These copy on write structures obviously work very well when you have many reads and very, very few writes, very few modifications of the array
+	If you have many writes, it mean that you will have many copies of the array, which is costly
+	There are use cases very well adapted to this structure. For instance, if you want to store parameters for your application during the initlization phase of your application, then you can do so in a thread-safe way, and when your application is initalized, you're not going to touch these parameters again. So you can distribute this copy on write array anywhere you want in a thread-safe way
+
+6.8 - Introducing Queue and Deque, and Their Implementations
+	Let us see now the second type of structures available, queues and stacks. And when I say stack, I do not mean the Stack class, but of course the stack concept
+	We have 2 interfaces to deal with that called Queue and Deque. Deque stands for double-ended queue and it can be seen as a queue that can be accessed from both the head and the tail
+	We have a first implementation called ArrayBlockingQueue as we're going to see. It is a bounded blocking queue built on an array. Bounded means that we create a blocking queue with a certain amount of cells, a certain size of the size, and once this queue is full, it doesn't extend itself. Adding elements to it would not be possible
+	And we have the ConcurrentLinkedListQueue. It is an unbounded blocking queue in which we can add as many elements as we need
+	How does a queue work? We all know we have 2 kinds of queues in computer science - the FIFO (first in first out), which is the queue itself and the LIFO (last in first out) which is the stack
+	In the JDK, they're modeled by the following
+		The queue is the interface for the Queue
+		And Deque is the interface for both a queue and a stack
+	In fact, we don't have a pure stack in the JDK, that is an interface that model a stack without modeling also a queue. We do not count the Stack class since, once again, you should not use this class
+
+6.9 - Understanding How Queue Works in a Concurrent Environment
+	Suppose our queue is build on an array. The producer will add elements from the tail and consumer will consume them from the head
+	But we're in a concurrent world. We can have as many producers and as many consumers as we need and of course, each of them in its own thread. So our queue or deque will be accessed in a concurrent way
+	Of course a thread doesn't know in advance how many elements therer are in the queue or in a stack and querying a concurrent structure for the number of elements it has is not such a good idea because between the time we query that and the time where we use this information, this information might have changed dramatically
+	So this raises 2 questions
+		What happens if the queue or the stack is full and we need to add an element to it
+			And if you remember what we did to implement that using the Lock interface, you might remember that we called the wait or th await method on the thread
+		What happens if the queue or the stack is empty and we need to get an element from it
+
+6.10 - Adding Elements to a Queue That is Full: How Can It Fail?
+	Suppose we want to add an element to a queue that is full. This might occur with the ArrayBlockingQueue. Of course, it will not occur with the ConcurrentLinkedListQueue since this ConcurrentLinkedListQueue can adapt its internal size to the number of elements it has to hold
+	The first behavior is we should fail it with an IllegalArgumentException and this is the behavior of the add method
+		boolean add(E e);	// fail: IllegalArgumentException
+	In fact, if we try to add an element using this method, it will fail with an exception, but there are other ways of dealing with this. We also call the offer method, which is another method, and this method will return false instead of throwing this IllegalArgumentException
+		// fail: return false
+		boolean offer(E e);
+		boolean offer(E e, timeout, timeUnit);
+	Another way of telling the calling thread that adding an element is not possible
+	And if the queue is a BlockingQueue and this is the semantic of the blocking part of the BlockingQueue, we can also try to put an element in this queue and this call will block until a cell  becomes available
+		// blocks until a cell becomes available
+		void put(E e);
+	We even have a fail behavior which is an offer call with a timeout. Here we're saying "I want to add this element in the queue and I'm okay to wait for lets say 100 ms to do so. If past that time this element has not added, then I prefer to fail and to do so by returing a false value"
+	So we can see that adding an element to a queue can be made in 3 ways plus one. It can fail with exception, fail with special value returned, which is here boolean, or block until a cell becomes available
+	So this is the basic way of things are working and we will have the same for all the operations available on the queue and the deque
+
+6.11 - Understanding Error Handling in Queue and Deque
+	So in a nutshell, for the addition of an element at the Tail of the Queue, we have 2 behaviors
+		Fail with exception
+		Fail and return false
+	If the queue is a blocking queue, we can block unitl the queue can accept the element
+	But we also have Deque and BlockingDeque. Deque can accept elements at the head of a queue with the method addFirst() and offerFirst()
+	And in the case of BlockingDeque, putFirst()
+	And the add, offer and put behaviors are the same as the behaviors that we just saw that is fail with an exception, fail by returning false and blocking until a cell is available
+	We also have the get and peek operation. get is to remove an element from a queue and peek is just to examine an element without removing it from the queue
+	So for the queue
+		pool() and peek() return null
+		remove() and element() will throw exceptions
+	And for the BlockingQueue
+		take() will block until an element is available
+	Deque
+		returns null - pollLast() and peekLast()
+		Exception - removeLast() and getLast()
+	BlockingDeque
+		blocks - takeLast()
+
+6.12 - Wrapping up Queue, Deque, and Their Blocking Versions
+	So for Queue and BlockingQueue, we have 4 different types of queues, they may be blocking or not, and they may offer access from both sides or not, so that makes 4 types of queue
+	We have a different type of failure, fail with a special value - here boolean, fail with an exception, or block until the operation is possible
+	So all these make the API quite complex. We have lot of methods on it. The JDK is well organized on this point. If you check the javadoc of Queue, BlockingQueue, Deque, and BlockingDeque, you will have tables with a nice summary of all these methods
+
+6.13 - Introducing Concurrent Maps and Their Implementations
+	Let us now see the concept of concurrent maps. In fact, we have only one interface, ConcurrentMap, which is an extension of the map interface
+	The object of this ConcurrentMap is not to add any new method to the map interface, but merely redefine the javadoc of those methods
+	We have 2 implementations of ConcurrentMap
+		ConcurrentHashMap - there is only one available up to JDK 7 and in JDK 8 it has been completely re-written
+		ConcurrentSkipListMap - introduced in java 6 which doesn't rely on any synchronization
+
+6.14 - Atomic Operations Defined by the ConcurrentMap Interface
+	Besides being thread safe, ConcurrentMap also defines atomic operations. They are for them.
+	The first one is putIfAbsent(key, value) - adds if the key is not already present in the map. This putIfAbsent is atomic in the sense that between the instant where the presence of the key is checked in the map and the adding of this key value pair, no other thread can interrupt this method
+	The same goes for the version of remove(key, value) that takes a key and a value. This key value pair will be removed from the map if present. It is in fact the equivalent of removeIfPresent. There is no interruption possible between the instant where the thread checks for the presence of the key in the map associated with the right value and the instant where the remove is performed
+	replace(key, value) - takes a key and value and will replace the value currently associated with that key with this new value
+	replace(key, existingValue, newValue) - will replace existing value by new vlaue if existing value is already associated with that key in this map
+	Those 2 replace methods cannot be interrupted between the checking of the presence of the key in the map and the replacement of the value
+		
+
+6.15 - Understanding Concurrency for a HashMap
+	Now let us take a closer look at the implementations and let us try to understand what is at stake with this implementation
+	We need implementation that are thread safe, efficient up to a certain number of threads and we're going to see that this is a key point in dealing with maps and a number of efficient, parallel special operations
+	And this is offered in ConcurrentHashMap from java 8
+	How does a HashMap work internally? This is important to understand also concurrency
+	In the JDK, a hashmap is built on an array. When I want to add the key value pair to this array
+		First I compute a hashcode from the key
+		This hashcode will decide which cell of this array will hod the key value pair and when this is done, a pointer will point from this cell to this value pair
+			Note that each cell is called a bucket and a bucket can hold several key value pairs since different keys may have the same hashcode
+	So adding a key value pair to a map is a several steps problem
+		First we need to compute the hashcode of the key
+		Second, we need to determine which cell of the array will hold this key value pair and we first need to check the bucket has been created or not
+		If it's not, then we create it and add the key value pair to it. If there is already a bucket, we need to check if this bucket is already holding this same key or not. If it is the case, then the value we try to add will replace the existing value. If it is not, there is a special process that is launched
+			In hashmap, it will create a link list up to a certain number of key value pairs and will switch to a red-black tree past this number
+		This is the full step, the updating of the map
+	In a concurrent world, all these steps must not be interrupted by any other thread because if it is the case, it will just corrupt the map by corrupting either the bucket, either the linked list, either the red-black tree
+
+6.16 - Understanding the Structure of the ConcurrentHashMap from Java 7
+	So how are we going to do that? We know that the only way to make array-based operation thread safe, that is to guard an array-based structure, is to lock the array, and there is no way in Java we can lock only portions of the array. Either we lock all the way, either we do not lock it at all
+	Synchronizing the put operation will work, but it would be extremely inefficient because it would block all the map
+	What we would want to do is to allow several threads to work on different buckets concurrently, that is to allow concurrent reads on the map
+	If we synchronize all the map, it means that we need to synchronize the array itself. It will work no doubt about that but it will be very inefficient because it will block everything, even the read operations on the map itself
+	What we could do is segment the array in several subarrays and synchronize each segment. The nice thing, once again, is that it works and it allows for certain level of parallelism. As long as all the threads work on each individual segment, I can have concurrent reads and even concurrent writes
+	And this is exactly the organization of the ConcurrentHashMap up to JDK 7. It is built on a set of synchronized segment. The number of segments is called the concurrency level. By default, it is set to 16 and it can be set up to 64k
+	This sets number of threads that can access this map concurrently but we need to keep in mind that the number of key value pairs has to be greater than the concurrency level and I would say much greater than the concurrency level
+	If the number of key value pairs is lesser than the concurrency level, then the limit is not the concurrency level, but the number of key value pairs
+
+6.17 - Introducing the Java 8 ConcurrentHashMap and Its Parallel Methods
+	Let us now take a closer look at this ConcurrentHashMap from java 8. As I said the implementation of ConcurrentHashMap has completely changed between java 7 and java 8
+	It is still compatible from the serialization point of view. It means that if you have a serialized java 7 ConcurrentHashMap, you can deserialize it as a ConcurrentHashMap from java 8 and vice versa
+	It has been created to handle very heavy concurrency, thousands of threads, and millions of key value pairs and because of that, some more methods not defined on Map or ConcurrentMap have been added with parallel implementations
+
+6.18 - Parallel Search on a Java 8 ConcurrentHashMap
+	The ConcurrentHashMap, for instance, has a method for parallel searching for key value pairs
+		ConcurrentHashMap<Long, String> map = ...;	// JDK 8
+		String result = map.search(10_000,
+				(key, value) -> value.startsWith("a") ? "a" : null);	
+	The first parameter passed to this earch method is called the parallelism threshold and the second one is the operation to be applied.
+	If this operation returns a non-null value, this value will be returned by the search method and it will stop the exploration of the map
+	We also have other search methods, searchKeys(), searchValues(), and searchEntries()
+	Now what is the parallelism threshold? It is the number of key value pairs in this map that will trigger a parallel search. In our case, if we have more than 10k key value pairs in this map, this search will conducted in parallel
+
+6.19 - Parallel Map/Reduce on a Java 8 ConcurrentHashMap
+	We also have a reduce method
+		ConcurrentHashMap<Long, List<String>> map = ...;	// JDK 8
+		String result = map.reduce(10_000,
+				(key, value) -> value.size(),
+				(value1, value2) -> Integer.max(value1, value2);	
+	The first bifunction maps each key value pair to an element that will be used for reduction and the second bifunction, it is the reduction itself. It takes 2 elements returned by ths mapping bifunction and reduce those 2 elements together
+	Of course, this second bifunction should be associative as in all reduction operation
+	And once again, this reduce method takes a parallel threshold, that is if we have more than 10k key value pairs in this map, this reduction will be conducted in parallel
+
+6.20 - Parallel ForEach on a Java 8 ConcurrentHashMap
+	And the last parallel method available on this ConcurrentHashMap in Java 8 is the forEach method
+		ConcurrentHashMap<Long, List<String>> map = ...;	// JDK 8
+		String result = map.forEach(10_000,
+				(key, value) -> value.removeIf(s -> s.length() > 20));
+	The first parameter is also a parallelism threshold, so here if we have more than 10k key value pairs, this forEach operation will be computed in parallel
+	And the second and main parameter is a biconsumer that takes a key value pair and does something. This biconsumer is applied to all the key value pairs of the map
+	Here, what does it do? The value is a list of string, so on all the value of the map, we will remove all the strings that are longer than 20 characters
+	We also have other versions of this forEach method
+		forEachKeys() - takes a consumer of key
+		forEachValues() - takes a consumer of values
+		forEachEntry() - takes a consumer of entry, which is the object that model the key value pair
+
+6.21 - Creating a Concurrent Set on a Java 8 ConcurrentHashMap
+	We do not have concurrent hash set in the JDK, but we have a static factory method on the ConcurrentHashMap from the JDK 8 called newKeySet that will create a set here, a set of string backed by this ConcurrentHashMap
+		Set<String> set = ConcurrentHashMap.<String>newKeySet();	// JDK 8
+	So this ConcurrentHashMap can also be used as a concurrent set with the same kind of semantics
+	Note that the parallel operations of the ConcurrentHashMap are not available on this set. In fact, the implementation of this set is a public static class defined as a member of this ConcurrentHashMap with no parallel operations defined on it
+
+6.22 - Wrapping up the Java 8 ConcurrentHashMap
+	Let us do a quick wrap up on this ConcurrentHashMap
+	First, it is a fully concurrent map, which is nice
+	It has been made to handle very high concurrency and millions of key value pairs
+	It exposes built-in parallel operations, which is very nice. Those operations are not present in the map or concurrent map
+	And it can also be used to create very efficient and very large concurrent sets
+
+6.23 - Introducing Skip Lists to Implement ConcurrentMap
+	And the last structure I would like to show you in this module is the concurrent skip list
+	As we saw the concurrent skip list is used for 2 implementations in the JDK. It is another concurrent map introduced in JDK 6
+	It is based on a structure called a skip list. Now what is a skip list? A skip list a smart structure used to create linked lists and to provide fast random access to any of its elements
+	The concurrent version of this skip list implemented in java 6 relies on atomic reference operations and no synchronization is used in it making it a very efficient structure even in a high concurrency environment and it is used in the JDK to create both maps and sets
+
+6.24 - Understanding How LinkedLists Can Be Improved by Skip Lists
+	What is a skip list?
+	Let us start with a classical linked list. Here is a representation of a linked list with a pointer to the head and another pointer to the tail of this linked list
+	The problem of a linked list is that it takes a very long time to reach randomly an element of this list
+	We say that the complexity is in O(n) meaning that if I double the number of elements of the linked list, I also double the mean access time to any of its elements
+	The solution this skip list brings is to create a fast access list with less elements on top of it
+	We can even create several layers of such a fast access list, in fact, as many as we need
+	The use of those fast access lists assume that the elements of the skip list are sorted
+	Now in fact, since it is a list, we can always store key value pairs in the form of index object and sort those key value pairs using the index. So it's always possible to do that on the list
+	And now, the access time, instead of being O(n), becomes O(ln(n)), meaning that if I have a million elements in my skip list, instead of having an average access time in the order of a million, I will have an average access time in the order of 20, which is, of course, much, much faster
+
+6.25 - Wrapping up the Skip List Structure
+	So a skip list can be used both to implement linkked list and also maps as long as the keys are comparable objects, but most of the time, it is the case
+	The skip list structure is there to ensure fast random access to any key and a skip list is not an array-based structure, which is very nice because we saw that on array-based structure, we have to synchronize on all the array itself and we cannot synchronize on portions of the array
+	So since it is not an array-based structure, we can imagine other ways than locking to guard a skip list, that is to make this skip list thread safe
+
+6.26 - How to Make a Skip List Concurrent Without Synchronization
+	In the JDK, we have 2 implementations that use this structure
+	ConcurrentSkipListMap which is a map. All the references in this skip list are implemented using AtomicReference. In fact, if we check the skip list precisely, we see that all the operations are opreaions on pointers, on references so it can be implemented using this, and this is the trick used to make this skip list thread safe
+	This map is, of course, thread safe. It does NOT use synchronization at all, so it can be used in very high concurrency environment
+	We also have another implementation, which is an implementation of a Set interface called ConcurrentSkipListSet that uses the same structure as the ConcurrentSkipListMap
+	Both structures can be used in high concurrency environment as long as there are enough elements in it
+
+6.27 - Wrapping up ConcurrentSkipList
+	Let us wrap up this part on concurrent skip lists
+	They can be used for both maps and sets
+	Thread safety is achieved without relying on locking, that is on synchronization
+	It is usable when concurrency is high as long as there are enough elements in those lists
+	As usual, some methods should be used on this kind of structure, namely the size() method call. Never call size on the concurrent map or on a concurrent collection
+
+6.28 - Live Coding: Producer/Consumer Built on an ArrayBlockingQueue
+	(demo of using Producer/Consumer with ArrayBlockingQueue) You can see taht the new Consumer class is much simpler than the previous one. Basically we don't need any more synchronization, any more lock, wait/notify or await/signal pattern. All we have to create is a BlockingQueue, implement it with an ArrayBlockingQueue
+	Then the consumer takes element with take() method - will block until an element is available; put() for producer
+	Plain and simple it works as intended
+	(demo of showing javadocs that have good comparison of different methods)
+
+6.29 - Live Coding: Parallel Reduce in Action on a ConcurrentHashMap
+	(from java 8)
+
+6.30 - Live Coding: Parallel Search in Action on a ConcurrentHashMap
+
+6.31 - Live Coding: Computing an Average on a ConcurrentHashMap
+
+6.32 - Live Coding Wrap-up
+	Now you may ask yourself which structure should I use in my application, that is which structure for which case? In fact, if there is one answer to keep in mind, it's the following - there's no silver bullet in this field
+	If you have very few writes, and especially, very few writes passed a certain period of time, namely the initialization of your application, then you might consider using the copy on write structures which are basically immutable structures
+	If you have low concurrency, really any solution will do and you can rely on synchronization
+	If you're in a high concurrency context, skip lists are usable as long as there are many objects in them and you can always rely on the ConcurrentHashMap which works very well in this case
+	And If you have high concurrency with few objects, then you are in the problematic area of concurrency. If you rely on synchronization, you will block all threads. If you rely on atomic references or atomic variable, you will generate high CPU load and high memory load
+
+6.33 - Course Wrap-up
+	So just a few words of advice to conclude this course. Be careful when designing concurrent code
+	First of all, you need to be sure to ahve a good idea of what your problem is
+	Second, you need to keep in mind that concurrent programming is different from parallel processing, in fact, it has nothing to do
+	Third, try to delegate to the API as much as you can
+	Fourth, know the concurrent collections well because they can bring many solutions to your problem. You ahve queues, you have immutable structures, skip list and ConcurrentHashMap

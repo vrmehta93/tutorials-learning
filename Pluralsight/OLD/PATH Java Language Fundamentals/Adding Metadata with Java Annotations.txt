@@ -1,0 +1,171 @@
+Jim Wilson
+
+2.1 - Introduction (Understanding Annotations)
+	Now, whenever we create a program, we always have assumptions about thw ay that program will run. These assumptions come from many different areas
+	Some of the assumptions are about the available type system. We're going to be limited to types that are available in Java itself. We're going to rely on types that come from other libraries
+	We'll also have assumptions about the toolsets that we're using.
+	And we'll have assumptions about our execution environment
+	So what that means then, as we build our code we're always incorporating assumptions about our context and our intent. In other words, what environment do we expect the code to be running in, and what our intentions for that code? So we have to be able to express that inside of our programs
+	Now the good news is that our type systems do a really good job of covering most of the issues related to this, but they don't take care of everything. There are times where the standard type system isn't quite enough
+
+2.2 - Expressing Context and Intent
+	These are all ways to try to supplement the type system but they don't really do what we need to do
+		A priori knowledge
+		Code comments
+		Documentation
+	What we really need is a structured way to express context and intent. In other words, we need to do it in such a way that tools can actually interpret that context and intent. So the info we put inside of our code can be used by tools and other programs to act on that context and intent
+
+2.3 - Applying Annotations
+	This is where annotations come in. Annotations are special types that act as metadata, and an annotation can be applied to a specific target. In other words, it allows us to attach metadata to a target
+	The thing that's interesting about annotations is that they have no direct effect on the target itself. In other words, the target will not behave any differently because you've applied an annotation to it
+	Annotations have to be interpreted, and they can be interpreted by things like tools, such as compilers or development environments, or our program's execution environment. Even  other programs can interpret annotations
+	Annotations allow other code to act on our metadata
+	Now applying annotation is pretty straightforward. Each annotation has a name, but when you use the annotation, you have to precede it by an @ symbol, and you place the annotation directly before the target. So that it associates the metadata with that target
+	Now different annotations can be applied to different kinds of targets
+
+2.4 - Annotations in Code
+	Annotations are build right into the core Java platform. In fact, the core platform actually includes all the types that we need for creating annotations
+	The thing that's kind of interesting is that the core java platform itself doesn't include a whole lot of annotations, it only has a few but it turns out that other tools and environments make very widespread use of annotations, and it provides a lot of power for those environments
+	As I mentioned Java itself only provides a few annotations, and the ones that we most commonly use are related to code compilation. e.g. @Override, @Deprecated, @SuppressWarnings
+	Adding a "SuppressWarnings("deprecation") at class level is kind of dangerous thing to do because as you write more code inside this class, you might use a separate method that's also deprecated but you'd never see the warning because you're suppressing all deprecation warnings for the entire class. One thing we can do is take it off the class and move it onto the methods which is a much safer thing to do
+	We want to suppress the warnings in the smallest amount of code possible
+
+2.5 - Declaring Annotations
+	As developers, we can actually declare our own customer annotations. What that means then is that we actually have a way of defining our own custom form of metadata
+	Because once we've declared an annotation, it can be used just like the build-in annotations, meaning that we can associate metadata with types and then members within those types
+	Now when you declare an annotation, technically what's happening is you're declaring a special kind of interface. But it doesn't really act like an interface because no type can actually directly implement the interface that you declare with an annotation
+	When you declare an annotation, it can only be used like an annotation
+	Now when you declare an annotation, you do use the "interface" keyword to declare it but you have to precede the interface keyward with the @ symbol. Putting the @ symbol before the keyword interface indicates that you're actually declaring an annotation
+	Now all annotations implicitly extend the annotation interface, and it's that interface that actually provides the underlying capabilities of the annotation
+	Now whenever you declare an annotation, you can declare an annotation anywhere you can declare an interface, so that means you can declare an annotation as a top-level data type, or you can declare it as a nested data type within a class or an interface
+	When you declare an annotation, you have the option of specifying something known as an element. An element is simply a way that we specify a value within an annotation. But the syntax of elements is a little bit odd. When you're declaring an annotation, you specify the element as if it's a method, so you have the element name followed by parentheses
+	But when you want to set the value of an element, you actually do it like it's a field. You simply use an equal sign to assign that value to the element
+
+2.6 - Identifying the Need for Annotations
+
+2.7 - Creating Custom Annotations
+	Project:
+		(new file CommandKeyWord.java)
+		public @interface CommandKeyWord {
+			String name();
+		}
+		
+		(Existing class and adding new annotation to it)
+		@CommandKeyWord(name="add");
+		public class Adder implements MathProcessing {
+			@Override
+			public double doCalculation (...) { ... }
+		}
+		
+3.1 - Introduction (Annotation Access and Interaction)
+	Recall, we mentioned that annotations are a type of metadata. In other words, they allow us to associate data with data. So in Java, when we apply an annotation, the annotation information actually becomes part of the type itself
+	Specifically, it gets associated with the information for the target that it's applied to.
+	Now in Java, when we want to get type information, the way we do that at runtime is by using a mechanism known as reflection. It allows us to examine and access information related to a type.
+	Now in most cases, when working with annotations, the first step is going to be getting the class information. That gives you back information that describes the overall class
+	Now if the annotation you're looking for has been applied directly to the class, you can actually access the annotation directly from the class information. But you'll recall we mentioned that annotations can also be applied to class members
+	Well, if you're looking for an annotation on a class member, once you have a class information, you'll again need to use reflection to get the information for that member, and then once you have the information for the member, then you can try to access the annotation
+	Now, once you have the information for the target, accessing annotation is actually pretty easy. We simply call a method called getAnnotation() against the information for that target
+	Now we'll need to identify what annotation we're looking for, so we pass in the class infromation for the annotation itself. In other words, we're asking "does this target have an annotation of this type?". If it does, it will then return back an instance of the annotation. But if it doesn't, it will simply return back null 
+
+3.2 - Locating a Class by Annotation
+	In course project:
+		CommandKeyWord commandkeyword = getClass().getAnnotation(CommandKeyWord.class);
+	So what will happen now is as long as our variable processor references an instance of a class that implements the CommandKeyWord annotation, getAnnotation() will return back a reference to an instance of CommandKeyWord
+
+3.3 - Using an Annotation
+	To extract the name element:
+		String name = commandkeyword.getName();
+	During runtime, this will return null. Now the reason that happened is that even though we applied the annotation in our source code, the way we've coded things up, when the application gets run, the annotation is no longer there, but we can easily deal with that
+
+3.4 - Retention Policy
+	Annotations have a scope of availability. In other words, each annotation type has a particular lifetime, and this is what's known as retention policy
+	When we declare our own annotation type, we're responsible to declare the retention policy for that particular annotation type. Now the way we do that, oddly enough, is actually by using an annotation. There's an annotation called "retention", and as part of declaring our annotation type, we need to apply the retention to our annotation type. And then we pass in a value known as "RetentionPolicy" to the retention annotation, and that indicates how long we want instances of this annotation to stick around
+	Now when it comes to setting our annotation policy, there are 3 values that we can use:
+		1. "source" - an annotation with a source retention policy exists only in the source file. Any annotation with this policy as part of the compilation process, that annotation is discarded, meaning that it never even makes it into the class file. The annotation only exists in the source file
+		2. "class" - if an annotation has a class policy, it will exist in the source file and it will exist in the class file. So any tool that examines Java class files can access that annotation. But then, when the code is loaded up into the runtime, the runtime will actually discard that annotation. So at runtime, that annotation doesn't exist anymore
+		3. "runtime" - If an annotation has a retention policy of runtime, then the annotation is loaded into the runtime and is there to be accessed using reflection
+	If we don't specify the runtime retention policy, we can't access the annotation using reflection. And that's what happened in our demo code
+
+3.5 - Applying Retention Policy
+	In course project, add retention policy:
+		@Retention(RetentionPolicy.RUNTIME)
+		public @interface CommandKeyWord {
+			String name();
+		}
+
+3.6 - Annotation Target
+	So now as we create our annotation types, by default, that annotation can be applied to any target at all, meaning that could be applied to a type itself or any of its members, like a field, method or constructor or even further, that annotation could also be used with a package, a variable, a parameter, as well as other things
+	And in general, that's not what we want because in general, we expect our annotations to be used for a specific type of target because our functionality of the annotation itself is based on the targets expect it to be used with
+	Occasionally, we may have an annotation that we want to use across broad set of targets but in general, we want to narrow that in a bit
+	So we actually have the ability to specify what kinds of targets our annotation can be used with, and we do that as part of delcaring the annotation type itself. So just like retention policy, we specify the allowable targets as part of creating the type for our annotation. And once we do that, the compiler will enforce those allowable targets. So if someone tries to use our annotation on a target that we haven't specified, the compiler will generate an error
+	So now the way we specify all this is by using the "target" annotation on our annotation type, and that accepts an enumeration called "ElementType" to specify allowable targets, and an annotation can support as many targets as you like. It can support just one target type, or it can actually support multiple target types, and we specify that by using an array notation
+
+3.7 - Applying Annotation Target
+	In course project, in Adder.java:
+		@CommandKeyWord(name="add")
+		@Target(ElementType.TYPE)
+		public class Adder implements MathProcessing {
+			@Override
+		}
+	Order of annotations doesn't matter
+	To allow CommandKeyWord annotation to be used wtih any type, use ElementType.TYPE. By doing that, we're specifying the CommandKeyWord can only be used directly on types. So if someone tried to use it with a method, as we looked at earlier, the compiler would generate an error
+	To allow CommandKeyWord to be used with both types and methods, we would still have just one @Target annotation applied, but we want to specify multiple element types.
+	So to do that, we'd use an array notation:
+		@Target({ElementType.TYPE, ElementType.METHOD})
+
+4.1 - Introduction (A Closer Look at Annotation Elements)
+	When we're working with annotations, we're commonly going to have to specify element values. So because of that, Java includes some shorthands to simplify some of the common scenarios of specifying values for our elements.
+	Now one thing to note, these shorthands only affect the setting of the element, they in no way affect how we get back the value of the element. So they allow us to specify values really easily, but we always access the value of an element in the same way
+	Now one of shorthands we have is an unnamed assignment. In other words, we can specify the value of an element without actually giving the element name. And this is usual for scenarios where there's commonly just one value that a particular annotation needs
+	Now in order to use the unnamed assignment, the name of that element must be value. And we kind of think of this as the one value that the annotation is going to need to do whatever job that annotation needs to do
+	But now also, in order to use an unnamed assignment, you can only be assigning to the value element. So if you have an annotation, and you need to specify multiple values, you'll have to specify the name of each individual element, including the value element.
+	Now often time you'll have an element that generally has the same value in most cases. In that case, you can actually use a default value. Now we do that using the "default" keyword, and the way we specify that default value is as part of declaring the annotation type. So we specify the element name, and then use the default keyword to identify what the default value of that element is
+	So, again, default values are useful for scenarios where an element commonly has the same value in most cases, but even if you specify a default value, you can still explicitly set the element if you need to. So it's a great shorthand but it doesn't prevent you from specifying other values if that's what you need to do
+
+4.2 - Simplifying Setting the Keyword
+	In course project, inside CommandKeyWord.java:
+		@Retention(...)
+		@Target(...)
+		public @interface CommandKeyWord {
+			String value();
+		}
+	Use IntelliJ to refactor change from name() to value()
+	In course project, in Adder.java, instead of:
+		@CommandKeyWord(value = "add")
+	You can use (not use "value")
+		@CommandKeyWord("add")
+
+4.3 - Adding Default Element Values
+	For course project - let's expand the capabilities of our app so we can really see what's possible when using annotations. Now we're currently looking at a class we haven't looked at before called PowerOf. You'll notice that it implements this interface, MathProcessing, that we've been using throughout the project.
+	And using interfaces is a really powerful concept as a way to support generalized behaviors, but sometimes it's useful to allow classes to be plugged into our applications that don't necessarily use a particular interface. They simply provide the capability, and we use annotations to identify how we access that capability.
+	[Modify PowerOf class so that it doesn't implement MathProcessing anymore but still has one method that calculate power]
+	In CommandKeyWord.java:
+		@Retention(...)
+		@Target(...)
+		public @interface CommandKeyWord {
+			String value(); // What keyword to associate with type
+			String method() default "calculate"; // Identify a particular method name with default value
+		}
+
+4.4 - Enhancing Our App Type Support
+
+4.5 - Executing a Method with Reflection
+	In course project:
+		CommandKeyWord commandkeyword = processor.getClass().getAnnotation(CommandKeyWord.class);
+		String methodName = commandkeyword.method();
+		// For getMethod(), I have to identify the signature of that method
+		Method processingMethod = process.getClass().getMethod(methodName, double.class, double.class);	// What this says is that I want a method of that name that accepts 2 doubles as parameters
+		result = (double) processingMethod.invoke(processor, leftVal, rightVal);
+	Once I have the method name, I want to do the work to actually access the information about that method. This is a key part of using reflection. Reflection allows me to analyze a type, to get information about the members in that type, and even execute the members within that type
+
+4.6 - Bringing It All Together
+
+4.7 - Valid Annotation Element Types
+	Now as we know, elements hold data values for annotations but it's important to understand that elements can only be a specifc data types. An element must either be a primitive type (e.g. int or double), it can be a string, it can be an enum, which is really nice for specifying pre-defined values
+	It can also be an annotation. In other words, an annotation can have an element that refers to another annotation
+	And then in addition to all these types, you can also hold class information. Now this doesn't mean that you can refer to an instance of another class but what it does allow you to do is associate type information within the annotation
+	So an element within an annotation can refer to other type information, and this is useful for scenarios where you want to create a relationship between one type and another
+	And then in addition to these individual types, you can also have elements that are arrays of these types
+	Now even though these elements don't support the entire universe of types, what you'll find when working with annotations, they provide all the richness that we need to specify the data values we need to incorporate within our apps.
+
+4.8 - Summary

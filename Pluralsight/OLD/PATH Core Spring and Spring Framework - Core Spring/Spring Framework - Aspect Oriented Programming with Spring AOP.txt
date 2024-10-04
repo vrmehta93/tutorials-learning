@@ -1,0 +1,182 @@
+Catalin Tudose
+Apr 19, 2020
+
+2.1 - Version Check (What is Aspect Oriented Programming?)
+	Spring AOP 5
+	Java 11
+
+2.2 - What is Aspect Oriented Programming?
+	We take the orthogonal or cross-cutting functionality move it to the seprate classes called aspects
+	So, when we use AOP, which are its common use cases?
+	It may be used for separting logging, for exception handling, for user rights checks, for caching, for transactions or for tweaking legacy applications that needs their code improved
+	In principle, how does an aspect work?
+	You will do something before the method, for example, to log a message
+	Then you will execute the original method and then you will do something after the method, for example, to log another message
+
+2.3 - AOP Key Terms
+	The action executed before the main function is called before advice and the action executed after the main functionality is called after advice
+	An aspect represents the modularization of a concern that cuts across multiple classes
+	Logging is a very good example of an orthogonal or cross-cutting concern in java applications
+	A join point represents the effective execution of a method where the aspect will be applied
+	An advice is the action taken by an aspect as a particular join point
+	We'll see that there are different types of advices as before, after, around, after returning, after throwing
+	Spring AOP may create chains of advices for single join point
+	And a pointcut is a predicate that matches join points
+	An advice is associated with a pointcut expression and runs at any join point matching that pointcut
+	For example, the execution of a method with a certain name
+	The target object is the object being advised by one or more aspects
+	We'll see that Spring AOP will create a runtime proxy for the target object in order to add the aspects to the execution
+	An introduction is used to declare additional methods or fields for a given class
+	Spring AOP allows that the advised object receives new interfaces to implement. You can have a given class that receives additional behavior at runtime with the help of introductions
+	The AOP Proxy is the object created by the AOP framework so that it can add the aspects in the execution
+	Spring AOP provides 2 ways to create the AOP proxy
+		The standard mechanism of proxy creation called JDK dynamic proxy
+		And CGLIB or code generation library, proxy
+	Weaving is the operatoin of program transformation that applies the aspect to the target object in order to create the advised object
+	Spring AOP prefers weaving at runtime
+	The aspect weaver puts head to head the base code of the target object and the program transformation defined by the aspect and will get the modified code
+
+3.1 - XML Schema Based Spring AOP
+	Spring context dependency for pom.xml
+		groupId - org.springframework
+		artifactId - spring-context
+		version - 5.1.5.RELEASE
+	Spring AOP dependency for pom.xml
+		groupId - org.springframework
+		artifactId - spring-aop
+		version - 5.1.5.RELEASE
+	AspectJ dependency for pom.xml
+		groupId - org.springframework
+		artifactId - spring-aspects
+		version - 5.1.5.RELEASE
+	(example of defining aop config (pointcut, expressions) in applicationcontext xml file
+
+3.2 - The AspectJ @Aspect, @Before, and @After Annotations
+	AspectJ is an aspect-oriented programming extension for the java programming language
+	AspectJ became the defacto standard for AOP through it simplicity and usability
+	It uses annotations to define cross-cutting aspects functionality
+	(using same dependencies as 3.1)
+	This time working AspectJ and its annotations
+	(example of defining a Logging Aspect class)
+		@Aspect
+		public class LoggingAspect {
+			private Logger logger = Logger.getLogger(LoggingAspect.class.getName());
+			
+			@Before("execution(* *.*Passenger(..))")
+			public void before() {
+				logger.info("Entering method);
+			}
+			
+			@After("execution(* *.*Passenger(..))")
+			public void after() {
+				logger.info("Exiting method);
+			}
+		}
+	To define join points, we use AspectJ pointcut language
+	The join point represents the execution of any method ending with "Passenger". The method may receive any argument, may return anything and may belong to any package
+
+3.3 - The @Around Annotation and the AOP Mechanisms
+	Using LoggingAspect with @Around annotation
+		@Aspect
+		public class LoggingAspect{
+			private Logger logger = ...
+			
+			@Around("execution(* *.*Passenger(..))")
+			public Object log(ProceedingJoinPoint thisJoinPoint) throws Throwable {
+				String methodName = thisJoinPoint.getSignature.getName();
+				Object[] methodArgs = thisJoinPoint.getArgs();
+				logger.info("Call method " + methodName + " with arg " + methodArgs[0]);
+				Object result = thisJoinPoint.proceed();
+				logger.info("Method " + methodName + " returns " + result);
+				return result;
+			}
+		}
+	According to the argument of the @Around annotation, this method will be executed around the execution of any method whose name ends with Passenger. The method may belong to any package, may receive any arguments, and may return anything
+	You see that this log() method keeps a reference to the ProceedingJoinPoint, meaning the execution of the original method
+	thisJoinPoint.proceed() launches an execution the original method
+	(Need to update applicationcontext xml file) by adding <aop:aspectj-autoproxy/>
+	We remind that we have replaced the usage of the before and after method with the usage of one single method, this log() mehtod annotated with @Around
+	The @Around annotation is more powerful, and it provides us access to the original join point execution
+	Which are the strategies to create the proxy objects? We mentioned in the previous module that there is a JDK dynamic proxy standard mechanism and a CGLIB proxy mechanism
+	How do these ones work?
+	For JDK dynamic proxy standard mechanism, it is the case when the target class is implementing a certain interface. Spring AOP will create a proxy class, and in order for this class to be able to play the role of the substitute, it will have to implement the same interface
+	In the case the target class doesn't implmeent an interface, the second mechanism, CGLIB proxy mechanism, needs to be put in practice
+	The proxy class will extend the target class itself, and this way it will be able to play the role of the substitute
+	(demo of "breaking" the 2 mechanisms)
+
+3.4 - Orthogonal Behavior for Normal Execution and for Exceptions
+	(example of defining a new annotation and creating a LoggingAspect class @Around method that execute when the new annotation is used)
+		@Aspect
+		public class LoggingAspect {
+			...
+			
+			@Around("@annotation(<qualified name of annotation>)")
+			public Object log(...) {...}
+		}
+	Using this newly introduced log annotation will help us avoiding naming conventions as you saw in our previous examples
+	Remember that we're executing some aspect only related to methods that were ending in "Passenger" and were having a certain signature
+	Need <aop:aspectj-autoproxy/> in applicationcontext xml file for above functionality
+	For exception handling, create a new class ExceptionAspect
+		@Aspect
+		@Service
+		public class ExceptionAspect {
+			private Logger logger = ...
+			
+			@AfterThrowing(pointcut = "execution(* *.*(..))", throwing = "exception")
+			public void processException(RuntimeException exception) throws Throwable {
+				logger.severe(exception.getMessage());
+			}
+		}
+	Need <aop:aspectj-autoproxy/> in applicationcontext xml
+	Remember, the ExceptionAspect bean is already declared throug the @Service annotation
+	(running the demo) We see that the message is logged after having thrown the exception, however, this doesn't prevent the exception to be propagated. If we would like the program to continue, we have to explicitly catch the exception
+
+4.1 - Introducing the Flights Management Application (Implementing Cross-Cutting Concerns for Normal Execution)
+
+4.2 - Implementing a New Feature Using @Before, @After, and @AfterReturning
+	Using @Pointcut with @After
+		....
+		@Pointcut("within(<qualified class name>)")
+		public void allTicketMethods() {
+		
+		}
+		
+		@After("allTicketMethods()")
+		public void loggingAdvice(JoinPoint joinPoint) {
+			logger.info(joinPoint.toString());
+			logger.info(joinPoint.getTarget().toString());
+		}
+	Providing allTicketMethods() to @After annotation means that the loggingAdvice() method will be executed after any method that matches the Pointcut defined by the allTicketMethods()
+
+4.3 - Implementing a New Feature Using @Around and @Order
+	@Order - refers to priority. Higher number equals higher importance
+
+5.1 - Introducing the Database Application (Implementing Cross-Cutting Concerns for Caching and Exceptions)
+
+5.2 - Managing Caching Operations with Spring AOP
+
+5.3 - Implementing Cross-Cutting Functionality for Exceptions with Spring AOP
+
+6.1 - Creating Introductions Programmatically (Using Spring AOP Introductions)
+	An introduction is a spring AOP technique to declare mixin types
+	A mixin is a special type of multiple inheritance. You may use it when you would like to add optional features for a class
+	Spring AOP allows the introduction to an advised object of new interfaces and their corresponding implementation
+	How do you use introductions? We may face the situation when we need to work with an object, Flight in our left-hand example, but we needed to implement  an additional interface, Flyer, in our right-hand example
+	However, we cannot touch the code of the Flight class, it is not available for change, or it is possible that we would like only some particular object to implement the Flyer interface as well and not the entire class
+	It is the appropriate situation to use a Spring AOP introduction
+	(demo) The implementation class needs to extend DelegatingIntroductionInterceptor and implement the interface that we would like to be introduced
+	We will need to add an Advisor class that extends DefaultIntroductionAdvisor. This DefaultIntroductionAdvisor is the default implementation for advisors that performs one or more AOP introductions
+	ProxyFactory - this is a factory for AOP proxies to be used programmatically
+	ProxyFactory allows us to obtain and configure AOP proxy instances in our code
+	We need setOptimize with true as an argument in order to ues CGLIB strategy, which is needed here
+
+6.2 - Creating Introductions Declaratively
+	You don't need to extend DelegatingIntroductionInterceptor any long, as it was the case of working programmatically
+	Create a new aspect class
+		@Aspect
+		public class FlightAspect {
+			@DeclareParents(value="<qualified name of interface>", defaultImpl=<implementation class>)
+			private Flyer flight;
+		}
+	So how can I compare the Spring AOP introductions programmatic approach and the declarative one? The declarative code is shorter. You will need this aspect (FlightAspect) and the field annotated with @DeclareParents
+	For the programmatic approach, we need to explicitly declare an advisor that extends DefaultIntroductionAdvisor. Making the Impl class extend DelegatingIntroductionInterceptor. But we have full control on what we're doing

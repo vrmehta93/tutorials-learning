@@ -1,0 +1,88 @@
+
+3.1 - Building and Testing Code (Building and Testing Code)
+	Documentation - pipeline steps reference
+		"echo" is part of Jenkins pipeline syntax. It's not a shell script itself
+		pwsh - powershell core executable in Jenkins
+		Depending on what host machine or agent you're running on, you might want to use a different command
+
+3.3 - Introduction to Multi-branch Pipelines
+	Unit testing a docker container is a fairly straightforward process. You simply bring up a copy of that container and then run tests of your application against it. Based on where those tests pass or fail, you can either go onto the next test or report a bug
+	The adv of having a multi-branch pipeline in Jenkins is that you can run the same Jenkinsfile or even slight variations of it against the same code base. So you can run it against the master branch or any feature branches, and you can have either the same unit tests or add unit tests as you continue your development
+
+4.1 - Integrating Container Security and Compliance (Integrating Container Security and Compliance)
+	Most container scanning solutions operate off of a registry
+	2 3rd party scanning tools and integrating them into our pipeline: Anchore and Trivy
+		Both are open source products with enterprise licensing agreements if you choose to pay for them
+		Anchore - plugin you can interface with directly from Jenkins pipeline
+		Trivy - install on your build agent and then run directly from there
+
+4.3 - Trivy Overview
+	Maintained by Aqua Security
+	Container vulnerability scanner
+	Essentially, Trivy is a binary that you build/install/download and then that binary will pull the vulnerability database from Aqua Security and use that to scan the container
+	"trivy <container to scan>"
+	Complication - I'm running it on Windows. So, I have to run it through WSL or Windows subsystem for Linux. Because there's no windows binary for Trivy, I have to take that extra step
+	If you're setting up this env in prod env, you should definitely be doing it on a Linux system/server
+
+4.5 - Anchore Overview
+	Open Source with Enterprise Features - the engine and DB itself are open source but you pay for things like enterprise authentication and login, additional security, etc
+	Maintained by Anchore
+	Vulnerability and Policy scanner
+	Little more complicated - needs an on-prem engine setup before it runs and the engine and the DB run together. It's not difficult to setup but it does need to be running before you run your build. (Unlike Trivy)
+	Jenkins plugin
+	Steps to run anchore from Jenkins pipeline are that we take the containers we want to run it against and put them into a text file called "anchore_images" and then we pass that text file into anchore plugin
+
+4.8 - Demo: Parallel Parallel
+	stage('Container Scanning')
+	{
+		parallel	// Run stages in parallel 
+		{
+			stage(...) {....}
+			stage(...) {....}
+		}
+	}
+	The default behavior is to wait for both of these stages to finish before kicking off the next stage
+
+5.2 - Introduction to When Conditions (Implementing Continuous Deployment Pipelines)
+	When condition - block certain steps in your pipeline from running if certain conditions are met
+	stage('Run on master')
+	{
+		when {branch 'master'}	// sample condition
+		steps {...}
+	}
+
+5.3 - Introduction to Input Steps
+	Input steps - leaves the decision on whether to run your pipeline or stage in your pipeline up to a user. Aka a manual gate
+
+6.2 - Declarative vs Scripted Pipelines (Troubleshooting and Improving Jenkins Pipelines)
+	Declarative pipeline - has pipeline{ stages { stage {...} stage {...}}
+		In example, we specify when we wanted it to run
+	Scripted pipeline - node { stage {...}}
+		Using groovy domain specific language (DSL) to control pipeline logic
+		In example, we just have a stage that run and then specify using if else what we want to run inside of that stage. It's running the same steps from pipeline reference. It's not actually running groovy code, it's a DSL, so it's just using a groovy-like syntax to control the flow
+
+6.3 - Declarative Scripted Pipeline Demo
+	The reason I think you can get more out of declarative pipeline is because you can run a groovy DSL script as a separate block in a declarative pipeline
+	You just get more control because you have access to more in a declarative pipeline, including scripted pipeline steps
+
+6.4 - Introduction to Shared Global Libraries
+	Shared global library - takes the pipeline code outside of the app code repo and puts it into its own. You can then call into from the app repo
+
+6.5 - Shared Global Libraries: Hello World
+	It's important to note that no matter what style of global library you're using, you're goingto have to have a folder called "vars" or source
+	In the vars folder, it's considered a best practice to have a text file to accompany your groovy file descriving what it does 
+	You can import global library from github with @Library(<link>)
+
+6.6 - Shared Global Libraries: Functions with Parameters
+	Function "call()" is called by default. So, if you call the filename, whatever function is named "call" will be the default function that's called. It's not impossible to call another function from the same file, but it is another step you have to add
+	To call non-default function, use "<filename>.<function>()" - we've just appended the name of the function onto the name of the file being called
+
+6.7 - Shared Global Libraries: Shared Pipelines
+	In your shared library script, you can put the entire pipeline instead of having it in the app repo
+	This might be really useful if you have a standard deploy process where you deploy several different apps the same way but still need to pass in some different parameters like the name of app or owner of app
+	In app repo Jenkinsfile; name of shared library in example is "echoPipeline.groovy":
+		@Library(<link to shared library>)
+		echoPipeline
+		{
+			message = "I tried to ping"
+		}

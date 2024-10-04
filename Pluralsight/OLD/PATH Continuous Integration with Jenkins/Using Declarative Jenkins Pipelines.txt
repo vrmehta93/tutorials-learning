@@ -1,0 +1,87 @@
+
+2.1 - The How and Why of Jenkins Pipelines (Introducing Pipelines and the Jenkinsfile)
+	Freestyle jobs - everything manual and not source controlled
+
+2.2 - Demo: Creating and Running Simple Pipelines
+	Blue Ocean is an alternative to Jenkins UI that's installed through a plugin
+	Blue Ocean doesn't expand single quoted strings. Use double quoted strings to expand your variables
+	And it doesn't use double quoted string for echo
+
+2.3 - Understanding Pipeline Structure
+	Pipeline is defined in blocks. First block is pipeline itself which is a one-to-one mapping
+	Stage blocks - where you find the structure of your pipeline
+	Inside the stage is where the actual work happens
+	Jenkins uses groovy as an agent for pipeline jobs and inherits some of groovy's quirks. The moment that will cause the most difficulty is dealing with variables in strings. You will be passing strings around all the time and you'll need to remember this basic rule that single quotes create a literal string exactly as it's written on. You need to use double quotes if you want to inject the value of variables into the string, which is called interpolation
+	Multi-line quotes can be ''' [content] ''' OR """ [content] """
+	
+2.4 - Demo: Modeling Workflows in Pipelines
+	Inside stage block, you can define "parallel" block to run jobs concurrently
+
+2.5 - Doing Work with Pipeline Steps
+	You can get user confirmation with "Input"
+	The pipeline is really a structure for modeling your build workflow. For the actual mechanics of the build, you're going to use the same tools/scripts that you've always used either in shell scripts or with plugins
+
+2.6 - Demo: Adding Pipeline Build Functionality
+	withCredentials() - masks values if you try to print keys; you have to define/configure keys/credentials in Jenkins
+
+3.1 - Understanding How to Improve Pipelines (Building Re-usable Pipelines)
+	Jenkins files are build pipelines as code and your build become much easier to manage if you apply simple coding best practices to promote reuse. You can easily put together a library of shared components that you use in all of your pipelines
+	Declarative pipelines make resue simple and explicit. You can add parameters with default values in the pipeline, and it's simple to compute variables like semantic version numbers from parameters on other variables. If you have a function that you use several times in pipeline, you can extract it into its own block in the Jenkins file and just call that block whenever you need to. And if that function could be useful for several pipelines, then you can move it into a shared library. Whenever you need to use that function, you just reference the library in your Jenkinsfile. Re-usable functions and shared libraries are written in groovy
+	
+3.4 - Demo: Writing and Using Shared Libraries
+	To define method in separate file - example of "auditTools.groovy" with one method call() defined. To make it available as part of shared library, you have to do 3 things:
+		1. Wrap the code in "node" block which just makes it available as a pipeline step to be used in current pipeline
+		2. Name of method has to be called
+		3. Name of the script needs to be the name I want to use for my custom step
+	In Jenkinsfile, use "libary" statement with "identifier" and "retriever"
+	(example reference) So, I've got 2 separate source repos, one for the project which has Jenkinsfile, one for shared library with all the groovy scripts. And potentially, that shared library can be used by multiple projects
+	It also means that every project is referencing some shared library which has a different release cycle from the project itself, which is potentially dangerous.
+	Alternative - you can create a folder in Jenkins UI and make the shared libraries available there. So, there are differnt levels of where you can specify your libraries and it's up to you how you want to structure (specify explicitly the library in each Jenkinsfile as to the overhead you want to use a new version of the library but it does mean your Jenkinsfile is standalone and it doens't require you to set up a shared library access in a folder which is a kind of a hidden dependency. If you don't konw you need to do that and your pipeline is referencing things that in that shared library you moved to a new Jenkins server, you don't set up the global libraries on your pipeline start to fail)
+	So explicitly capturing library inside the Jenkinsfile is a bit more overhead but it gives you more flexibility down the line
+
+3.5 - Structuring Shared Libraries
+	One approach for creating shared library - create auditTools.groovy file and inside define call() { note { ... } }. Inside Jenkinsfile, reference the library and call the function with auditTools()
+	Versioning is really important here because each new build will pull the specified version of the shared library. You could make a breaking change to the library code and if you don't publish that as a new version, then you're gonna break a lot of pipeline jobs
+	The structre of the shared library is important too. If you're truly building out sweeting functions, then you can use the standard Java structure with a source folder for all class files, resources folder to support them (like static data and config files). Simple functions like the one from demo go to the vars folder and that makes them available to the whole pipeline without needing to import namespaces. So, unless you're a seasoned groovy developer with some ambitious goals for your library, I would recommend keeping it simple. Just using the vars directory on writing custom steps where the filename becomes the step name
+	Alternative where you use script name as class name and you can have multiple methods called anything you like instead of that single method named "call". Then you can use dot notation in the pipeline. E.g. defined log.groovy file with methods info(), warn() and debug(). In Jenkinsfile, steps { script { log.info ...} }
+	If you prefer this approach then go for it. But, I like the other way because it matches the normal pipeline syntax. In the alternative approach, you're using an object you need to wrap all the calls in a script block
+
+3.6 - Demo: Pipeline Development Tools
+	Jenkinsfile linter - Jenkins server exposes API for validating pipeline syntax. It doesn't compile for you. It just checks the syntax
+	You can get the "Jenkins Pipeline Linter Connector" extension in VSCode - for parameter checks?
+	Repeat functionality with edit
+	Unit Test framework which is available on github unless you write unit tests to execute your pipelines on your custom steps in your shared libraries (JenkinsPipelineUnit?)
+	
+3.7 - Module summary
+	Unit Test framework is probably overkill for pipelines unless your builds are horrendously complex but it's a good thing to add to your shared libraries
+
+4.1 - Understanding the Modern Way to use Jenkins (Using Pipelines to Support Your Workflow)
+	There are a lot of ways to run Jenkins
+	Jenkins is super flexible. It has the framework to support lots of different workflows
+	Jenkins has always had a master agent architecture wehre the master does all the admin work (hosting web UI and firing job triggers and storing all the job data) and it's the agents that do the actual builds
+	In theory, this is a good way to structure your build farm because you can configure different agents with different capabilities. But in practice, what you end up with is a whole mess of build agents which need to kept in sync with each other and with Jenkins master with the needs of the projects and the mess keeps growing because you don't have time to check whether adding a new version of the SDK won't break a whole bunch of builds. So, you avoid big changes to work agents and you commision more agents when you have a new project requirements. And the master gets just as messy if you're using freestyle jobs because there isn't a clean way to promote reuse. So, you end up with lots of jobs, which all look like clones and they might have all the same configuration running on different source repos or there might be very small differences in every job. That's a maintenance nightmare even before you are branching
+	The prospect of needing a full-time build manager becomes real
+	Enter the new Jenkins which we will explore. Using pipelines, you can replace all of your agents with docker containers which get created in seconds when they're needed for a build and then get cleared down. You don't need a fleet of permanent Jenkins agents. Any server running docker can host an agent container just for the duration of a build
+	
+4.2 - Using Docker in Pipelines
+	In Jenkinsfile, define agent { docker { image "..." } }
+	For using a custom container with Dockerfile, create an ".sdk" file and give that filename in Jenkinsfile?
+		When Jenkins gives you the docker file option inside the agent must build an image to use as the build agent, it's not to build your application
+		The image that was built as part of the Dockerfile is not meant to be used by Jenkins to compile your application
+	So the ability to use Dockerfile for your agent is about customizing the SDK and that's still useful for scenarios where you want to run your builds inside containers and you don't want to manage a whole bunch of build service. But, you're not using Docker for your final application
+	If you are using Docker to ship and run your application. Then, as part of the pipeline plugin, Jenkins also installs the Docker pipeline plugin which gives you a huge amount of control over interacting between the Jenkins master coordinating the job and the Docker engine you can use to build, package and test your application
+		Inside Jenkinsfile, def image for docker.build. Call image.run()
+
+4.3 - Running Build Steps in Container Agents
+	In docker { image ...}, you use any image. If you have your own SDK in a private image registry, you can add credential in here to access the image. Then, any shell commands run inside your container
+	For using your own Dockerfile, in Jenkinsfile use dockerfile{ [location of Dockerfile] }
+		We saw a common mistake wehre the pipeline uses a docker file agent but that Dockerfile is actually intended to build the application. That's not what Jenkins give you here. The dockerfile in the agent is to build a custom SDK and the build runs in a container from that SDK. So, you still specify your build steps in the pipeline stages, not in the Dockerfile
+
+4.4 - Demo: Shared Pipelines and the Job DSL Plugin
+	You can define a pipeline inside shared library .groovy file. This way you can inject a pipeline into the Jenkinsfile. This is perfect for situations where you've got lots of projects that all have the same build requirements and you want to share a pipeline between them
+	They become much more powerful when you start including parameters inside your shared pipelines
+	Job DSL plugin - create a pipeline job without having to copy an existing job. Uses groovy and is a mixture of code and declaration of what the job should look like
+	The syntax takes getting used to but it's extremely powerful because you can construct it however you want. I've got a hard-coded list of where my pipelines come from but I could compute that by iterating over a file system or a whole bunch of github repos. So, I can automate the creation of jobs for whatever kind of setup that I've got running in Jenkins
+	
+4.6 - Demo: Using Multi-branch pipelines
+	The UI for multi-branch pipeline job is kind of like folder UI but within Jenkins it is a single job

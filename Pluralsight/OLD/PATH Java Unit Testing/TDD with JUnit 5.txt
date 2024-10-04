@@ -1,0 +1,109 @@
+Catalin Tudose
+July 22, 2018
+
+2.1 - Version Check (Introducing TDD and JUnit5)
+	JUnit 5
+	Java 8
+	JaCoCo 0.8.7
+
+2.2 - Introduction
+	In order to be able to implement them, you have to answer the question, what behavior must I follow? What if I will first implement the test that will show me what I have to do, then I may think about how I have to do it
+	This is in fact one of the fundamental principles of TDD
+	Well written unit tests effectively become a significant portion of the technical documentation
+
+2.3 - Code Coverage
+	Code coverage is a measure used to describe the degree to which the source code of a program is executed when a particular test suite runs
+	Among the most widely used code coverage tools, let's enumerate a few ones
+		JCov
+		OpenClover
+		EMMA
+		JaCoCo - this is what we'll use for our demos
+	What code coverage is really feasible? From my experience, 80% is the minimum percentage that is required by most of the projects
+	90% in most cases is achievable but it may require some extra effort and artifices to be truly feasible
+	The last few percentages may be in many cases the hardest ones and the difference between 85% and 90% may be much larger than the one between 80% and 85%
+	Finally, 100% should be our goal. It is not a rare situation that, even if you acheive 90% of code coverage, the rest of the 10% untested code to hide critical bugs. It is not possible in all situations but 100% should be the target to keep in mind and to try to get as close as possible
+	The bad news is that this may still not be enough. 100% code coverage doesn't mean your code works perfectly
+	It should not be because of at least 2 reasons
+		First reason is that your test may not be good enough
+		Second reason is that, remember, we're still at the level of unit testing. It means that you're testing units, meaning classes and their methods. You're testing neither the interaction between classes, nor the possible scenarios for using the application
+	These topics are one step forward of our TDD discussion and they relate to the ideas of integration testing and behavior driven development
+
+2.4 - JUnit 5 Architecture
+	The JUnit, as released in 2006, provided a simple and monolithic architecture
+	All its functionality is concentrated inside a single JAR file
+	Despite it's simplicity, this has generated a series of probelms that are stronger and stronger as the time was passing
+	The fact that the provided API was not flexible made the IDE and tools that were using JUnit tightly coupled
+	These tools needed to go into the internals of the JUnit classes and even use reflection in order to get the needed information
+	A new approach, a modular one, was necessary in order to allow the evolution of the JUnit
+	The logical separation of concerns required an API to write tests dedicated mainly to the developers, a mechanism for discovering and running the tests and an API to allow the easy interaction with IDEs and tools and to run tests from them
+	As a consequence, the resulting JUnit 5 architecture contains 3 modules
+		JUnit Platform which servers as a foundation for launching testing frameworks on the JVM. It also provides an API to launch tests from either the console, IDEs or build tools
+		JUnit Jupiter is the combination of the new programming model and extension model for writing tests and extensions in JUnit 5. The name has been chosen from the fifth planet of our solar system, which is also the largest one
+		JUnit Vintage provides the test engine for running JUnit 3 and JUnit 4 based tests on the platform, ensuring the necessary backwards compatibility
+	Going further with the modularity idea, we'll have a brief look at the artifacts contained in the JUnit platform
+		junit-platform-commons - it is an internal common library of JUnit intended solely for usage within the JUnit framework itself. Any usage by external parties is not supported
+		junit-platform-console - provides support for discovering and executing tests on the JUnit Platform from the console
+		junit-platform-console-standalone - it is an executable jar with all dependencies included. It is used by the console launcher, a command line java application that lets you launch the JUnit Platform fom the console
+			For example, it can be used to run JUnit Vintage and JUnit Jupiter tests and print test exeuction results to the console
+		junit-platform-engine - public API for test engines
+		junit-platform-launcher - public API for configuring and launching test paths, typically used by IDEs and build tools
+		junit-platform-runner - runner for executing tests and test suites on the JUnit Platform in a Junit 4 environment
+		junit-platform-suite-api - contains the annotations for configuring test suites on the JUnit Platform
+		junit-platform-surefire-provider - it provides support for discovering and executing tests on the JUnit Platform using Maven Surefire
+		junit-platform-gradle-plugin - it provides support for discovering and executing tests on the JUnit Platform using Gradle
+	Let's have a brief look at the artifacts contained in the JUnit Jupiter
+		junit-jupiter-api - the JUnit Jupiter API for writing tests and extensions
+		junit-jupiter-engine - JUnit Jupiter test engine implementation only required at runtime
+		junit-jupiter-params - it provides support for parameterized tests in JUnit Jupiter
+		junit-jupiter-migrationsupport - it provides migration support for JUnit 4 to JUnit Jupiter, it is required only for running selected JUnit 4 roles
+	JUnit Vintage
+		It only contains junit-vintage-engine - the engine implementation to execute tests that are written in JUnit 3 or 4
+		For this, of course, you will also need the JUnit 3 or 4 JARs
+	
+
+2.5 - The Flights Management Application
+
+3.1 - Use JUnit 5 More Effectively (Adding New Features to the Application Using TDD and JUnit 5)
+	Organize @DisplayName so that it reads like plain english (In a BDD type fashion?)
+
+3.2 - Adding a Premium Flight
+	Steps:
+		Create your class with dummy methods
+		Write tests that are checking the new functionality
+		Run the tests - to be red
+		Effectively add the code that implements the new functionality
+		Run test to be green
+
+3.3 - Adding a Passenger Only Once
+
+3.4 - Adding a Policy for Bonus Points
+	Example of using junit-jupiter-params
+	@ValueSource and CsvFileSource
+
+4.1 - Introduction to Integration (TDD by Integrating JU 5 with Mockito)
+	Introducing Mockito through the JUnit 5 extension model
+	The Mockito framework allows the creation of test double objects, or mock objects, in automated unit tests for the purpose of TDD with the help of JUnit 5 extensions
+	We're in the situation of checking the behavior of a system under test (SUT) which is in a relationship with some dependent on components (DOC)
+	Of course, we're interested in verifying how our SUT works,	but not how the DOC works
+	The two sides are too tightly coupled and we would like to cut off the strong dependency
+	Mock objects can simulate the behavior of complex real objects and are therefore useful when a real object, for example, some DOC, is impractical or impossible to incorporate into a unit test
+	The purpose of Junit 5 extensions is to extend the behavior of test classes or methods and these can be reused for multiple tests
+	To create a JUnit 5 extension, we need to define a class which implements one or more interfaces
+	A typical use case for this extension is injecting dependencies into the instance
+	There are few typical use cases for mock objects
+		Object supplies non-deterministic results
+		States difficult to create or reproduce
+		It's slow
+		Does not exist or may change behavior
+		Include information and methods only for testing purposes
+
+4.2 - Implementing the Air Conditioning Functionality
+	Add Mockito dependency
+		mockito-core
+	And to add the Mockito extension class to the project, this class can be found in the JUnit 5 user guide. The Mockito extension class is a use case of the Jupiter extension model, which implements the extension's callbacks TestInstancePostProcessor and ParameterResolver
+	Use @ExtendWith(MockitoExtension.class) at class level - aka the class you created to extend TestInstancePostProcessor and ParameterResolver
+	@InjectMocks and @Mock
+
+4.3 - Implement the Database Access Functionality
+
+4.4 - Implement the Statistics Functionality

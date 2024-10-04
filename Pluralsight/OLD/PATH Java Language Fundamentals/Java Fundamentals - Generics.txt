@@ -1,0 +1,670 @@
+Richard Warburton
+
+1.1 - Introduction (The What and Why of Java Generics)
+	Why do we need Generics?
+		List list = new ArrayList();
+		list.add("a");
+		list.add("b");
+		list.add(1);	// PROBLEM
+	And the problem here is that a collection can contain any object. We could have added strings, integers, etc.
+	Collections are inherently heterogeneous. They can contain any type of object. And that presents us with a type safety problem throughout our application. We don't know whether our list has only strings or only numbers. And in reality, most of the time, we want our list to only contain a certain type of object because we want to be able to do something with it and we want to be able to do it safely
+	Generics solve this problem
+	Generics stop runtime errors at compile time
+
+1.2 - An Example Class: Circular Buffer
+
+1.3 - Boilerplate vs Type Safety
+	[Project with using CircularBuffer to read/write Objects having the same issue as mentioned 1.1] We've not got a StringCircularBuffer. And if we take our example code, and we replace our CircularBuffer with a StringCircularBuffer
+	And we can see we get a compile error here saying you're trying to pass an int where a string is required. So we've converted a runtime error into a compile time error. We've made use of the fact that Java is statically typed
+	Static typing allows us to catch error early before they bite us in production
+	We've got this StringCircularBuffer. What's the problem with just using a StringCircularBuffer? Well, the problem is that we might want to have circular buffers of all sorts of things. You don't have integers or maybe we want to have a CircularBuffer of people or any class that we have in our domain, all sorts of different things. And in order to implement that StringCircularBuffer, I had to copy and pate the implementation of my CircularBuffer and add in as StringCircularBuffer
+	Now, this is really quite bad because it means that any errors I made in my CircularBuffer, I might have copied and pasted into my StringCircularBuffer. It means that if I want to say do something like support having multiple threads offering elements into the buffer, I need to go update all of my copies of that CircularBuffer. It's just generally a bad idea and leads to harder-to-maintain code
+	How do we get around this problematic choice of either needing copy/paste code or needing to have unsafe code?
+
+1.4 - making Our Circular Buffer Generic
+	This is where Generics come into play
+	Now what I would like to be able to do at this point is say "new T[size]"
+		public class CircularBuffer<T> {
+		...
+			public CircularBuffer(int size) {
+				buffer = new T[size];	// ERROR
+			}
+		}
+	I'll explain later but for now, what we're going to do is we're going to cast our new object array to a T array
+		buffer = (T[]) new Object[size];
+	This acts exactly like our StringCircularBuffer, except we haven't had to copy and paste it everywhere in order to implement it. We've just had to add this generic parameter in that says it's a CircularBuffer of String
+	We've used generics, and we've got code that's both type-safe and doesn't have to have boilerplate everywhere
+
+2.1 - Introduction (Java's Generic Collections and Friends)
+	The Java Collection API is the absolute most common use case for generics
+
+2.2 - The Problem with Arrays
+	The first problem wih arrays is there's no easy toString implementation. We have to use Arrays static class can call toString method on it
+	Can't add a new element to an array
+
+2.3 - Lists
+	In Java 7, the concept of the diamond operator was added. So "<>" is a diamond. Our diamond means don't add the generics in explicitly, just infer from the context. Example:
+		List<Person> madMen = new ArrayList<>();
+
+2.4 - Sets
+	Sets allow only unique elements
+	Sets don't have order. So you cannot call get(int) method, that's a compile error. And in fact, there's no defined ordering for elements in a set at all
+
+2.5 - Maps
+	Key value pair
+	You can associate one value with multiple keys, but each key has to be unique
+	To use in for each loop, keySet(), values(), entrySet()
+	entrySet() returns us an entry element and an entry element is generic. So it has 2 type parameters. One of them represents the key and one of them represents the value. And an entry is just one element in the map
+	Map.Entry because it's a generic method, can call a getKey() and getValue()
+
+3.1 - Introduction (Generic Classes and Interfaces)
+	How do we go about implementing a generic interface and how do we go about writing a generic class that implements a generic interface?
+	How do generics interact with inheritance?
+
+3.2 - Implementing a Generic Type
+	Example of implementing the Comparator<T> interface
+	One way you can implement this interface is by creating a new class. e.g.
+		public class AgeComparator implements Comparator<Person> {
+			public int compare(Person p1, Person p2) { ... }
+		}
+	And then pass that for sort
+		Collections.sort(madMen, new AgeComparator());
+	We've seen how to add type parameters to regular java classes but there's actually a different kind of class that Java allows us to declare, anonymous classes. In order to write a Comparator:
+		Collections.sort(madMen, new Comparator<Person>() {
+			public int compare(Person p1, Person p2) { ... }
+		}
+	The advantage of anonymous classes over regular Java classes is if you just want to use that code in one place, they are less verbose and more succinct
+	Make sure to use Comaprator<Person>() and not Comparator() beucase Comparator() is a raw type and you actually need to maek a properly instantiated generic type (Comparator<Person>()), which is what the aim of showing your anonymous classes is here
+
+3.3 - Passing a Parameter to a Generic Type
+	Now you know how you can take an interface or a class and implement that interface with a specific type. But that doesn't really explain how you could have an ArrayList of T that was implementing a List of T
+	What we need to explain is how you can pass a parameter up to a generic type. So this is a slightly more advanced recipe. And in order to understand this, we're again going to look at a concrete example based upon sorting
+	Previously, we had our list madMen and our AgeComparator. That allowed us to sort age youngest first. But what happens if we want to sort on age oldest first? One approach would be to take the existing return result and multiply it by -1
+	But it's a big annoying. Every time we want to write a different comparator, we'd have to -- Maybe we wanted to flip the order of our NameComparator as well. Maybe we wanted to flip the order of any other comparator. It's not so convenient to have to copy and paste all the code again and just multiply it by -1
+	So what we're going to do is write a reverser (ReverseComparator.java)
+		public class ReverseComparator<T> implements Comparator<T> {
+			private final Comparator<T> delegateComparator;
+		}
+	Our ReverseComparator is going to implement the Comparator interface. And what it's going to do is it's going to wrap another comparator, which we'll delegateComparator and then it's going to provide the reverse sort order to that comparator
+	What we actually want to do is have this done in a type-safe way. So we know our delegateComparator was a generic type. We know our parent comparator was a Comparator of T and we want those 2 both with the same T. And that means that we also want our ReverseComparator to be parameterized (ReverseComparator<T>)
+	So we want to say ReverseComparator<T> implements Comparator<T>
+	So let's just recap what the syntax is saying. We've got a calss called ReverseComparator, and our ReverseComparator class is generic. It's got that type parameter T. And it implements a generic interface called a comparator, and we pass on this same T up this chain
+	So how are we actually going to implement our reverser:
+		public class ReverseComparator<T> implements Comparator<T> {
+			private final Comparator<T> delegateComparator;
+			
+			public ReverseComparator(final Comparator<T> delegateComparator) {
+				this.delegateComparator = delegateComparator;
+			}
+			
+			public int compare(final T o1, final T o2) {
+				return -1 * delegateComparator.compare(o1, o2);
+			}
+		}
+	There's a couple of different ways that you could implement this class but that seems like a nice, simple one.
+	And remember our AgeComparator is comparing on age
+	So if we go to our SortingExamples:
+		Collections.sort(madMen, new ReverseComparator<>(new AgeComparator()));
+	We looked at how you can have a generic class that implements a generic interface
+
+3.4 - Type Bounds
+	The idea with type bounds is that you can expresss that kind of property, which we're all very familiar with from when we were kids, which is one of those you have to be this tall to ride the roller coaster properties. What we really want to say is instead of allowing our generic type parameter to be anything, just a regular T, we want to put some constraint on that T. We want to say this is bounded by another T
+	Why would we want to do that, and how are we going to use it?
+	Example with SortedPair:
+		public class SortedPair<T> {
+			private final T first;
+			private final T second;
+			
+			public SortedPair(T left, T right)
+			{
+				first = left;
+				second = right;
+			}
+		}
+	Now what we actually want to be able to do is say we're going to put whichever's first to the sort order first and vice versa
+	But I'm going to try to define our sort order a little bit differently. Earlier, we used a Comparator class, a Comparator interface and our Comaprator interface defined a sort order. But there's also an interface in the Java API called Comparable. And Comparable has a single method called compareTo. And interfaces implement Comparable and say I'm comparable with myself. So that's T that we see on the Comparable interface. It should always be yourself
+	So what I want to do in my SortedPair object is be able to restrict my left and right values. By anything is a T, I want to be able to restrict it and say that T has to know how its sort order is. I want it to call a compareTo method. So in order to do that, I use a feature known as type bounds:
+		public class SortedPair<T extends Comparable> { ... }
+	Now my compiler knows that anything that I'm passing as a left or a right is a class that implements the Comparable interface. So I can say:
+		public class SortedPair<T extends Comparable> {
+			...
+			public SortedPair(T left, T right) {
+				if(left.compareTo(right) < 0) {
+					first = left;
+					second = right;
+				}
+				else { // opposite }
+			}
+		}
+	But as you'll notice on the screen, there's a bit of yellow (on "left.compareTo(right)"). And what that, it says, is unchecked call etc. Because my comparable interface is a generic interface but I've not told what it's generic on. So I could still get my code to compile fine if I wrote this:
+		if(left.compareTo(new Object()) < 0)	// using new Object instead of T
+	And if I ran that code, I'd just get ClassCastExceptions. I've thrown away all my generic safety. So in order to be completely safe in our code, we actually need to go a little bit further. We say:
+		public class SortedPair<T extends Comparable<T>> { ... }
+	So what that's saying is we've got a generic parameter called T and both the values in our slots are going to be a T, and they're going to implement the Comparable interface, and they're going to be comparable to themselves. So you see this kind of recursive-type parameter declaration. And the code still works. And if I try and say "left.compareTo(new Object())", I get a compile error. It needed to be a T, and I've passed in an object, and object isn't T.
+	The Integer class already implements the Comparable interface and says it's Comparable<Integer>
+
+4.1 - Introduction (Generic Methods)
+	There are 2 different ways that we can think about generics on methods and one of them we've already seen. Example:
+		public class SortingExamples<T> {
+			public T foo() {...}
+		}
+	And that is, in some sense, generics on methods. But that's not what we're going to be looking at today. What we're goingto be looking at today is how we can do things like this:
+		public class SortingExamples {
+			main() {
+				Person ...
+				List<Person> madMen = ...
+				
+				final Person youngestCastMember = min(madMen, new AgeComparator());
+			}
+		}
+	What we want to be able to do is write a method called that returns the youngest cast member. And we want to be able to write that min in a generic way. So we want to be able to write it so it'll find the minimum of the madMen list by their age or maybe you want to be able to find the min of integers by numeric sort order. Maybe you want to find the minimum of a basket of fruit and vegetables by prices, find the cheapest good. We want to write that one. So we want to write it in a generic method. One way of doing that would be to have a class called Minimizer:
+		public class SortingExamples {
+			main() {
+				Person ...
+				List<Person> madMen = ...
+				
+				new Minimizer<Person>().min(madMen, new AgeComparator());
+				final Person youngestCastMember = min();
+			}
+			
+			static final Minimizer<T> {
+				public T min(List<T> values) {
+					...
+				}
+			}		
+		}
+	So we could have our Minimizer class, and we could do that with these kinds of things. But that's a bit boilerplatey. What we actually want to be able to do is just write a single method and write that method in a type-safe way so the generics are stricted in scope to only refer to that method and not the whole class. And that is really what this module is all about
+
+4.2 - Context and Motivation
+	 Example of creating a method without using generics:
+		public static Object min(List values, Comparator comparator) {
+			if(values.isEmpty) { throw Exception }
+			
+			Object lowestElement = values.get(0);
+			for(int i = 1; i < values.size(); i++ {
+				final Object element = values.get(i);
+				if(comparator.compare(element, lowestElement) < 0) {
+					lowestElement = element;
+				}
+			}
+		}
+	But we still have a few issues here
+		main() {
+			...
+			
+			final Person youngestCastMember = (Person) min(madMen, new Comaprator<Integer>() {
+				public int compare(final Integer o1, final Integer o2) { ... }
+			})
+		}
+	So I could for example, write new Comparator or I could write, say, Comparator of Integer like this and I would not get any kind of compile error. In fact, what I would get is a ClassCastException at runtime. So again, we have the exact same problem here that we have with a lot of our generics code that if we don't use generics, we have code that's not type-safe, that doesn't fail at compile time, that fails at runtime
+
+4.3 - How to Write Generic Methods
+	So the syntax of our generic method needs us to do a few things:
+		public Static <T> Object min(List<T> values, Comparator<T> comparator) {
+			if(values.isEmpty()) {...}
+			
+		}
+	First, just like generics on a class, we need to declare the type parameter. On methods, it's a little bit different. So the generic types go here (before the return type in method signature). So that type parameter T goes between the method modifier declaration, the quantifeier declaration, that same public static. So it goes in that point and before the return type of the method and just after the quanfiers
+	We can now declare these parameters to be of type T
+	Remember, the T is just limited to this one method
+	We can actually do a little bit better than that. At the moment, we also have a cast on the return type to be a Person and we can actually made the return type of the min method also T:
+		public static <T> T min(List<T> values, Comparator<T> comparator) {...}
+	Now we get a compile error on our screen when we try to declare the Comparator<Person> before we even run it
+
+5.1 - Introduction (Wildcards)
+	"?" you see in generics
+	Wildcards aren't just one feature in and of themselves. It's a name given to a collection of different capabilities that we have with generics. And it's all to do with bounds. Wildcards can be bounded, or they can be unbounded
+	A bounded wildcard is where you see something with List<? extends Cls> or List<? super Cls> and those are upper and lower bounded wildcards
+	And if you just see something like List<?> or Class of ?, that's an unbounded wildcard
+
+5.2 - The Substitution Principle
+	So in order to explain a little bit more about wildcards in this module, we need to set some kind of context and some background and that context is really talking about the substitution principle in OOP. And we've seen this a little bit before when we looked at it with module 2 where we had inheritance and generics interacting. And in this module, we're going to extend the way we understand and enhance our understanding of the interfaction between generics and inheritance
+	Demo of Person class - introducing 2 subclasses - Partner and Employee (both extend Person). We also have added the ability to load and save from files with PersonLoader and PersonSaver. Test file:
+		public class PersonStorageTest {
+			private Partner donDraper = ...;
+			private Partner bertCooper = ...;
+			private Employee peggyOlson = ...;
+			
+			private File file;
+			private PersonSaver saver;
+			private PersonLoader loader;
+			
+			@Test
+			public void savesAndLoadsArraysOfPeople() throws Exception {
+				Employee[] employees = new Employee[2];
+				Person[] persons = employees;
+				persons[0] = donDraper;	// ERROR - Compiles fine but runtime Exception. Assigning an Employee array with Partner objects
+				persons[1] = bertCooper;
+				
+				saver.saveAll(persons);
+				assertEquals(donDraper, loader.load());
+				assertEquals(bertCooper, loader.load());
+			}
+		}
+	What we mean by substitution principle is we've got other classes here like Partner and Employee classes. So what do we mean by substitution principle? Whenever we pass in an argument, a parameter to a method, we can pass in a subclass or maybe it was typed as an interface and we can pass in something that implements that interface. It's all about what we call subtyping and that doesn't just apply to the Partner class
+	Let's see if we can extend this substitution principle to arrays (modified savesAndLoadsArraysOfPeople() above)
+	Arrays in java are what's known as covariant. So you can take a class, and you can assign it to its parent and then you can put the elements in. But unfortunately, making our arrays covariant is unsafe because it means we can do this (error in above code). It wasn't type-safe
+	Let's try and use a list. So arrays are unsafe and we've said that lists and collections offer us a much better API instead:
+		public void savesAndLoadsArraysOfPeople() throws Exception {
+			List<Partner> persons = new ArrayList<>();
+			persons.add(donDraper);
+			persons.add(bertCooper);
+			
+			saver.saveAll(persons);	// Compile Error - saveAll accepts List<Person>
+			assertEquals(donDraper, loader.load());
+			assertEquals(bertCooper, loader.load());
+		}
+	Now as we saw earlier, arrays were covariant, and that was unsafe. Consequently, lists are NOT covariant, and that makes them safe
+	But there are some situations where we just want to say look, I can save any class that's a subclass of a Person. So I should be able to saveAll any class that's a subclass of Person. And this is the problem that upper-bound wildcards let us solve. They let us express a way of saving this list of anything that's a subclass of person
+
+5.3 - Upper Bounded Wildcards
+	Let's see how we can use upper-bounded wildcards to solve the problem that we encountered in the previous section. We had our saveAll() method, and this is where the real problem lies. saveAll wasn't quite flexible enough. If we go to the declaration of saveAll():
+		public void saveAll(final List<Person persons) throws IOException {
+			for(Person person: persons) {
+				save(Person);
+			}
+		}
+	We're saying our parameter persons should only accept a List<Person> and what we actually wanted to do is accept a List<Person> or anything that's a subclass of Person. Consequently, we can use this syntax:
+		public void saveAll(final List<? extends Person> persons) ...
+	This says just, anything in thre as long as it extends a Person
+	If we go back to the test code after this update, the compile error has gone away
+	Remember, generics is all about having this nice combination of safety without having to duplicate copies of your code all over the place. So these wildcards fit very nicely into that story because they let us have a little bit more flexibility and still maintain safety
+	So you might have a few other questions here about this, such as didn't we already see this extends keyword before? And in fact, we could use a combination of method level generics and the extends keyword to do the same thing here:
+		public <T extends Person> void saveAll(final List<T> persons) ...
+	If we go back to our test code, we'd see that it's correctly compiled
+	But, actually, this here, especially as you add more generic parameters, gets a little bit clumsy doesn't it? We've got "T extends Person" on the left hand side and then T on the right hand side. It's much simpler to just have a way of saying "? extends Person", a lot cleaner. So there's a readability advantage
+	Why, in that case, you might now be asking would we ever have that T extends? You can still use "T extends". If you a ?, there would be nothing to refer to that
+	So you use "T extends Person" when you want to declare a class and you want to restrict it and refer to that type elsewhere in your code. Use "? extends Person" for something like a parameter on a method where you want to have that additional flexibility but you don't really need all those type parameters lying around cluttering up your code
+
+5.4 - Lower Bounded Wildcards
+	In previous example,we had saveAll method. Let's do the opposite:
+		@Test
+		public void loadsListOfPeople(){
+			 saver.save(donDraper);
+			 saver.save(peggyOlson);
+			 
+			 List<Person> people = new ArrayList<>();
+			 loader.loadAll(people);
+			 
+			 assertEquals(donDraper, people.get(0));
+			 assertEquals(peggyOlson, people,get(1));
+		}
+		
+		public void loadAll(final List<Person> people) {
+			Person person;
+			
+			while((person = load()) != null) {
+				people.add(person);
+			}
+		}
+	This works fine. We've loaded up a list of people. Now the reason I'm passing in a list here is partly just because it's an example of passing in parameters. But also, you might have this kind of pattern rather than loading and returning a Person list if you only expect to keep on appending to this list of people. So you might pass in a list and say append the people you've loaded and put them into this list
+	But actually, there's a kind of compelling force here because we had earlier this concept of a List<Partner>. Now it wouldn't be safe for us to have a List<Partner> as our array because when we try and load peggyOlson back up out of the DB, Partner isn't safe. peggyOlson is not a Partner. She's Employee. She's another subclass of Person
+	So we don't want to use ? extends for our loadAll() method. That wouldn't be safe. But actually, there's a compelling case to say that we should accept a List<Object>. Or in fact, if a Person implemented an interface, we should like, say, objects with age, ageables, we should be able to say pass in a list of objects with the age and load people into that. Or we should be able to pass a list of objects into that because we can add donDraper or peggyOlson into an object list:
+		public void loadsListOfPeople() {
+			...
+			List<Object> people = new ArrayList<>();
+			people.add(donDraper); // Test
+			loader.loadAll(people); // Compile error
+		}
+	So if we can do that with our code and it's safe to do that with our code (referencing "people.add(donDraper)"), why can't we pass that list of object into the parameter for loadAll? And the answer is that actually we can. And as I say, we need to use that kind of little sister feature here, which is lower-bounded wildcards, so "? super Person":
+		public loadAll(final List<? super Person> people) {...}
+	Anything that's a person or anything that's a parent of a person. So a List<Object> works fine here
+	What do we have here? We said that when we're saving, we want to be able to pass in a list of Person or anything that's subclassed as a Person, like a Partner or Employee. And when we're loading, we want to be able to pass in a list of Person, or anything that's a parent of a person. In this case, it's just an object. But in a more complicated class hierarchy, you might have other parents or interfaces that you've implemented
+	And this is actually a very general principle that we can extract here. In our loadAll method, what we're doing is we're only calling the add() method on the list. We're only putting elements into the parameter. And if you want to put elements into the parameter, it's only safe to put in the class or its parents
+	If on the other hand, you want to get elements out of parameter, so here it's not very explicit that we're calling, get() on the list under hood. But in our for loop, that's what's happening. We're calling the next method on the iterator, and that's getting an element out of the persons list. So here we're extracting elements and getting them out of the list
+	So it's only safe to use "extends" when you're just getting things out of the list, and it's only safe to use "super" when you're putting things into the list
+	And this actually explains to use why that array situation that we saw earlier wasn't safe. We couldn't have covariant arrays, ie the "? extends" version, because, well, Java has them but we couldn't have them safely because what it means is that type of that array is both being get and set. And in situations like that, it's not safe to either "? extends" or "? super". So that's just a little bit of information on when you might use one versus the other and why it was safe for us to have covariant list parameters for our saveAll() methods, and it wasn't safe to have covariant arrays in the general case.
+	It's also worth noting that this loadAll method, we called it covariant when it was "? extends". This is contravariant when it's "? super". So if you ever hear people referring to covariance or contravariance, that's realy all that they mean. They mean there's a generic parameter, and it can be subclassed or there's a generic parameter, and it can be a super calss or an interface that you've implemented
+
+5.5 - Unbounded Wildcards
+	An unbounded wildcard is where you just see the question mark on its own without any extends or super at all
+	Example:
+		...
+		try {
+			final String className = file.readUTF();
+			final String personName = file.readUTF();
+			final int age = file.readInt();
+			
+			final Class<?> personClass = Class.forName(className);
+			final Constructor<?> constructor = personClass.getConstructor(String.class, ...
+			return (Person) constructor.newInstance(personName, age); 
+		} ...
+	Here is the code for loading our Person object back up again. So we've got that file, and we read a UTF-8 string, that's class name, and person name and age as integer
+	And we use this Class.forName() method to instance a Class Object that lets us build the person instance itself here. So this is all using generics really, really heavily throughout the Collections API
+	And the class called Class, I appreciate this might get a bit confusing, it's a class that represents a class because that's what you get in reflection is generic. And its type parameter T is the type that it represents. So a person would be a Class of Person
+	Now in this case, the generic method Class.forName is just taking a string. So there's no way at compile tie, you can know what that class is. It might not even be on your class path at compile time. You can use reflection for things like loading up plugins and stuff like that. So it doesn't make any sense to say, there's some T and it's whatever, whatever.
+	That is really is a "?" means look, it could be anything. And what's that's really saying is it's synctactic sugar for saying "? extends Object". Why would you have this question on its own anyway? "? extends Object" was considered such a common case of generic usage or wildcard usage that it was decided to have an abbreviation, just a question mark for it
+	Question mark on its own is useful in cases like this Class.forName definition
+	Now in Class.forName, we don't know what the specific class literal is that we're going to return. So we return a Class of ?, and that's the best place to use it
+	It's worth nothing that you can take these Class of ? objects and assign other values to them:
+		final Class<?> aClass = Person.class;
+	And this could be a different literal that you assign, example:
+		final Class<?> aClass = Object.class;
+	Whatever class you're returning is a valid substitution of Class<?> and that type would be captured is what we say
+	A common mistake that people make when they're thinking about unbounded wildcards is to equate that question mark with object, java.lang.Object, the top-level type. They think Class<?> or List<?>, that's the same thing as saying Class<Object> or List<Object>, but it's not. If you think about it, Class<?> could be any class. I just don't know which. Whereas Class<Object> where we had Object in the type parameters would mean it was specifically the class that represented the class java.lang.Object
+	So, what does that mean in practical terms? Here's an example:
+		main(){
+			List<Object> objects = new ArrayList<>();
+			objects.add(new Object());
+			objects.add new Person("Don Draper", 89);
+			
+			sysout(objects);
+		}
+	This code compiles and works as you'd expect. But, List<?> is quite different:
+		main(){
+			List<?> objects = new ArrayList<>();
+			objects.add(new Object());	// Compile error
+			objects.add new Person("Don Draper", 89);	// Compile error
+			
+			sysout(objects);
+		}
+	If we try and add objects into a List<?>, even if the object is of type Object, we can't do it. It says "capture of ? cannot be applied to java.lang.Object". Now that might seem a bit restrictive if you can't have any values being passed as parameters which is what I mean when I say put into a list
+	Then what can you do with it? Let's see why that restriction exists to begin with:
+		main(){
+			Object[] array = new Person[1];
+			array[0] = new Person("Don Draper", 89);
+			array[0] = new Object();	// Compiles file but runtime excetion ArrayStoreException
+			
+			List<?> objects = new ArrayList<>();
+			objects.add(new Object());	// Compile error
+			objects.add(new Person("Don Draper", 89));	// Compile error
+			
+			sysout(objects);
+		}
+	ArrayStoreException because the unsafety of covariant arrays
+	What the Java compiler is trying to do here:
+		main(){
+			List<Object> objects = new ArrayList<>();
+			objects.add(new Object());
+			objects.add new Person("Don Draper", 89);
+			
+			sysout(objects);
+		}
+	by banning us adding values into a List<?> or a List<? extends Object> is put us into a position where this type can only be safely used. And in fact, the only value that you're allowed to put into a List<?> is the null value because null can be coerced into any type
+
+6.1 - The Compatibility Problem (Raw Types and Compatibility)
+	Java maintains this concept of Migration Compatibility. And broadly, the migration compatibility requirement that we want to talk about is the idea, it's kind of a very information definition, but I think this is just going to the heart of what we mean by migration compatibility, is the idea that we can upgrade java to a new version, and our code, in some sense, doesn't break
+	And what we mean by that in a little bit more formal terminology is that we have binary compatibility. Now, in the context of Java generics, we also need to maintain binary compatibility. So there was a time BG (before generics), when we had some legacy code. And in this module, whenever I refer to legacy code, I mean a class file that was compiled before Java had generics.
+	So our binary compatibility requirements in terms of generics are that we can replace our legacy class file with a new generic class file without changing or recompiling any client code
+	What do I mean by client code? I mean code that links against that, that makes use of that class. So if I had a list and that was a legacy list interface, I need to be able to generify that list interface. I need to be able to add the T parameter to that list, and that code will still compile, and that is our binary compatibility
+
+6.2 - Rawtypes
+	Raw type - a type which exists to purely to allow interoperability and compatibility with legacy binaries. So any code that previously depended upon the pre-generics List or ArrayList interface and class now will depend upon the same thing but just the raw type of List or ArrayList
+	So a raw type is just a usage of a generic type that doesn't have any generic parameters. And that means that it can still be compatible with our legacy code
+	Problem - your raw type list can be assigned to a List of Strings. e.g:
+		main(){
+			List list =  new ArrayList<>();
+			list.add("abc);
+			list.add(1);
+			list.add(new Object());
+			
+			List<String> strings = list;	// PROBLEM - No compile error but runtime errors
+			...
+		}
+	Just be aware that raw types mean that we have an unsafe scenario in our code. Raw types can introduce runtime erros
+	And you can assign from a raw type to any generic type. You can assign from any generic type into a raw type:
+		main(){
+			List list ...
+			
+			List<Integer> ints = new ArrayList<>();
+			list = ints;	// PROBLEM
+		}
+
+6.3 - Erasure
+	The key point about erasure as a concept is that the generic representation is a fallacy. It's a bit of lie. It only really exists in the source code of the Java program. And as we translate it to byte code, we erase or remove those generic types
+	Now it's not completely accurate to say we remove all the information. We'll actually show you that a lot of the information is still retained at runtime. But in terms of the method signatures, they're mainly erased
+	So erasure basically involves 3 steps
+		We take those type parameters, and we remove all the generics. Then where it's possible for us to pass in, say, a list with the wrong elements or something like that, we add casts. And that's why when in the previous section we assigned our raw typess list, our raw list to a List<String>, and we looped over it, we were getting a ClassCastException because our List of String at runtime had to do a class cast check, a checkcast, in order to ensure that the generic list really contained the List of Strings
+		If you've got a purely generic code, this will all be checked by your compiler and everything will be fine. But you can kind of confuse the compiler. You could take, say, an object and then cast it to a string and pop it in. So those class casts are really necessary
+		And finally, we have bridge methods. I only mention them for the sake of completeness. For the most part, bridge methods don't really affect the implementation. They don't really affect the implications for erasure
+	What do I mean by erasure? If we're got a generic type like a List of T, it gets erased just to the list, just to the raw type. If you're got an array of generic type, it will be erased to the array of the raw type
+	If you have a generic parameter T, and has no bounds on it, it gets erased to java.lang.Object. And any method that calls your generic method, that returns T, will return an object, and it will have to add in a checkcast, a piece of code that checks that that object is genuinely the T that we think it is
+	And if you have a T with bound, e.g. T extends Foo, that will be erased to the class Foo.
+	Now there are a few more complicated rules. I have simplified them a bit here but this is just to give you a general gist, of what's going on
+	"javap" command does is it says decompile the byte code that's being produced by javac
+	Example of compiling into byte code and decompiling - when we decompiled the byte code, we saw that the types from the java source code had been erased
+
+6.4 - The Implications of Erasure
+	This fiction, this discrepancy between the representation and the source code and the byte code leads to some issues. It leads to some situations where it looks like you can do a certain thing, but actually it's just outright banned
+	The kind of 3 big things we're going to look at, it's not a completely exhaustive list:
+		Overloading on methods with generic types
+		Checking the type of a specific instance
+		And also the kind of performance aspects of it
+	You can't overload methods with generics. Example:
+		public void print(List<String> param) {...}
+		public void print(List<Integer> param) {...}	// ERROR
+	It's illegal to have a generic type parameter when we're using an instanceof. And again, this is because at runtime, that class doesn't really exist
+	If you try and make UncompilableException (class that extends Exception) generic by adding type parameter T, I will get a flat out compile error saying you can't extend anything that's throwable with generics
+	The third thing we kind of mentioned here is this concept of performance and I think that's one that's worth just stepping back a bit out of live code and thinking aboiut how memory is laid out and how objects are laid out in memory
+	Now one of the things that we have to bear in mind with erausre is that all generics are erased to java.lang.Object or some subclass or some interface that in some way subtypes java.lang.Object. This means that a primitive int value cannot be part of an array type. There's no way you can get a List<int>. It has to be List<Integer>. And this has some really bad performance implications under the hood
+	If we go back to our ArrayList implementation, what we had was an array underneath our ArrayList class, and we had a bunch of objects, and in memory, what that means in Java is we have an array with a bunch of pointers to objects which are laid out elsewhere in our heap. And with an array of int, we would have a memory layout that's completely flat
+	If we have an int array, a primitive int array, those int values are all continuously aligned in memory. And if we have an Integer array, they all refer to pointers to Integer objects all over the heap. Now this is a serious problem because your CPU these days runs a lot faster than your main memory. And your CPU cache is the only thing that's stopping your CPU from being massively, massively slowed down by your main memory. And CPU caches can prefetch, that is aggressively load data from main memory if they can predict where in memory the next element is going to be looked up
+	Now if you have a flat int array, it's easy to predict the next element because you're just continuously streaming through memory. You have what people know - the technical term is sequential locality. If you have an integer array to boxed Integer objects, which you have to do for your ArrayList to be generic, then you have references to Integers somewhere on the heap. So you have a big pointer in direction to a random location on the heap, and it just confuses the heck out of your cache prefetcher
+	The other thing is memory consumption size. So if you've got an int that's sitting there in memory, in Java, it's going to take up 4 bytes. And if you have an array of int values, an int array, they're going to be contiguously aligned in the array. So there will be a header for the array. But each element in that array doesn't have anything else in
+	Java.lang.Integer on the other hand, has a complete object. So that means it has 4 bytes of int value, it's got an object header, which, depending upon whether you're using a 32-bit or 64-bit JVM or whether you have compressed OOPS switched on or off, it'll be 8 to 16 bytes for the object header. Your JVM will allocate an object by aligning it to a multiple of 8 bytes. I won't go into the reasons why it does that, but generally things perform better when they're word-aligned or 8-byte aligned. You have a pointer from your array to the elements, so that's 4 or 8 bytes
+	So if you've got an array of ints, it's the header for the array plus 4 bytes times the number of elements. If you've got an array of integers, it's the same size of the header, but you've got 32 bytes for each element in the array. So it's 8x more memory that you're consuming. So there's quite a significant difference here. That obviously the worst case. It might not be that bad. But it's just worth bearing that huge difference in consumption in mind
+	So, erasure in short, stops us having primitive elements in the array, forces us to use boxed values for numeric types such as java.lang.Integer rather than primitive int, and that has a big downsize both in terms of how flat our memory is and thus how fast and predictable it is to get it to prefetch in to your CPU cache and also how much memory it takes up in raw terms
+	But there is a potential silver lining on the horizon. One of the proposed features for Java 10 is value types, and that involves primitive specialization. I won't go into details but in short, down the line, the generic implementation here may change, and we might be able to primitive ints in something like a list and thus be able to hold an efficiently stored int array rather than an 8x memory consuming Integer
+	There is also another silver lining on our horizon even today and that is that because Java takes this approach of erasure, it means we have this great compatibility story. Languages such as C#, which didn't go down the erasure route, went down the idea of having each generic type be its own type, what's known as reified generics, has much better memory efficiency and better performance when it comes to this aspect in particular. But it did that at the expense of not being able to migrate its collections library. So if you look at something like C#, they've had to have 2 collections APIs, a legacy one without generics and a new generic collections API
+	So it's always worth bearing in mind the tradeoffs here. There are some downsides, but there are some upsides
+
+6.5 - Reified Types and Arrays
+	So we talked about erasure. We said erasure gives us compatibility because it enables raw types. But we also talked about the downsides of erasure
+	Now we're going to talk about one of the few genuinely reified types in Java, which is the array type, which kind of predates generics
+	Example of converting a CustomArrayList class that uses an array underneath from raw type to generic
+	So that is one approach to interoperability between generics and arrays. You instantiate an object array and then cast it to a T (the reason is because T's don't exist in byte code so you can't instantiate)
+	The other approach is to just to Object[] underneath and then cast the elemetn when calling get()
+	Both ways will work fine. Pick the one that's going to be easiest to read and that'll depend on your situation
+
+7.1 - Introduction (Reflection)
+	Reflection is a very powerful and commonly used technique within the Java programming community. And reflection is a technique that allows you to inspect your application at runtime and look for useful pieces of information
+	This section specifically is going to be talking about how reflection interacts with generics. So if you've never heard of reflection, I would perhaps go and do that more introductory course
+	3 topics we'll talk about - class literals, what types are reflectable?, and reflecting generics
+
+7.2 - Class Literals
+	This section technically isn't about using reflection. It's more about using the class literals concept that comes with reflection in order to instantiate generic types in a type-safe manner. So again, following on from our generic mantra, we don't want boilerplate, but we do want type safety
+	Example of using class literal as key in a map and value being an instance of that class
+	We've shown how you can use a class literal to ensure that your other class returns our value of a given type. So we could this for having something like a type-safe map that has different keys. We can use this for things like service loaders, etc. All sorts of things.
+	It's a really, really useful pattern for kind of advanced generics usage
+
+7.3 - Reflecting Types
+	In previous module, which talked about how erasure threw away generic information at runtime, but not every generic type can really be reflected. And what I'm saying in this module is that types which are reified can be reflected
+	And what does reified mean? Reified means to materialize something, to make it real
+	What does that mean in Java terms? Well, there's a bunch of reifiable types:
+		int, long - primitives
+		String, ActionListener - Non parameterized class or interface
+		List<?>, Map<?, ?> - all type arguments are unbounded wildcards
+		List, Map - Raw types
+		int[][], List<?>[] - arrays of reifiable components
+	What does this mean in terms of actual code?
+		main(){
+			sysout(int.class);
+			sysout(String.class);
+			
+			List<?> wildcards = new ArrayList<>();
+			sysout(wildcards.getClass());
+			
+			List raw = new ArrayList();
+			sysout(raw.getClass() == wildcards.getClass());	// prints true
+			
+			sysout(int[].class);
+			sysout(List[].class);
+			sysout(List[].class == int[].class);	// Compile error - compiler telling they're definitely not equal
+		}
+	So what then are non-reifiable types?
+		T - type variables
+		ArrayList<String>, Map<Integer, String> - parameterized type with parameters
+		List<? extends Number>, Consumer<? super String> - parameterized type with bounds
+	As we said, a lot of our generic information is erased at runtime. So this means that types that have generic information are non-reifiable in many sense. They aren't carrying enough information for us to uniquely identify them at runtime
+	What happens when we have a look at those classes in terms of java code?
+		public class NonReifiableExamples<T> {
+			main() {
+				sysout(T.class);	// Error
+				
+				List<String> strings = new ArrayList<>();
+				List<Integer> integers = new ArrayList<>();
+				sysout(integers.getClass() == strings.getClass());	// prints true
+			}
+		}
+
+7.4 - Reflecting Generic Information
+	So we know that we can't get generic information about things like a List<String>. But there's actually quite a cool kind of workaround or trick whereby you can reify the type information in certain circumstances and extract useful information about that
+		main() {
+			List<String> strings = new ArrayList<>();
+			Class<?> arrayList = strings.getClass();
+			sysout(arrayList)	// prints "class java.util.ArrayList"
+			
+			TypeVariable<? extends Class<?>>[] typeParameters = arrayList.getTypeParameters();
+			sysout(Arrays.toString(typeParameters));	// prints "[E]". If we go to the definition of our ArrayList class, then we'll see that it has a single type parameter and it's called E(public class ArrayList<E> ...). So it's giving you the information out that you want and that can be useful when we want to go further or do more advanced reflection techniques, and we might need those type parameters and information about them
+			
+			// Added in Java 6
+			sysout(arrayList.toString());	// prints "class java.util.ArrayList"
+			// Added in Java 8
+			sysout(arrayList.toGenericString());	// prints "public class java.util.ArrayList<E>". We get fully qualified generic information
+		}
+	with getTypeParameters(), the cool thing is that you can also introspect what type parameters a class has
+	Another thing I would like to cover and that is the fact that if you have a subclass of a generic class, and youv'e subclassed it with a specific type parameter, so that was way back in module 2 of this course, and it was the middle pattern that you can reflect a lot of information out, and that generic type is actually reified:
+		public class ReifiableExamples{
+			public static class StringList extends ArrayList<String>
+			{
+				// This class ends up having it's type information reified because a StringList is now a class with no generic type parameters
+			}
+			
+			main() {
+				ParameterizedType arrayListOfString = StringList.class.getGenericSuperClass();	// We know it's a ParameterizedType and not just Type because it's an ArrayList. It's a type of the parameter. And ParameterizedType is an interface in the java core libraries
+				
+				sysout(Arrays.toString(arrayListOfString.getActaulTypeArguments()));	// prints "[class java.lang.String]". So what we're saying is, in this case, where we have a specific subclass that extends a generic class, we can use that .getGenericSuperClass method and extract out that generic type parameter's concrete instantiation, the String, at runtime
+			}
+		}
+
+8.1 - Introduction (Advanced Topics)
+	This module is on the most advanced few little topics, just kind of the last few bits and bobs, which we relaly need to cover to make sure our understanding of generics is really comprehensive and really good and useful in our day-to-day software
+	We'll talk about 3 things. First two things are both related to java 8
+	Our discussion here on functional interfaces and type inference is really is not going to be an alternative to watching that whole course. What we're going to talk about is how certain features within Java 8 interact with generics, how they can be useful or how generics can be perhaps a little bit of a hindrance, how we might need to understand a little bit more about how our compilers work
+	And finally, I'm going to cover the one remaining big generics feature that we kind of missed, which I leave until last because it's quite complicated and because it's very seldom used, but it's quite cool, that's intersection types
+
+8.2 - Functional Interfaces
+	I'm going to assume that if you're watching this section on functional interfaces and also the next section on type inference that you've already done a little bit of Java 8, that you already know that lambda expressions have types, which are functional interfaces and that functional interfaces are interfaces with a single abstract method on them
+	How do functional interfaces interact with generics? It turns out they're a great use for wildcards
+	So if we think about some of our existing interfaces and one of them is the Comparator interface, they are generic. So Comparator<T> means I can compare different objects of type T. And in fact, this single abstract method on Comparator is called compare() and takes 2 objects of type T and then returns an int based upon which one is further up or down, higher or lower, that you're defining with that comparator
+	Now oftentimes, when you see people use a comparator or declare a variable for comparator, they'll say it's Comparator<Foo>, but the interesting thing here is that because the T variables are data going into your comparator, they're also a great use case for wildcards
+	So whenever you see a comparator, if you're possibly having some compile error or you're a little bit confused as to why the generics aren't really working or lining up, you might want to think about is this a choice of wildcard problem? Do I need to say Comparator<? super Foo> i.e we use that super because it's data going in. And that might well fix your problem
+	And we see similar things with other Function interfaces - e.g. Function <? super Foo, ? extends Bar>
+	It's kind of an open question here - should you always use ? super and ? extends when it comes to Function interfaces? Well, often  you might be in a situation where you have a major type declaration and local variable, more complicated, harder to read for ender users or if anyone maintains this program who comes after you. So you don't necessarily always want to do it. But if you're writing something like a library, or even if that's not like an open source library that you're, say, putting on Github, I would say have those wildcards in there, add the flexibility, have that functionality in there. Give people choice, give people flexibility when you're in that library situation or when you want to maximize code reuse in a type-safe way
+
+8.3 - Type Inference and Lambda Expressions
+	Type inference was a new feature introduced in java 8 with lambda expressions that allows us to infer the types of method parameters from their context
+	e.g. the diamond operator from module 1. And type inference with lambda expressions works in much the same way. It infers the types from a specific target type
+	But I want to talk about one thing which I've found people get confused with when you see complicated generic types and type inference working well together. So this isn't necessarily a situation where I'm going to tell you a new thing or a thing which you can find out elsewhere, but I just want to ive you a kind of trick or technique where you see type errors, compile errors and you get confused by them. And we're going to talk about how we can get around that and work around debugging that
+	Example using Streams and lambda expressions - stream().collect(partitioningBy(...), counting());
+	Even though the compiler knows that's a stream of Person and even though it needs to collect from a stream of Person, it has to infer the type of this lambda expression from its target type, which needs to refer to the left-handed side of this assignment. So the compiler has no good way in this type inference scheme of knowing that that's a Person when the types on left-hand side don't line up. So sometimes what this means is that when you see an error in a lambda expression related to a generic type, you don't need to fix the use of generics inside the lambda expression. You need to fix the use of generics inside the target type
+	If you see an error, check first that the target type of the lambda expression is correct and then have a look at the type usage inside your lambda expression
+
+8.4 - Intersection Types
+	Intersection types, unlike the other previous 2 things we looked at, aren't a Java 8 feature. They've been around since Java 5, but they are seen at the end of this course just because they're a very advanced generics feature
+	What are intersection types? Well, we know intersection for sets means we've got, say, set A and set B and their elements that are A and B. And our intersection, A intersection B, means we have elements which are in both A and B. Well an intersection type is something that syntactically reads like <T extends A & B>
+	And what it means is that T is a subtype of A and a subtype of B. So maybe A is a class, and B is an interface and you say whatever T is, it has to implement that class and implement that interface at the same time. So even though it's an intersection type, it has all the mehos of the class and all the methods of the interface as well. And if there are any fields on the class, it'll have those fields as well
+	So it's quite a complicated feature because it lets you create these generic parameters that can range over things which, they still have to exist, but which you can't express in any other way in the Java type system
+	So what might we want to use that for? I think the first example and the most useful one is faking a missing class or a missing interface in a badly designed API
+	Example of wanting a method to be closeable and allow different sources like DataInputStream and RandomAccessFile
+		public class PersonReader {
+			main() {
+				PersonReader reader = new PersonReader();
+				
+				DataInputStream stream = new DataInputStream(new FileInputStream([path]));
+				Person person = reader.read(stream);
+				sysout(person);
+				
+				RandomAccessFile randomAccessFile = new RandomAccessFile([path], "rw");	// read and write
+				person = reader.read(randomAccessFile);	// Compile error
+				sysout(person);
+			}
+			
+			public Person read(final DataInputStream source) {
+				try(DataInputStream input = source) {
+					return new Person(input.readUTF(), input.readInt());
+				}
+				catch {...}
+			}
+		}
+	My compiler rightly complains at me that a RandomAccessFile isn't a DataInputStream. But I want to make my code work with both of these different sources. I want a little bit more flexibility. Now one choice I could do is I could implement this read() method twice with multiple different implementations, one for RandomAccessFile and one for DataInputStream. But I also don't like code duuplication. I just want a way of saying, hey, give me an interface that's implemented by RandomAccessFile and DataInputStream. Well it turns that actually there's no interface in Java in the core libraries, which these classes implement that both lets us read data out and let's us close the file at the end
+	So what do we do? Well, there's an interface called DataInput that lets us read data out of it. So if you see DataInput, this readUTF() method comes from that interface. So does readInt(). But DataInput is NOT closeable. We can't use try-with-resources to close the file once you're done with processing it
+	So this is where intersection types comes in:
+		public <T extends DataInput & Closeable> Person read (final T source) {
+			try(T intput = source) {
+				return new Person(input.readUTF(), input.readInt());
+			}
+			catch ...
+		}
+	You'll see now that the compile error at the top has gone away because DataInputStream implements DataInput AND Closeable and RandomAccessFile implements DataInput AND Closeable
+	So intersection types can be used for modeling situations where we've got a missing interface
+	Is that the only place where you can use them? One of the most interesting use cases of intersectoin types is this example from the Java core libraries:
+		<T extends Object & Comparable<? super T>> T max(Collection<? extends T> coll)
+	This is like generics serious hardcode mode. We've got all the generics features going on here
+	Why does it need to be this complicated? Well, what we're saying is we want to say that T takes a collection, and everything in the collection is comparable because we want to find the max element of the collection, and then we want to return that same T. We know that we're only getting data out of our collection, so we want "? extends T" (reference to 5.4 for loading). But what about "T extends Object & Comparable<? super T>". That's the really confusing bit. Isn't everything that's comparable also an object because anything that implements an interface in Java is also an object? Well, let's have a look at what would happen
+	Before generics were introduced to Java, this method existed:
+		Object max(Collection coll)
+	And because there were no generics, it didn't have any type safety. It took a Collection as a parameter and it returned an object from the max method. Now you can only find the max element if the object was comparable. So really, it should've returned comparable as that would be the element in question. But because Java maintains strong backwards binary compatibility, the Java developers needed to have a core library method that returned java.lang.Object in the bytecode after it was done
+	So we know how generics works now. We know about erasure. Java compiles this example in a really awkward way:
+		<T extends Comparable<? super T>> T max(Collection<? extends T> coll) -> Comparable max(Collection coll)
+	So suppose we didn't have the intersection types, so we just had "T extends Comparable<? super T>". Then the return type of our max method would be a Comparable and not Object. So would be erased in a way that's backwards binary incompatible. Now adding the intersection type in ("T extends Object & Comparable<? super T>", it's enabled the developers here to evolve this interface, evolve this API method in a way that's backwards compatibility
+	So we've shown howe can use intersection types to enable compatibility, and we've shown how we can use intersection types to fake these kind of missing interfaces, missing classes in collections
+	Does that mean we should use them everywhere? Not really. Intersection types are very powerful, but they have a lot of costs and a lot of complexity associated with them. They're things which should only be used on very rare occasions where you have no other choice
+	If you've got an existing API and you can control that API, you should just go and add that new interface in yourself. It might well be useful for you. It'll give you a better name. But if you have no ability to control that underlying API, no ability to control what's going on there, then an intersection type can sole the problem for you
+	Now there's a twist in the intersection types tale in Java 8, which adds the ability to cast to intersection types. This is primarily used in the context of lambda expressions
+	Example of IntersectionTypeCast - If you want a lambda expression to implement both Serializable interface and Runnable interface:
+		Runnable helloWorld = (Serializable & Runnable) () -> {
+			sysout("Hello World");
+		};
+		helloWorld.run();
+
+8.5 - Varargs and Generics
+	Java has a feature called varargs, or variable arity arguments. So these are arguments to functions that can take a variable number of values. These vararg parameters interact in a rather strange and complicated way with Java generics and that's what we're going to be exploring in this section
+	Let's write a quick function here called arrayOf that is going to create us an array of varargs parameter. I should say before we go any further that this is something that you do NOT want to do yourself. You don't want to write this code. It's just an example:
+		public class SafeVarargsExample{
+			main() {
+				Integer[] integers = arrayOf(1,2);
+				sysout(Arrays.toString(integers));
+				sysout(integers.getClass());
+			}
+			
+			private static <T> T[] arrayOf(T ... values) {
+				return values;
+			}
+		}
+	Under the hood, varargs parameters are really arrays, and we allow generic varargs even though you can't create generic arrays. But you can have type parameters of generic arrays
+	If you look at the warning "Possible heap pollution from parameterized vararg type" What does that mean? Heap pollution means that you can get a value in your heap that's a different type to the one that your compiler thinks it should be. So you can get a runtime problem
+	In this case, we crated this Integers array from the values 1 and 2, but let's see an example where it's broken
+		(adding method to SafeVarargsExample)
+		private static <T> T[] pair(T t) {
+			return arrayOf(t, t);
+		}
+	pair() is going to return a 2-element array using arrayOf(). Now remember that you can't create a generic array. So this means on paper, this arrayOf method looks good but as we'll see it's a bit of a trap and it's a bit unsafe:
+		main() {
+			Object[] strs = pair("a");
+			sysout(Arrays.toString(strs));	//	prints "[a, a]"
+			sysout(strs.getClass());	// prints "class java.lang.Object;"
+			
+			Integer[] pair = pair(1);
+			sysout(Arrays.toString(pair));	// prints ClassCastException - Object cannot be cast to Integer
+			sysout(pair.getClass());
+		}
+	The ClassCastException is the heap pollution that our error here complained about. Heap pollution meaning it looks like it should be an Integer array but it's actually an Object array
+	How's that happened? When we use arrayOf correctly, we passed in values to that arrayOf that were concrete types and known to be concrete types at compile time. 1 and 2 are always going to be integers. And arrayOf as a result was able to have its instantiation reified, made real, at the call site. So 1 and 2, always integers, returns an Integer array. The compiler knows we're going to return an integer array, so that's what arrayOf is going to return
+	pair on the other hand, is a generic method. It could take in integers, it could take in strings, it could take any type. So this method call here to arrayOf, you don't know at compile time what the type of that invocation is. Is it an array of String? Is it an array of Integer? Well, it's a generic type, and thus it gets erased. This is an unsafe varargs generic type parameter usage because it will always get erased. It will never be instantiated with a reifiable type in this case. And as a result, it doesn't know what to specify that to be, so it gets erased to Object and thus T array that returns is an Object array and we get this ClassCastException
+	How do we fix that? There's actually a convenient annotation called @SafeVarargs. It's a bit of a trap. I put @SafeVarargs on my arrayOf method. My warning has gone away. If I run this again, I get the same problem
+	SafeVarargs is a documentation exception. It says I've code-reviewed this code and I believe it is safe. BUT, actually this is not safe code. Why is it not safe code? Well that varargs reference from the parameter here (poining to "values" in method signature) is leaked in the return type, so it's unsafe to use
+	So what would be a safe example?
+		@SafeVarargs
+		private static <T> List<T> combine(List<? extends T> ... lists) {
+			List<T> combined = new ArrayList<>();
+			for(List<? extends T> list: lists) {
+				combined.addAll(list)
+			}
+			return combined;
+		}
+	Why does that work? We're only reading out of that lists array and as we said earlier in this course, the covariance of arrays is only a problem when you write values into them
+	I've put the SafeVarargs parameter on this method, and it has removed the warning. So if I remove that, you can see the warning comes back here about the heap pollution even though there is no heap pollution because the compiler isn't smart enough to figure that out
+	One more note on SafeVarargs. If I add SafeVarargs to a method that doesn't have a varargs parameter, I will get a compile error - not allowed on methods with fixed arity
+	When should you use varargs parameters with generic types? If you do want to write a varargs parameter with a generic type, always mark it as a SafeVarargs so you don't get those compile warnings. But always use that SafeVarargs correctly. Don't use it in cases like this because you should just never write code like this. This is unsafe. Only use it when you can convince yourself that SafeVarargs is an appropriate decision to take. And the simplest way of knowing that is if you only read values out that list. Don't assign it to an array of a different type. Don't return it from the method or leak it. Don't write value to different types into that list
+	Just read values out, and you're going to have a good time

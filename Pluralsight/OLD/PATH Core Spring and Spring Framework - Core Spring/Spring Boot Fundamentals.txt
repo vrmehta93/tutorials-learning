@@ -1,0 +1,354 @@
+Kesha Williams
+July 10, 2019
+
+2.1 - Version Check (Introducing Spring Boot and Its Benefits)
+	Java 8
+	Spring 2.1.5
+
+2.2 - Getting Started
+
+2.3 - Learning Path
+
+2.4 - Spring Boot Overview
+
+2.5 - Features of Spring Boot
+	Spring Boot CLI - an entire application can be written using Groovy scripts. All you have to do is install the Spring Boot CLI and create a Groovy file that contains the details about the required application
+	The CLI is often used for rapid prototyping
+	Actuator - monitor running application
+	https://gitlab.com/videolearning/spring-fundamentals
+
+3.1 - Overview (Bootstrapping a Simple Application)
+
+3.2 - Demo: Spring Intializr
+	https://start.spring.io/
+	In pom.xml, the spring-boot-starter-parent dependency is for all spring boot projects
+	They typically have this parent dependency, and parent POMs allow you to manage the version of dependencies for multiple child modules at once
+	This means you can omit version tags for each child dependency
+	spring-boot-starter specifies the default configuration for several plugins
+	spring-boot-starter dependency is the core starter, and it includes auto-configuration support, logging, YAML support etc
+	spring-boot-starter-test dependency includes spring tests, JUnit, Hamcrest, Mockito and other useful testing frameworks. And now notice that we didn't need to specify a version number for this dependency or for other dependencies and that's because we're using that parent POM
+	@SpringBootApplication annotation bootstraps our application by staring Spring
+	Typically, it will create an instance of spring's application context, expose command line arguments as spring properties, load spring beans, etc
+
+3.3 - Demo: Spring Boot CLI
+	You can install spring CLI on mac with Homebrew
+	To initialize a new project - spring init <name>
+	To include dependencies - spring init --dependencies=web,data-jpa <name>
+	You can also run applications with the CLI using Groovy scripts
+
+3.4 - Demo: Auto Configuration
+	Auto-configuration is a very useful and powerful feature of spring boot, which takes a convention over configuration approach
+	Auto-configuration looks at the JARs on the classpath and auto-configures beans automatically
+	Auto-configuration is designed to be non-invasive
+	Auto-configuration is always applied after user defined beans have been registered
+	If you need to find out what auto-configuration is currently being applied and why, start your application with a --debug switch
+	Or you can turn on debug logging by adding a simple property value to application.properties
+	Or you can use the spring boot actuator
+	In application.properties
+		logging.level.org.springframework: DEBUG
+
+3.5 - Spring Boot Annotations
+	The @SpringBootApplication annotation is a very important annotation that has to be added to the main application class to indicate that the application should utilize spring boot
+	It is a shortcut annotation that applies 3 annotations in one statement
+		@SpringBootConfiguration - replaces @Configuration and annotates a class as a configuration
+		@EnableAutoConfiguration - tells spring boot to configure beans
+		@ComponentScan - tells spring boot to scan current package and subpackages
+
+3.6 - Spring Boot Properties
+	application.properties
+	https://docs.spring.io/spring-boot/docs/current/reference/html/application-properties.html
+
+3.7 - Spring Boot Profiles
+	Profiles are fundamental to the spring framework
+	Spring boot supports all of the spring profile configurations with a few additional features like spring.profiles.active configuration
+	This is used to define the currently active profile
+	This is a standard property that spring boot will pick up automatically. But the most important profile related feature that spring boot brings is profile specific property files
+	The naming format is application-{profile}.properties
+
+4.1 - Overview (Accessing Data with Spring Boot and H2)
+
+4.2 - H2 Database
+	If you're not familiar with H2, it's an open source database written in java
+	It's an in-memory database, which means that data is stored in memory and will not persist to the disk
+	Now H2 is not recommend in production environments but it's good for POCs, dev environments and projects that need a simple database
+	The nice thing is that H2 can be easily integrated wtih Spring
+	H2 provides you with an admin tool called H2 console, and you will work with it through a web browser
+	In pom.xml, add the following dependency
+		groupId - com.h2database
+		artifactId - h2
+		scope - runtime
+	Thanks to auto-configuration, since we're adding H2 as a dependency, spring boot knows that in this project we will be connecting to the H2 database, so it auto configures H2 related properties like the database URL, username, password, etc
+	These are the defaults
+		spring.datasource.url=jdbc:h2:mem:testdb
+		spring.datasource.driverClassName=org.h2.Driver
+		spring.datasource.username=sa
+		spring.datasource.password=
+		spring.h2.console.enabled=false
+	 I'm overriding H2's default configurations in application.properties
+		spring.h2.console.enabled=true
+		spring.h2.console.path=/h2
+		spring.datasource.url=jdbc:h2:mem:bugtracker
+
+4.3 - ORM with JPA
+	Now that we have the database properly configured and accessible via a web browser, let's talk about object-relational mapping with java persistence API
+	There are several layers of abstraction
+	At the lowest level, there is the persistence data store
+	Above that is JDBC. JDBC is a Java API to connect and execute queries against the database
+	JPA is an abstraction on top of JDBC that makes it easy to map Java objects to relational databases and vice versa
+	Now JPA is just a specification or a set of guidelines and can do nothing on its own, as it's only a set of empty methods and collection of interfaces that only describe Java persistence methodologies
+	In order to be fully functional, JPA needs an implementation, also known as an instance provider
+	If you're familiar with spring, spring with JPA uses Hibernate as the persistence provider and makes it very easy to access our H2 database
+	Spring Data JPA provides repository support for the Java persistence API
+	It eases development of applications that need to access JPA Data sources
+	Spring boot selects a recent version of spring data modules for you
+	In the pom file, include this dependency
+		groupId - org.springframework.boot
+		artifactId - spring-boot-starter-data-jpa
+	It provides the following key dependencies
+		Hibernate - which is one of the most popular JPA implementations
+		Spring Data JPA - which makes it easy to implement JPA based repositories
+		Spring ORM - it's the core ORM support for the spring framework
+
+4.4 - Entities
+	Entities are objects that live in a database and they have the ability to be mapped to a database
+	Entities are defined by the @Entity annotation
+	Example
+		import javax.persistence.*;
+		
+		@Entity
+		public class Application {
+			@Id
+			@GeneratedValue(strategy = GenerationType.AUTO)
+			@Column(name = "application_id")
+			private Integer id;
+			
+			@Column(name = "app_name", nullable = false)
+			private String name;
+		}
+	Traditionally, JPA entity classes are specified in a persistence.xml file. However, with spring boot, this file is not necessary, and entity scanning is used
+	By default, all packages below the main configuration class, the one annotated with either @SpringBootApplication or @EnableAllConfiguration are searched
+	Any classes annotated iwth @Entity are included
+
+4.5 - Demo: H2 Integration
+	In pom.xml, add h2 and spring-boot-starter-data-jpa dependencies
+	@Entity above class indicates that it's a JPA entity
+	For a lack of a table annotation, it assumes that this entity will be mapped to a table named <name of class>
+	The id property is annotated with @Id so that JPA will recognize it as an object's ID
+	The object property is also annotated here with @GeneratedValue to indicate that the ID should be generated automatically
+	The Spring Data repository abstraction greatly reduces the need to have boilerplate code to implement data access for an H2 in-memory database, and really, for any database
+	The repository is an interface that extends CrudRepository<> but there's no implementation. That's because spring boot automatically provides the implementation for us
+	All we need to do is extend CrudRepository and pass in the domain class or the entity class to be managed and then id of the domain class type. That's it. Spring data JPA handles the rest for us
+
+4.6 - Demo: H2 Console
+
+5.1 - Overview (Configuring a Spring MVC Application with Spring Boot)
+
+5.2 - MVC Design Pattern
+	The depedency needed for spring MVC
+		groupId - org.springframework.boot
+		artifactId - spring-boot-starter-web
+	As soon as I add spring-boot-starter-web as a dependency in the project, spring boot's auto-configuration sees that spring MVC is on the classpath and auto-configuration kicks in and it provides all of the dependencies and the auto-configuration needed to develop web applications
+		A dispatcher servlet
+		A default error page
+		An embedded servlet container - tomcat is the default
+		Web JARS to manage static dependencies
+	MVC is Model View Controller and it's one of the most common design patterns
+		Model - representation of data in a system, sometimes called an entity or a domain model. The model is typically data stored in a database, and it programmatically represented as a java object
+		View - view layer is responsible for displaying data, or the model. In java, the view is typically done in JSP, JSF. In our case study, we're using Thymeleaf
+		Controller - is responsible for directing incoming user request to the correct resources and sending responses from those resources back to the user
+	Thymeleaf has this concept of fragments, which is very powerful
+	Fragments allow you to define repeatable chunks of code that can be reused in another Thymeleaf template file
+	This works great for components which you wish to reuse across your web pages
+
+5.3 - Demo: MVC in Action
+	The service layer usually contains the business logic and it retrieves the data using the repository layer, which you're already familiar with, and it sends that data back to the view
+	@Controller - used to make classes as a spring mvc controller, and this simply means spring will consider this class when handling incoming web requests
+	How is Spring MVC configured? Typically, you would add the @EnableWebMVC annotation to import the spring MVC configuration, but spring boot adds it automatically when it sees the necessary dependencies on the classpath and then auto-configuration kicks in
+	To add Thymeleaf dependency
+		groupId - org.springframework.boot
+		artifactId - spring-boot-starter-thymeleaf
+	Normally with spring you have to register a view resolver bean, which would enable you to render models in the browser, but with spring boot, that's not necessary
+	Once Thymeleaf is enabled, there's really no extra configuration necessary, but if needed, there are a few configuration options for Thymeleaf
+	In application.properties
+		spring.thymeleaf.template-loader-path: class:/templates
+		spring.thymeleaf.suffic: .html
+		spring.thymeleaf.cache: false
+	(demo files)
+
+5.4 - Packaging and Deployment
+	Spring boot based applications can be packaged as a traditional web application in a .war file and deployed to an external application server or an executable JAR file with an embedded server
+	(for Trackzilla) I'm packaging everything in an executable JAR file with the main method. I'll use spring support for embedding a tomcat servlet container instead of deploying to an external instance
+	In pom.xml, add the plugin
+		<plugin>
+			groupId - org.springframework.boot
+			artifactId - spring-boot-maven-plugin
+	spring-boot-maven-plugin provides many convenient features
+		It repackages your .jar and .war files to make them executable
+		For .jar files, it collects all the jars on the classpath and builds a single runnable uber jar
+		It also runs your spring boot application and searches for the main method to flag as a runnable class
+		It provides a built-in depedency resolver that sets the version number to match spring boot dependencies
+		And it also manages the lifecycle of the spring boot application and generates build information that can be used by a tool called the Actuato that provides app monitoring and metrics
+
+5.5 - Demo: Uber Jar
+
+6.1 - Overview
+
+6.2 - REST Architecture
+	REST - representational state transfer
+	It's a set of guidelines that application developers use to design APIs
+	There are 4 principles that APIs follow
+		First data and functionality in the API are considered resources and identify through something called the URI or uniform resource identifier. These are accessed by web links
+		Second, resources are manipulated using a fixed set of operations
+			GET retreives a resource
+			POST creates one
+			PUT to update a resource
+			DELETE will remove
+		Resources can be represented in multiple formats like HTML, XML, plain text, and other formats defined by a media type
+		Finally, communication between the client and endpoint is stateless, meaning the server will not remember or store any state about the client that made the call
+
+6.3 - Demo: RESTful Web Application
+	@RestController - this simplifies creating RESTful web services. The controller now simply returns object data that is written directly to the HTTP response as JSON
+	@RequestMapping
+	These two, @RestController and @RequestMapping annotations, there are spring MVC annotations. They're not specific to spring boot
+	Spring also offers shortcut annotations where each method can be annotated. e.g. @GetMapping
+	If you remember from the previous lesson, we annotated our controller with the @Controller annotation. But in this case I'm using @RestController. Now @RestController is really just a convenience annotation that does nothing more than add the @Controller and the @ResponseBody annotations
+	I do want to note that @RestController doesn't work with our view technology Thymeleaf, so methods cannot return models
+	Notice here that methods return ResponseEntity. Now it can't return models because of the inclusion of @ResponseBody annotation
+	@ResponseBody on a controller indicates to spring that the return value of the method is serialized directly to the body of the HTTP request
+	That's fine because what we're building is meant to be consumed as an API
+	ResponseEntity represents the entire HTTP response. That includes status code, headers and response body
+	Now the HTTP response is fully configurable. All I need to do is return it from the endpoint, and spring handles the rest
+
+6.4 - Demo: Testing with cURL
+	In cmd/terminal
+		curl <url>
+
+6.5 - Response Formats
+	ResponseEntity is a generic type. As a result, we can use any type sa the response body
+	Since we specify the response status programmatically, we can return with  different status codes for different scenarios
+		HttpStatus.OK - 200
+		HttpStatus.BAD_REQUEST - 400
+		HttpStatus.CONFLICT - 409
+		HttpStatus.NOT_FOUND - 404
+
+6.6 - Exception Handling
+	A combination of spring and spring boot provides multiple options to customize responses for errors
+	We've seen that a RESTful API can communicate the success or failure by returning the correct status code in the response to the client
+	For exception handling, we use the ResponseStatusException
+	ResponseStatusException is a programmatic alternative to the @ResponseStatus annotation and is the base class for exceptions used for applying a status code to an HTTP response
+	We simply create an instance of it by providing an HttpStatus and optionally a reason and a cause
+	This approach provides more control over exception handling as the exceptions can be created programmatically
+	Spring boot provides a default error mapping, returning a JSON response with HttpStatus and the exception message
+
+6.7 - Demo: Exception Handling
+	Return ResponseStatusException(HttpStatus, message) to give an exception response
+
+7.1 - Overview (Building a GraphQL Server with Spring Boot)
+	There have been a few complaints that the API returns way more data than they need. With GraphQL, we can leave it up to the users to determine datapoints they'd like returned, offering extreme flexibility and efficiency
+	GraphQL is a query language for APIs
+
+7.2 - GraphQL Overview
+	The response returned from a REST API is very rigid and returns all of the data points as designed by the developer, whether you need or not
+	GraphQL offers greater flexibility in the response returned than REST
+	What is GraphQL? Simply put, GraphQL is a query langauge for APIs or a syntax that describes how to ask for data and is generally used to load data from a server to a client
+	The neat thing about GraphQL is that it lets the calling client or the user specify exactly what data it needs, and it also allows for the aggregation of data from multiple sources on the back end, allowing the clinet to make one call to get all of the data it needs
+	With GraphQL, there's no longer a need to call one API to get some of the data you need and then call another API to get the rest of the data that you need
+	GraphQL offers maximum efficiency and flexibility
+	Each query will have a specific object that it returns, and based on the object returned, you can add or more fields to match the exact data you need to fit your specific use case
+
+7.3 - GraphQL Dependencies
+	To include GraphQL in your project, a couple of dependencies are needed
+		groupId - com.graphql-java
+		artifactId - graphql-spring-boot-starter
+		version - 5.0.2
+		
+		groupId - com.graphql-java
+		artifactId - graphql-java-tools
+		version - 5.2.4
+	graphql-spring-boot-starter - very helpful because it will add and automatically configure a GraphQL Servlet that you can access at /graphql. This starter will also use a GraphQL schema library to parse all schema files found on the classpath. The starter will also set up an endpoint that can access post requests
+	graphql-java-tools - helper library to parse the GraphQL schema
+
+7.4 - GraphQL Schemas
+	The GraphQL schema defines the data points offered via an API
+	The schema contains the data types and relationships between them and the set of operations available, things like queries for retrieving data and mutations for creating, updating, reading and deleting data
+	I mentioned that graphql-java-tools is a helper library that assists with parsing a GraphQL schema. Behind the scenes, GraphQL schema files found on the classpath are processed and the necessary beans are wired
+	All schema files must have the extension of .graphqls and can be present anywhere
+
+7.5 - Demo: Schemas
+
+7.6 - Query Operations
+	To implement query
+		@Component
+		class Query implements GraphQLQueryResolver {...}
+	The operations listed in this class are reference in the .graphqls file
+
+7.7 - Mutations
+	To mutate data
+		@Component
+		class Mutation implements GraphQLMutationResolver {...}
+	Same as before, operations/methods listed in this class are the operations reference in the .graphqls file
+
+7.8 - Exceptions
+	To handle exception
+		class ApplicationNotFoundException extends RuntimeException implements GraphQLError {...}
+
+7.9 - Demo: GraphQL
+	/graphiql - (there's an "i") a page to test (similar to swagger)
+
+8.1 - Overview (Enabling Actuators, Metrics, and Health Indicators)
+	Make application production ready
+
+8.2 - Actuator
+	Spring Boot Actuator provides health checkups, auditing, metrics gathering, and HTTP tracing by exposing various HTTP or JMX endpoints you can interact with
+	The simplest way to enable these features is to add a dependency in pom file
+		groupId - org.springframework.boot
+		artifactId - spring-boot-starter-actuator
+	When we add this dependency, we automatically get a list of useful endpoints that help monitor and manage the application
+	In browser, go to /actuator, and this shows a list of all of the available endpoints via Actuator
+	/actuator/health provides basic information about application's health
+	There's also /actuator/info. This is enabled by default. It displays general information about your application obtained from build files
+	There are loggers, metrics and mappings. Since endpoints may contain sensitive information, most of them are turned off by default. I turned them on using the application.properties file
+		management.endpoints.web.exposure.include=info,health,metrics,loggers,beans,mappings
+		management.endpoint.health.show-details=always
+
+8.3 - Custom Endpoints
+	Spring boot provides a bunch of ready to use health indicators. However, you can add your own custom health indicators
+	(demo) Let's add a custom health indicator to let us know that if that HR API is down and not accepting requests
+	To create a custom metric, all you need to do is
+		Implement the HealthIndicator interface
+		Override the health() method
+	This will determine the health of the dependent service
+
+9.1 - Overview (Testing with Spring Boot)
+
+9.2 - Testing Overview
+	Testing gives you confidence that your application is working when you introduce changes
+	In pom.xml
+		groupId - org.springframework.boot
+		artifactId - spring-boot-starter-test
+		scope - test
+	spring-boot-starter-test imports both spring boot test modules as well as JUnit, AssertJ, Hamcrest and a number of other useful libraries
+
+9.3 - Unit Testing
+	Let's look at unit testing REST APIs using JUnit, Mockito and Spring Test also known as MockMvc
+	Writing unit tests using JUnit allows you to test individual units of source code
+	Mockito is a great mocking framework
+	Spring also has the @MockBean annotation, which works well with the Mockito library
+	@WebMvcTest is an annotation used for controller layer unit testing and is often used to test one controller class at a time, and works in combination with Mockito to mock the dependencies
+	@WebMvcTest scans only the controllers, so @Controller, including @RestController and will NOT load the full application context
+	If your controller has dependencies on other beans, for example, a bean from the service layer, as in our case, the test will not run until you either load the bean yourself or provide a mock for it
+	Typically, you will need to provide the beans manually by mocking those objects
+	@WebMvcTest speeds up testing by only loading a small portion of your app for unit testing. In this case, just the controller layer
+	@RunWith annotation - this defines the runner class to be used to run test cases
+	MockMvc is a powerful way to quickly test MVC controllers without needing to start a full HTTP server
+	It also helps with processing HTTP responses by providing methods for what we call expectations
+	@MockBean annotation creates a Mockito mock of the services which are dependencies
+
+9.4 - Integration Tests
+	Integration testing allows for testing of the entire application and all of its layers and not just individual units, and it is useful to be able to do this without requiring deployment of the application
+	@SpringBootTest annotation is used for integration testing and is chosen over @WebMvcTest because @SpringBootTest starts the full application context, including the server, and doesn't customize component scanning at all
+	@SpringBootTest will look for the main configuration class, annotated with the @SpringBootApplication annotation, and use that to start a spring application context, simulating a client call
+	Using RANDOM_PORT with @SpringBootTest - this is very helpful when you're working in a test environment to avoid conflicts
+	@AutoConfigureMockMvc annotation simulates calling the code from the client exactly the same way as if we were processing a real HTTP request
+	TestRestTemplate - this is perfect for integration testing, and it allows us to consume a REST API from this test case
+	The neat thing is spring boot provides this TestRestTemplate automatically, and all I have to do is autowire it

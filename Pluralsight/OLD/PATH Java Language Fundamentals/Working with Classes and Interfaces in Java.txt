@@ -1,0 +1,322 @@
+Jim Wilson
+May 20, 2020
+
+2.1 - Introduction (Understanding Java Classes and Objects)
+
+2.2 - Declaring Classes
+
+2.3 - Declaring the MathEquation Class
+
+2.4 - Using Classes
+	Because classes are always accessed through references, they're known as reference types
+
+2.5 - Creating an Array of Classes
+
+2.6 - Using the MathEquation Class
+
+2.7 - Encapsulation and Access Modifiers
+	Idea of hiding certain details about the class - encapsulation
+	Now in order to achieve encapsulation, java gives us access modifiers. What access modifiers allow us to do is control the visibility of classes and their members
+	When no access modifier is - visibility only within its own package (aka package private)
+	In general, classes cannot be private. Now there is an exception to that. There's something in those nested classes that we'll talk about later on but nested classes can be private
+	But in general, classes cannot be marked private
+
+2.8 - Special Reference: this and null
+
+2.9 - Field Accessors and Mutators
+	We instead want to control access to the fields through methods. This will allow us to evolve the implementation of our class and possibly even change the way we store the state within our class without breaking any code that usees our class
+	accessor/muttator pattern - aka getter/setter
+
+3.1 - Introduction (Implementing Class Constructors and Initializers)
+
+3.2 - Class Initial State
+
+3.3 - Field Initializers
+
+3.4 - Constructors
+	Now as our Passenger class is currently written, it doesn't explicitly contain a constructor
+	But we can still create instances of our Passenger class and the reason that we can do that is that Java will automatically inject a constructor for us
+	Again, that constructor won't do anything, but it does fulfill that requirement of having at least one constructor
+	Java only automatically creates a constructor if your class contains no constructors at all. Once we provide one constructor, we're responsible to provide all the constructors
+
+3.5 - Constructor Chaining
+
+3.6 - Constructor Visiblity
+
+3.7 - Adding Constructors to MathEquation
+
+3.8 - Initialization Blocks
+	Another option for incorporating code that automatically runs whenever a class instance is created is known as initialization blocks
+	Initialization blocks allow usto have code that's shared across all constructors
+	Basically, it's a block of code that automatically runs no matter what constructor is used to create a new instance of the class
+	Now initialization blocks do not accept any parameters. They're simply a block of code
+	And the way we specify them is having opening and closing brackets containing the code outside of any method or constructor
+	Now a class can have zero or more initialization blocks. But understand, if you provide more than one initialization block, all of the blocks will always run
+	Basically, when we create in the instance of the class, the block that's closest to the top of the source code runs first, the one below that runs next and so on until all of the initialization blocks have been run
+	Let's take a look at what order the initialization work actually occurs
+		So now when we create an instance of a class, the first thing that occurs is the field initializers. So basically, all the fields that specify their values using a field initializer have their values set before any of our other work occurs
+		One the field initializers are done, then the code initialization blocks runs. So that code is all run before any constructor code is run
+		Only after initialization blocks are complete do we run the code in the specified constructor
+	And this order follows each time we create a new instance of a class
+
+4.1 - Introduction (Using Static Members)
+
+4.2 - Static Members
+
+4.3 - Using Static Members
+	Static methods can only access other static members. Static methods cannot access instance members
+
+4.4 - Enhancing MathEquation with Static Members
+
+4.5 - Static imports
+	Static import statements allow us to access static methods with a simplified notation. What static import statements allow us to do is specify the fully qualified name of the method at the top of the source file
+	And then from that point forward, we can use the method named by itself. We no longer have to qualify it by the class
+	Static imports are useful in scenarios where you have some static methods you just have to access very frequently
+	Now in scenarios where a class has a large number of static methods that you want to use rather than having to list them individually, we can actually switch to a start notation
+
+4.6 - Static Initializers
+	Static initialization blocks allow us to perform one time type initialization. The key is the code in a static initialization block is executed before a type's first use
+	So it gives us a way to centralize the work we want to do to prepare a type for use
+	Now static initialization blocks are limited to accessing only static members
+
+5.1 - Introduction (A Closer Look at Methods)
+
+5.2 - Passing Objects as Parameters
+
+5.3 - Changes to Objects Passed as Parameters
+
+5.4 - Overloading
+
+5.5 - Method Overloading Examples
+
+5.6 - Matching Method Calls to Overloads
+
+5.7 - Using Method Overloading in CalcEngine
+
+5.8 - Variable Number of Parameters
+	It'd be nice if we could simply declare a method to accept a variable number of Passenger references and it turns out we can do that.
+	The way we do it is by indicating the type of the parameter followed by an ellipse
+		public void addPassengers(Passenger... list)
+	And that indicates that our method accepts a variable number of passenger references. It will accept 0 or more passenger references
+	Now anytime you want to indicate that the parameter accepts a variable number of values, it has to be the last parameter for that method
+	One of the things that's really cool about variable length parameter lists is the method itself receives that list as an array
+
+6.1 - Introduction (Class Inheritance)
+
+6.2 - Getting Started with Inheritance
+
+6.3 - References to Derived Class Instances
+
+6.4 - Field Hiding
+
+6.5 - Method Overriding
+
+6.6 - Improving CalcEngine with Inheritance
+
+6.7 - Object Class
+
+6.8 - Object References
+	(example) What the "instanceof" operator does is it takes a look at the reference that o holds, and it makes sure that the object it points to is an instance of CargoFlight. If that's not the case, instanceof will return false
+		if(o instanceof CargoFlight)
+	Methods from Object class
+		clone() - allows us to create a new instance of an object that's a duplicate of the current instance
+		hashCode()
+		getClass()
+		finalize() - handle special resource cleanup scenarios
+		toString()
+		equals()
+
+6.9 - Equality
+
+7.1 - Introduction (More About Inheritance)
+
+7.2 - Special Reference: super
+
+7.3 - Preventing Inheritance and Method Overriding
+	By using the final keyword, we can actually have a class that we don't allow other classes to extend
+		final public class Passenger
+		public final class Passenger	// both are the same
+	Or we may want to allow someone to extend the class, but there may be specific method that remain critical to our class that we don't want to allow anyone to override
+	And we can prevent method overriding by again using the final keyword
+		public final void add1Package(...)
+
+7.4 - Requiring Inheritance and Method Overriding
+	With the "abstract" keyword, we can indicate that a particular class can't be directly created. It can only be extended
+	And again, with the abstract keyword, we could indicate that there are certain methods that when you inherit from this class, you have to override those methods
+	If a method of a class is marked abstract, the class also has to be marked abstract
+
+7.5 - Inheritance and Constructors
+
+7.6 - Implementing Abstract Classes and Constructor Inheritance
+
+7.7 - Using Constructor Inheritance in CalcEngine
+
+8.1 - Introduction (Working with Enums)
+
+8.2 - Conditional Logic
+	As we mentioned, enumeration types are useful for when we define a type that has a finite list of valid values
+	In other words, enumeration types allow us to create a brand new type and then specify what the valid values for that type are
+	Enums support switch statements
+
+8.3 - Relative Comparisons and Common Methods
+	As we deal with our enum types, it's important to understand that the values are not just a simple list of values. Those values are actually ordered
+	So when we declare a variable to be an enum type, that variable actually holds a reference to that value, so we can call the compareTo method against one reference to compare it to another reference
+	Now the capabilities of enum types go well beyond the values themselves. There's actually a number of methods that we have access to as part of an enum type
+	A couple that we use commonly are
+		values() - returns an array containing all the values for that enum type
+		valueOf() - can actually translate a string into the corresponding enum type. It's important to note that valueOf is actually case sensitive
+
+8.4 - Representing Math Operations as Enums
+
+8.5 - Processing Interactive Input in CalcEngine
+
+8.6 - Enum Types are Classes
+	And although it may not look like it, when declaring an enum type, we're actually declaring a class, but there are some key differences from other classes we declare
+	One key difference is that they implicitly inherit from java's Enum class, and this provides many of the special capabilities that we associate with enum types
+	Now there are many aspects of enum types that are similar to other classes, but there's some really key characteristics that are special about enum types
+	Now in terms of similarity with other classes, one of the key things is enum types can actually have members. So that means that our enum types can have fields, our enum types can have methods, and our enum types can even have constructors, which means we can actually pass in initial state when we're creating an instance of our enum type
+	But now one of the really key differences about enum types is the way we create instance of our enum types
+	It turns out that each value within an enum type is actually an instance of that enum type
+	So that means that simply declaring the values creates the instance
+	And as part of declaring that value, we can even leverage a constructor. So part of declaring the value, we can pass initial state into that instance as we declare it
+
+8.7 - Enum Types Are Classes
+
+9.1 - Introduction (Creating Abstract Relationships with Interfaces)
+
+9.2 - Understanding Interfaces
+
+9.3 - The Comparable Interface
+
+9.4 - Generic Interfaces
+
+9.5 - Implementing Multiple Interfaces
+
+9.6 - Declaring an Interface
+
+9.7 - Adding and Implementing an Interface in CalcEngine
+
+9.8 - Using the Interface in CalcEngine
+
+9.9 - A New Implementation of the Interface
+
+9.10 - Adding a Default Method to an Interface
+	Now one of the challenges that often come up with interfaces is that once you've declared them, as time goes by, you may want to add some new features to the interface
+	(demo of adding a method to an existing interface that has implementations) But the problem is that there are already classes that implement this interface. If we start adding new methods to the interface, we need to go back and revisit all of those classes
+	And so adding this method would break all of that code
+	So to help us with that, java supports something known as a "default" method on an interface. Now with the specified default method, we put the "default" keyword before the method return value
+		public interface MathProcessing {
+			...
+			default String getFormattedOutput() {
+				return null;
+			}
+		}
+	And because it's a default method, we can actually provide a default implementation
+	So now by doing that, any class that implements the interface MathProcessing that doesn't explicitly implement getFormattedOutput, will use this default implementation that simply returns back a null
+	But the thing to keep in mind is that no class is required to use the default implementation
+
+10.1 - Introduction (Nested Types and Anonymous Classes)
+	A nested type is simply a type that's declared within the opening and closing brackets of another type
+	So the type that's inside is known as the nested type. The type that contains the nested type is known as the enclosing type
+	And when you declare a nested type, it's actually considered a member of the enclosing type. And that's really important because as a member of the enclosing type, it means the nested type has access to the private members of its enclosing type
+	And because nested types are actually considered part of their enclosing types, nested types can actually utilize all of the access modifiers. Remember, the top level types can only be package, private or public. Nested types can use all of the access modifiers
+	So a nested type can be package private, meaning it can only be used within the package where it's declared
+	A nested type can be public, and it can be used anywhere but also a nested type can be private, meaning that's only usable by its enclosing type
+	And nested types can be marked as protected, which means that that type is only usable by other types that inherit from its enclosing type
+	Now there are actually 2 broad categories of nested types
+		In one case, we use nested types just to provide naming scope. In other words, the nested type's name has to somehow be qualified by the enclosing type
+		But in other cases, the relationship is much more close. In these scenarios, each instance of the nested type is linked to an instance of the enclosing type
+	Now the thing is, as we declare these different kinds of nested types, they're similar by different
+		The similarity is the syntax
+		But the behavior is incredibly different, so it's important we understand how to work with both types
+
+10.2 - Nesting Types for Naming Scope
+	One of the common reasons we use nested types is to provide naming scope. In other words, we want to declare one type and have the name of this type scoped within another type
+	Now there's something very important to understand, in this scenario, there's no relationship between instances of the nested type and instances of the enclosing type
+	We're simply scoping the name of the nested type within the name of the enclosing type
+	There's a few ways we can declare types using this technique
+		One way is to declare a class inside another class and mark that nested class as static
+		But interestingly, you can declare classes not just in other classes, you can also declare classes within interfaces. So any time we declare a class within an interface, we're just doing that, again, to provide naming scope
+		Also, you can declare an interface within another interface or an interface wtihin a class. In both of these cases, nesting the interface just qualifies the name of the interface wtihin its enclosing type
+	An example
+		public class Passenger implements Comparable<Passenger> {
+			public static class RewardProgram {
+				private int memberLevel;	// 3 (1st priority, 2, 1
+				private int memberDays;
+			}	// getters and setters elided
+			
+			private RewardProgram rewardProgram = new RewardProgram();
+			
+			public Passenger(String name, int memberLevel, int memberDays) {
+				this.name = name;
+				rewardProgram.memberLevel = memberLevel;
+				rewardProgram.memberDays = memberDays;
+			}
+		}	// other members elided
+	There's a really important thing we want to notice about our RewardProgram class and that it's declared using the static keyword. By using the static keyword that indicates that RewardProgram is being nested just to provide scope for its name
+
+10.3 - Accessing a Nested Type
+	So let's see what it's like to work with our Passenger class and our RewardProgram class
+		Passenger steve = new Passenger("Steve", 3, 180)
+		
+		Passenger.RewardProgram platinum = new Passenger.RewardProgram();
+		platinum.setMemberLevel(3);
+
+10.4 - Inner Classes
+	When we create an inner class, the class's name is still scoped by the enclosing class, but the key thing about inner classes is it actually creates an instance relationship between the inner class and its enclosing class
+	Basically, each time we create an instance of the inner class, that instance is associated with the instance of the enclosing class that was used to create the instance of the inner class, so you're linking instances of these two classes together
+	Now there's only one way to create an inner class. And to do that, you have to declare one class inside of another class and not mark the nested class as static
+	So non static nested classes are inner classes
+	An example
+		public class Flight implements Comparable<Flight>, Iterable<Passenger> {
+			private ArrayList<Passenger> passengerList = new ArrayList<>();
+			public Iterator<Passenger> iterator() { return passengerList.iterator(); }
+			
+			private class FlightIterable implements Iterable<Passenger> {
+				@Override
+				public Iterator<Passenger> iterator() {
+					Passenger[] passengers = new Passenger[passengerList.size()];
+					passengerList.toArray(passengers);
+					Arrays.sort(passengers)
+					return Arrays.asList(passengers).iterator()
+					
+				}
+			}
+			
+			public Iterable<Passenger> getOrderedPassengers() {
+				FlightIterable orderedPassengers = new FlightIterable()
+				return orderedPassengers;
+			}
+		}
+	(the normal iterator() - iterator order is order in which passenger was added; FlightIterable.iterator() - iterator for sorted order) 
+	passengerList is not a field within the FlightIterable class. It's actually a field within our Flight class, but that's okay. Since FlightIterable is an inner class, it can actually reference the members of its enclosing class, Flight
+	The reason that it can do that is that an inner class actually has multiple "this" references
+		It has the standard "this" reference, which will let is access its own members
+		But it also has a "this" reference for its enclosing type - Flight.this. So FlightIterable actually ha a Flight.this reference, which means that here in FlightIterable, we can access those fields within Flight, so that allows us to size our Passengers array based on the passengerList within Flight
+	Remember that our Passenger class actually implements the Comparable interface, so we can know that we can actually sort that Passengers array 
+	So now, once we do this work, we actually have 2 separate Iterable implementations that can walk through the passengers
+
+10.5 - Anonymous Classes
+
+10.6 - Using Anonymous Classes
+	An anonymous class is a class that doesn't actually have a name
+	Now, as we normally work with classes, we first go off and declare the class, and of course, part of declaring a class we give it a name, and then later on we go ahead and create instances of the class by using the class's name
+	In the case of anonymous class, we do all that in one step. We actually declare that class as part of creating an instance of the class
+	And there's few common scenarios where we use anonymous classes
+		Oftemtimes, we want to implement a simple interface and just use it in one place
+		Or maybe we want to provide an extension of some simple class and just use it in one place
+	Now an anonymous class is actyally a form of an inner class, and remember, as an inner class, the anonymous class is associated with the instance of its enclosing class, which means it can actually access private members of the enclosing class
+	Now the syntax for creating an anonymous class is actually a little bit odd. Remember, we actually declare the class as part of creating an instance of it, so it will always involve the new keyword and that will be followed by either the base class that you want to extend or the interface name that you want to implement
+	And because we're creating a new instance right over that type name, we're going to place opening and closing parentheses, just like we would when creating an instnace of any other type
+	And then right there where we're creating the instance, we can go ahead and add the code. So after the parentheses, we'll have our opening and closing brackets, and inside those brackets, we can implement any methods that we need, and override any methods from the base class or the interface that we want to provide
+	(looking at example from 10.4) So FlightIterable has one job, provide an implementation of an interface, and it is only used in exactly one place, which is our getOrderedPassengers method
+	This is a perfect scenario for using an anonymous class. We don't actually need to explicitly declare a class. We can use an anonymous class and provide all the implementation right here where we use the class, so here in getOrderedPassengers
+		public Iterable<Passenger> getOrderedPassengers(){
+			retur new Iterable<Passenger>() {
+				@Override
+				public Iterator<Passenger> iterator() {
+					Passenger[] ...
+				}
+			};
+		}
+	That's the power of anonymous classes. We needed a type that implemented a specific interface, and we only needed to use it in one place, so rather than separately declare it and then create it right here in the method where we need it, we were able to do both of those things at once by using an anonymous class

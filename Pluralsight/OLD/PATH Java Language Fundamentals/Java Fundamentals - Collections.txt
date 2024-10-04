@@ -1,0 +1,450 @@
+Richard Warburton
+
+2.1 - Introduction (What Are Collections and Why Use Them?)
+	A collection a like a little container that can have 0, 1, or many elements in it
+
+2.2 - The Array Problem (Live Coding)
+	Download project file, load into IntelliJ, Gradle 7, Java 11
+	Can't do sysout(array)
+	First problem -  They're not very easy or convenient to code against. They can be difficult to debug because they don't have a human readable toString implementation.
+	To make it readable sysout(Arrays.toString(array));
+	Arrays themselves are not resizable in Java. They are a fixed-length array like in C, and that means that if you ever want to add an element to an array, you need to create a new array, copy the element over, and add the new element in place.
+	Use Arrays.copyOf(array, length + 1) to add an element
+	Collections on the other hand have nice convenient add methods, they support lots of different things and obviously they're a lot more flexible than arrays as well
+	Arrays are a low-level programming construct, they're a reasonable thing to have in a core language, but they're not flexible enough for our use cases. And if were to use arrays directly in our business code, we would spend a lot of time working on adding custom functionality like adding or fixing duplicates case that we can just get out of box with collections
+
+2.3 - Course Outline
+	Implementing Data structures is Hard! That's why a lot of big tech companies love to provide data structure based interview questions. There are lots of corner cases, it's very hard to get everything right and it's very hard to get them performing well. That's why it's fantastic that the collections framework ships with the JDK itself. Trying to reinvent the wheel when you have a built-in collections framework that does the work for you might be a good fun task for a developer, but it's not a good use of your time, and you're likely to write buggy code, compared with the well-tested code that ships with the JDK
+	Now the data structures that ship with the java framework have very diverse properties and that's good because different use cases require different diverse properties
+	So some data structures define ordering within the collections so you know which element in the collection comes after another
+	Some data structures, maps specifically, provide pairs of elements, keys and values that are associated together
+	And finally, some data structures provide uniqueness, so you know each element is only within the data structure once
+
+2.4 - Collection of Collections
+	The collections framework's top interface is the Collection interface and that's the interface which most of the collections extend from
+	The most commonly used collection is the list collection, so that is a collection that has ordering of elements and each element has a given index
+	Then there's the Set and SortedSet and NavigableSet interfaces that we see in the collections framework. Set has uniqueness as a key property
+	Then there's the queue, and double-ended queue or deque interfaces. We won't cover these in details in this course
+	Then there is the Map and SortedMap extension. Map is a collection of pairs (it doesn't actually extend the collection interface though it's part of the collections framework)
+	Now each collection has 2 or more than 2 in many cases, different components. Firstly, there are interfaces and then there's the implementation of these interfaces
+	So the interfaces here, like the list and set that we've seen, they define multiple data structures that can implement this interface. They define the functional characteristics of the collection, so they define things like ordering, uniqueness. They don't define how the collection is implemented under the hood. If you're declaring a variable as a collection in Java, you always want to prefer the interface as the type on that variable where possible. Often there is a particularly popular implementation of that interface
+	Implementions define specific data structures, a specific way of implementing a given interface. Each data structure has a different set of performance characteristics, so it's important you know what the right data structure is to choose when you want a certain interfaces functional characteristics as well. Implementations are concrete and instantiable, so whist you'll declare a variable type as list you would always instantiate it with a specific implementation
+	Different implementations that we have for the collections framework
+		List - most popular are ArrayList and LinkedList
+		Set - HashSet
+			SortedSet - TreeSet
+		Queue - PriorityQueue
+			Deque - LinkedList and ArrayDeque
+		Map - HashMap
+			SortedMap - TreeMap
+			Maps, as mentioned, doesn't actually extend the collection interface, though it's part of the collections framework
+	[Flow chat on selecting a data structure]
+
+2.5 - Collection Behaviors
+	Let's take a look at the common operations and behaviors that different java collections have in common
+	Firstly, it's important to note that the collection interface actually extends another interface, the Iterable interface. And the Iterable interface allows us to create this object called an Iterator. That is the way we loop over the elements within a Java collection
+	As we'll see in module 5, there's actually a new concept in Java 8 called Streams that is proving to be a very popular way of performing some of same operations, and often a better way of doing it, but Iterators are still covered because they're absolutely key to collections, and you'll see them all over the place in any code that exists in teh JDK or in your own code before Java 8
+	Now, the first set of operations that collections have in common are these:
+		size()
+		isEmpty() - shortcut for the common case of checking whether the size is 0. It also can be a useful method because on certain collections, it can be faster to check the isEmpty() method rather than calling the size() method
+		add()
+		addAll()
+		remove(element)
+		removeAll(collection)
+		retainAll(collection) - removes any elements that aren't in the collection as an argument
+		contains(element)
+		containsAll(collection) - True if all the elements of the argument collection are in the collection
+		clear()
+
+2.6 - Collection Concepts (Live Coding)
+	As you're looping through a list and you remove something, it throws java.util.ConcurrentModificationException
+	It's telling us that you've been looping over ArrayList and you've tried to modify it whist you were looping over the ArrayList. So we cannot remove products, we cannot add either, just don't modify the products collection while you're iterating over it, at least not using the foreach method
+	There is a different way that we can loop over our "products" (from demo) collections that allows us to remove things and that is using the Iterator. Remember that I said that each collection extend the Iterable interface and has an Iterator associated with it
+	An iterator is basically like a cursor that lets you go through one by one the elements in your collection and that is the more traditional way of looping over things rather than this foreach loop. In fact, under the hook, javac converts our foreach loop into our iterator
+	So the iterator format is to have a while loop and every time you call iterator.hasNext() to check is there another element? And when there isn't element, you loop will terminate. And then in order to extract that element, you call the next() method. Call iterator.remove() to remove the element
+	Normally, if you're going to iterator over things, I would use the foreach based loop but if you want to remove elements one by one based upon that iterator value, then calling the iterator.remove() method is a good way to go about that and that provides a legitimate use case for the iterator concept in Java
+
+3.2 - Key Features (Collections with Iteration Order: Lists)
+	What makes a list a list? Lists are really collections that have an iteration order, or at least that's how I'm going to define them in this course
+	Every element in the list has an index associated with it, which is an int value that determines its position in a list. And it's these indexes that also define the way the API for lists works:
+		void add(int index, E e);
+		E get(int index)
+		E remove(int index)
+		E set(int index, E element)
+		boolean addAll(int index, Collection c)
+
+3.3 - Shipments Example (Live Coding)
+	Always, if you can, try and wrap up your collections and keep them private, and keep them within your business domain objects and use business domain classes to represent business domain concepts. Don't use a [From demo] List of collection for a shipment. Use an actual Shipment class. That's good Java style
+
+3.4 - Shipments Example 2 (Live Coding)
+	Collections.sort() - takes a list and you need to provide a way of the sort method understanding how to sort the products, a sort order
+	So sort orders in Java are defined by this Comparator class
+	This is a legacy method in terms of implementing it. In fact, IntelliJ even recomments Collections.sort() could be replaced by List.sort()
+	The sort method is taking a Comparator as an argument. So a Comparator is a functional interface, it's an interface with a single abstract method that needs to be implemented. That method is called compare(). If the return value is negative, that the first argument is less than the second argument in the sort order. If you return 0, it means they're both the same in your sort order. And if it's greater, then you need to return a positive number
+	Comparator.comparingInt() - that was a Java 8 implementation of a Comparator, and it's got really nice static methods on the interface called comparing() and comparingInt()
+
+3.5 - Shipments Example 3 (Live Coding)
+
+3.6 - Implementations
+	In this section, we're going to talk about implementations
+	We have a List interface, and we have an ArrayList and a LinkedList that implement this interface. Those are 2 implementations we're going to be talking about in this section. There are other implementations of List in the JDK. So, there are concurrent implementations such as CopyOnWriteArrayList, but those are out of scope of this course
+	You can also implement the list interface yourself, and it's pretty easy to do by extending the AbstractList class. So the ArrayList is our first implementation of the List interface. And an ArrayList is an implementation that has a backing array. Now, this is fantastic from a performance POV most of the time because if yo ujust want to get an element or read an element, you can just read it out of that index in the array. Very, very efficient and very, very easy to get that element out. Most of the time when you want to add an element it's similarly cheap. You look for the slot that is available in the array, write your element in it, and hey, presto you're done. Very nice and fast and cheap
+	Unfortunately, ads have a kind of a corner case or a less frequent case that you hit. That is to say, when you run out of slots that are free in your backing array, and that's when growth happens iwth an ArrayList. The way the ArrayList grows is that you can provide an initial capacity to your ArrayList that defines what the backing array starts off with. But, most of the time, you'll not do this. Most people will just initialize the ArrayList and let the JDK deal with it. In that case, you'll start off with an empty backing array to begin with. And when you add your first element, it grows the default initial collection size, so that would be 10. Once you're out of your 10 elements in your initial ArrayList, it start doubling in size.
+	Now an alternative strategy might be to just add one to the size with the ArrayList every time you add an element. That would minimize the amount of overhead you need for additional memory for this backing ArrayList. But unfortunately, the act of growing an array takes time. You have to allocate a new array of elements, you have to copy over the old elements, and then you can just put your single new element in place.
+	So there's always a tradeoff there between trying to find a growth strategy that minimizes the unnecessary memory overhead of having unused free array slots and also minimizes the amount of unnecessary copying when you have to grow your ArrayList. And doubling in size has proved to be an effective tradeoff between those 2 things
+	The ArrayList is a great default implementation choice to use when implementing a list. It's a very good general purpose implementation. It works well on a variety of different scenarios and probably should be preferred to a LinkedList most of the time
+	The reason behind this is it's quite sympathetic to your CPU cache. What do I mean by that? Modern CPUs tend to operate much faster than main memory. A lot of the time the process of optimizing or writing code that's very fast is about writing code that is sympathetic to your CPU cache, and arrays are very sympathetic. As you stride through those arrays, you're reading through memory linearly, and your CPU cache is very good at prefetching linear memory accesses
+	Other data structures, like LinkedList tend to have pointers going off between different Java objects and that results in very, very hard-to-predict memory accesses which often end up taking a lot longer and will slow your system down
+	Oour other non-concurrent List implementation choice in Java is a LinkedList
+	LinkedLists in Java are double-linked list. They have head nodes, they have tail nodes
+	The result of this is that whenever you have an operatoin over a LinkedList, you tend to do a lot of pointer chasing
+	I would consider them to be worse performance in most cases
+	LinkedList also implement the Queue interface
+	In general, if you want to try and performance tune your software and optimize it, the best approach is to profile your production system with continuous production profile, something lik Opsian or Java Mission Control, and bench mark your actual code
+
+4.1 - Introduction (Collections of Pairs: Maps)
+	Maps are collections of pairs, so they have keys and values in their collections, not just individual values like we saw with lists.
+	Similar to dictionary
+	Dictionary is a class in the JDK and it predates the original Java Collections API and is kind of deprecated at this point in time. So don't use the Dictionary class. Use the Map interface and its subclasses
+	Within Java maps, keys are unique. The uniqueness is defined by the keys equals() method and we'll see in this module, you might need to implement the hashCode() method or a comparator in order to get the map to function properly
+	Values don't have to be unique within a map, but they often are
+
+4.2 - Why Use a Map? (Live Coding)
+	[Demo comparison of List and Maps] Not a scientific approach but maps executed code 70 times faster
+
+4.3 - Map API
+	V put(K key, V value) - adding/replacing values. Remember, map is a generic interface and can have keys and values of different types. You can see the put method reutrns a V, and that V is the previous vlaue that used to be associated with the key in the map. If there was no value there, it'll return null
+	For bulk updates - void putAll()
+	As to whether you can use nulls for keys and values, that is characteristic of the map implementation. So HashMap will allow you have a null key and null values. TreeMap will allow you to have null values, but no null key. And if you hav eother 3rd party implementations, they'll usually define whether they allow or disallow null keys and values within their Java doc
+	get(Object key) - look up elements in map; returns null if it doesn't exist
+	containsKey(Object key)
+	containsValue(Object value)
+	If you want to know whether a key is in a map and then want to use it, I strongly recommend that you call the get() method once and then just check whether the return value is null or not. You will save having to lookup that value twice in the map
+	Now it's also worth noting that even though containsKey and containsValue are very similar in terms of naming and API, they have quite different underlying performance characteristics. containsKey() and get() use the maps implementation, the fact that they're fast for looking up values from keys to respond quickly. See the section for different implementation performance characteristics. containsValue() you would exepct in most cases to be slower than containsKey() because it might well have to search through all the values and certain implementations in order to find whether the element is in there
+	The final thing to note about this API is that get(), containsKey(), containsValue() all use the Object type rather than the K key generic. And that's to allow you to have a bit more flexibility with using this code
+	V remove(Object key) - removing. V is the old value that's associated
+	clear()
+	size()
+	isEmpty() - shortcuts whether the map is empty or not and potentially may work faster than checking whether size is zero
+	Collection and Map - there's a bit of a strange API interaction here. Map doesn't implement the Collection interface unlike the other collections that we see in this course. That doesn't mean it's not a collection. It's still part of the Collections API. It just means that because it's dealing with keys and values, the contact of the Collection interface doesn't quite fit for Map
+
+4.4 - Views over Maps (Live Coding)
+	 entrySet() - unfortunately, entrySet() has an absolutely horrific type parameter that is Set<Map.Entry<Integer, Product>> entries
+	 It means we've got a set, and that set contains entry elements and those entry elements are basically a pair. Java doesn't have a Pair type, so we have this Map.Entry interface the entries implement, and it has an entry of Integer, an entry of Product, and those are our entry values
+	 If you're programming this in Java 10 or later, you can use the var keyword. That is strongly recommended for things like this to absolutely cut down on that generic boilerplat that can be hard to understand.
+	 Now entries by themselves are mutable
+	 Map.entry() was added in Java 9. If you're using Java before Java 9, the Guava library has an implementation
+
+4.5 - Java 8 Enhacements
+	What you get with Java 8 is a whole bag of useful and fun functionality that massively simplifies a bunch of common programming tasks
+	Add/remove:
+		replace() - upate a single value. So the difference between this and the put() is the put() will add in a key and value pair into the map even if the key isn't there previously
+		replaceAll(BiFunction<K, V, V>) - takes a BiFunction, so that will take a function that takes a key and the old value, and returns a new value, and you apply that function to every key value pair in the map
+		remove(key, value) - Normally, remove() takes a key. This remove() only removes the key if the value is equal to the value passed as a parameter.
+	Update:
+		getOrDefault() - regular get() will return if you have a missing element. getOrDefault() takes a default value that will be returned in that case. This can often simplify null checking and reduce the likelihood of NullPointerExceptions, a dreaded Java programming issue
+		computeIfAbsent() - takes a function that lets you compute a value if it isn't there. This new value will also replace in the map
+		putIfAbsent() - puts a value if it isn't present in the map already
+		computeIfPresent() - computes a value if it's present
+		compute() - is kind of like the generalization of computeIfAbsent() or computeIfPresent(). You look up a key, it looks up the value, takes a function. If the value is present, it will give you the value, if not, your computation function will take a null value, and you can update it or introduce a new value
+		merge() - takes a key, a value and the remapping function, and if there's no value associated with that key in the map, the value is used as the new value, put into the map, and returned. If there's an existing value, the merging function is called on both the existing value and the new value. So that's really useful for example, trying to keep something like a map of totals, for example, and then update it so you can pass in one as the new value and have addition as your merging function
+		forEach() - convenience-based callback for iteration, very similar forEach on the collection interface
+
+4.6 - Java 8 Demo (Live Coding)
+
+4.7 - Implementations
+	Just like other interfaces, Map has different implementations. They have different performance characteristics and tradeoffs that might be appropriate in different situations. These are implementations that are already done for you that ship with the JDK
+	In this section, we'll look at 2 general purpose implementations - HashMap, TreeMap
+		HashMap - if you're at all unsure, just use HashMap. It's a very good general-purpose implementation. It's the only one of these that will work if your keys don't have a defined sort order. It's very fast. It's very optimized. It's a good choice
+		TreeMap - alternative approach that keeps elements in the sort order of their keys. that gives is additional functionality that lets you look at, for example, subsections of the map based upon that sort order and it can perform better in certain circumstances
+	There are other implementations within the JDK such as EnumMap, LinkedHashMap, and IdentityHashMap. They're more advanced topics but they're certainly things that might be worth reading in your own time
+	HashMap
+		- When you put a value in the HashMap, it takes the hashCode of the key that you're adding, and it takes a bucket of elements behind that, a bucket of nodes, it computes the hash value from that key, modulus the count of the buckets that the capcity of this array and that defines a slot within the backing array with which to store it. Same for the lookup operation
+		- Sometimes you might find multiple elements that have collisions. That is to say different keys that result in the same hashCode. It's undesirable because collisions result in buckets expanding. Each bucket becomes a LinkedList initially. So instead of you having just do the hash, look up the element in the backing array, and then read the value back, you have to start searching through that LinkedList to find which element is the correct element and checking the equals method on every key of that LinkedList item
+		Now, in Java 8 or later, those buckets get converted to Trees when there are more than 8 elements in the LinkedList. There's a tradeoff there between trees having more memory overhead and also scaling better when you have lots and lots of collisions
+		The number of buckets can also increase with more elements. So you can resize that backing array with the HashMap, and that's very useful. As you carried on adding elements to a fixed-size HashMap, you just get more and more and more collisions, and collisions are bad because they result in slow adding and lookup times
+	TreeMap:
+		- Have keys with a defined sort order either due to implementing the Comparable interface or providing a Comparator
+		- Under the hood, they use a red/black binary tree, so that's a balanced binary tree
+		In a binary tree, unlike a LinkedList, each node has 2 successor nodes potentially, instead of just one, and the idea here is that each node contains an element and nodes with lower elements in the sort order go the left and nodes with higher numbers in the sort order go to the right. The tree gets rebalanced so it never gets longer and log_2 of N in terms of depth where N is the number of elements
+		- In general, TreeMaps are slower than HashMaps because there's a lot of pointer chasing and comparison work done when you're using a TreeMap. But they often provide a functionality that HashMap doesn't, so they implement the navigableMap and SortedMap interfaces. We won't cover the details of those but they can be useful if you're looking into dealing with keys that have a sort order
+	[Comparison of performance between HashMap and TreeMap]
+
+4.8 - Correctly Using HashMap
+	In this section, we're going to look at how you can break the HashMap contract by mutating the keys, and why you don't want to do that
+	Example:
+		public class MutableHashMapKeys
+		{
+			public static void main(String[] args)
+			{
+				final Map<MutableString, String> brokenMap = new HashMap<>();
+
+				final String value = "abc";
+
+				final MutableString key = new MutableString(value);
+				brokenMap.put(key, value);
+
+				System.out.println(brokenMap.get(key));
+				System.out.println(brokenMap);
+
+				// PROBLEM
+				key.set("def");
+				
+				// PROBLEM - PRINTS OUT NULL
+				System.out.println(brokenMap.get(key));
+				System.out.println(brokenMap);
+			}
+
+			private static class MutableString
+			{
+				private String value;
+
+				public MutableString(final String value)
+				{
+					set(value);
+				}
+
+				public String get()
+				{
+					return value;
+				}
+
+				public void set(final String value)
+				{
+					Objects.requireNonNull(value);
+					this.value = value;
+				}
+
+				public boolean equals(final Object o)
+				{
+					if (this == o) return true;
+					if (o == null || getClass() != o.getClass()) return false;
+
+					final MutableString that = (MutableString) o;
+
+					return value.equals(that.value);
+				}
+
+				public int hashCode()
+				{
+					return value.hashCode();
+				}
+
+				public String toString()
+				{
+					return value;
+				}
+			}
+		}
+	So the null is the real problem here. Changing that value within your key changes the hashCode of the object in question. And if you're going to use maps correctly, you always, always, always need to make sure that they return consistently the same hashCode when it's called again, and again. By mutating the value, we've resulted in a hashCode that can be modified and that means that when you call the hashCode() within your HashMap, it hashes the wrong bucket within the backing array, and then the wrong value comes out. Do NOT mutate the key within the HashMap. Make sure that its hashCode() always returns the same value and make sure that it is always continuining to be equal to itself. You want immutable keys in HashMaps. That's the safest thing to do
+
+5.1 - Introduction (Java Streams)
+	Streams are powerful new abstraction introduced in Java 8. They provide a way to perform aggregate operations over entire collections at once. This is an alternative to the traditional approach of using foreach loops or iterators to operate on collections
+	Problem with for each loops and iterators? For loops and iterators are a low-level, error prone construct. Every time you use them, you have to write a lot of boilerplate code. It's simple code but potentially very error prone and a real waste of time
+	Java 8 Streams offers a way to do functional style programming in Java. This means that you write your business logic in compact functions using lambda expressions or method references and apply operations over entire streams of values rather than having to mainly write loops and then build the collections yourself and write a lot more logic in order to do common data processing operations
+
+5.2 - Live Coding Streams
+	The benefit that streams are already providing for us, reading like a problem statement, the ability to have code that reads a lot like the business problem that we're solving
+	stream() on collection object
+	Stream itself is an interface with lots of method
+	Streams have a nice build-in convenience method called filter() that takes a Predicate. a Predicate is a method that will let you remove elements that don't match a certain criteria. So the function has to return true to keep it within a list, false to remove
+	Lambda expression - I don't have to specify the type with a lambda expression. I can just use the type inference feature of it
+	The equivalent of doing sort with streams is called sorted(), and we can provide a comparator to define the sort order here
+	Now what you'll note about these methods like filter() and sorted() is that they return stream themselves, so that's a stream of product returning a stream of product returning a stream of product. And that means you can daisy chain these methods as you can see
+	map() - a way to get the name out of the products
+	Terminal operation - forEach(name -> System.out::println), that's the same operation that doesn't return a stream that just prints things out
+	This is the future of Java. This is the direction that we're going in
+
+5.3 - Operations on Streams
+	filter() - remove elements from the stream that don't match a predicate
+	map() - transforms one element into a new element for every element in the stream
+	match family - these are methods that take a predicate and tell you whether elements within the stream match that predicate
+		anyMatch()
+		noneMatch()
+		allMatch()
+	All these operations are terminal operatoins, unlike map() and filter() and return a boolean value
+	skip() and limit() are a pair of operations that are to do with discarding a certain number of elements
+		skip() discards the next N elements
+		limit() only retains the next n elements and throws away anything after that point in the stream
+		A good example is in pagination
+	There are 2 variants of the sorted() operation both of which sort elements within the stream according t oa provided order
+		sorted() with no arguments - relies on the elemtns within the stream implementing the Comparable interface
+		2nd - we provide the comparator ourselves because products don't implement the Comparable
+	flatMap() is a more advanced variant of map. Instead of mapping one element in a stream into one element in the resulting stream, flatMap() is a transformation operation that goes from one value into 0, 1 or many values
+	min()
+	max()
+	If you want to just provide a side-effecting operatoin for each element in the stream, such as print out its name, saving it into a DB, updating some state elsewhere in your system, forEach() is an operation on the stream and it just takes a callback for each element
+	findFirst() and findAny() get individual elements out of the stream. So just one single value from the stream
+	count() number of elements in a stream
+	reduce() - a very general operation. It's one of those operations where you take a collection of value and produce a single element together at the end by combining each value with an accumulator
+
+5.4 - Enter the Collector (Live Coding)
+	Collectors are par of the Stream API that allow us to build final values that are big and complex out of streams. For example, building collections and streams
+	Collector is a recipe for building a final value out of contents of that stream. To use a collector, we use a method on the Stream API called collect()
+	collect() takes an argument that is a Collector
+	You can build your own collectors, collector is just the interface but most of the time you will end up using collectors implementations that are shipped with the JDK. They are in the Collectors static factory class
+	One of the most common operations of building a map is using the Collectors.groupingBy() collector. So groupingBy takes a classifier function that says the elements in the stream are going to be the values in your map and what is the key that you want to associate with each element?
+	We can actually go even further than that with collectors. Collectors are composable. That is to say that collectors can collect subsections of values within collectors
+
+5.5 - Conclusion
+	Are streams always better than loops? There's going to be an extent to which this decision is always subjective and perhaps you need to think about yourself or in the context of your team members, but streams broadly have certain advantages over loops
+	Streams:
+		High-level construct
+		Optimized framework
+		General better readability
+		Some corner cases worse - specifically none of hte streams functional interfaces throw checked exceptions and the result of that is you have business logic operations that do need to throw checked exceptions, they interact poorly with streams, and it can often be eaiser just to write loops
+	Loops:
+		Can be faster than their stream code equivalent. I wouldn't worry about this for most cases. But there are certain cases, for example, high frequency trading systems, where often that performance is very important
+		Nicer with checked exceptions
+	There's a lot of further learning material around streams
+
+6.1 - Introduction (Collection Operations and Factories)
+	JDK itself ships with a whole series of very useful utilities and a way to creating different collections that don't revolve around particular implementations or interfaces, things like that, and are just general patterns that can be used across different collection type. Those operations and factories are the things we're going to be talking about in this module
+	Factories are methods in the JDK that will build you new instances of collections, not just calling constructors on calles like new ArrayList() or new HashMap(), but creating different implementations just for methods that often hide their actual implementation detail that have certain useful properties. The JDK allows us to create unmodifiable, immutable, empty collections. So different types. And even though unmodifiable and immutable classes may sound very similar there are some subtle differences
+	Then we're going to look at a few operations
+
+6.2 - Factory Methods (Live Coding)
+	OOP has this concept called encapsulation, and the idea is that other objects in your system cannot modify or mutate the private state of your classes
+	[Example/Demo of a Shipment class that with get method returns a List object directly from within the Shipment object. Now you can call remove() on that list to mutate/change the internal state]
+		main()
+		{
+			Shipment shipment = new Shipment();
+			shipment.add(...);
+			
+			List<Product> lightVanProducts = shipment.getLightVanProdcuts();
+			
+			// PROBLEM - opposite of encapsulation
+			lightVanProducts.remove(window);
+		}
+	One way to prevent this is to use Collections.unmodifiableList() - that will ban the ability to remove values from the list
+	unmodifiable collection - you can't things to it, you can't remove it, you can't clear it, you can't mutate the internal state whatsoever. You can just read data out of it, and that means that we can keep control of the mutation within the Shipment class and not expose the internal state to the outside world. We've achieved a sort of form of encapsulation here and we've reduced the scope for bugs
+	
+6.3 - Factory Method Options (Live Coding)
+	Now the unmodifiableList() example that we saw in the previous section is one way of that we can use a factory method to produce a certain type of invariant of a new collection that we're creating. But there are few other versions
+	[Demo of bypassing the unmodifiableList()]
+		public static void main(String[] args)
+		{
+			Map<String, Integer> mutableCountryToPopulation = new HashMap<>();
+			mutableCountryToPopulation.put("UK", 67);
+			mutableCountryToPopulation.put("USA", 328);
+
+			Map<String, Integer> unmodifiableCountryToPop = Collections.unmodifiableMap(mutableCountryToPopulation);
+
+			// Prints - unmodifiableCountryToPop = {USA=328, UK=67}
+			System.out.println("unmodifiableCountryToPop = " + unmodifiableCountryToPop);
+
+			mutableCountryToPopulation.put("test", 12);
+
+			// PROBLEM
+			// Prints - unmodifiableCountryToPop = {USA=328, test=12, UK=67}
+			System.out.println("unmodifiableCountryToPop = " + unmodifiableCountryToPop);
+		}
+	That is to say modification of that backing map, mutableCountryToPopulation, has been reflected in the unmodifiableCountryToPop view just like we saw in the view earlier like the subList or the keySet and the entrySet for maps themselves. So that means that anything that holds this mutableCountryToPopulation variable like, for example, it could be a private field in teh business class, that controls the modificatoin. And the view, the unmodifiableMap view, allows you to read the changes but not write the changes, so again, reducing the scope for bugs just like we saw with the list version
+	unmodifiableMap is no the the only way we can do this kind of thing
+	[Demo of Map.copy()]
+		public static void main(String[] args)
+		{
+			Map<String, Integer> mutableCountryToPopulation = new HashMap<>();
+			mutableCountryToPopulation.put("UK", 67);
+			mutableCountryToPopulation.put("USA", 328);
+
+			Map<String, Integer> unmodifiableCountryToPop = Collections.unmodifiableMap(mutableCountryToPopulation);
+
+			// Introduced in Java 10
+			Map<String, Integer> copiedCountryToPop = Map.copyOf(mutableCountryToPopulation);
+
+			// Prints - copiedCountryToPop = {USA=328, UK=67}
+			System.out.println("copiedCountryToPop = " + copiedCountryToPop);
+
+			mutableCountryToPopulation.put("test", 12);
+
+			// Prints - copiedCountryToPop = {USA=328, UK=67}
+			System.out.println("copiedCountryToPop = " + copiedCountryToPop);
+		}
+	We'll see that our copied map is not mutable itself. And unlike unmodifiableCountryToPop, it doesn't reflect the changes in that backing map. It doesn't have a backing map. It's just a copy. We could just use the new HashMap() constructor in order to create a copy of a map as well we'd know is a HashMap then, which we could modify. So what's the difference here with the Map.copyOf()? Map.copyOf for our copiedCountryToPop will produce an unmodifiable copy here (copiedCountryToPop.put("test", 12); will throw an exception) just like we would with the unmodifiable version of the map. This is similar but changes to the backing collection, they aren't reflected here because it's a copy, not an unmodifiable view
+	Different concept - utility method, our factory method for maps
+		// Introdcued in Java 9
+		Map<String, Integer> countryToPopulation = Map.of("uk", 1234, "ger", 5432);
+	 That's it. We're done. Much quicker, much simpler, much less verbose. We get the same values in that map, but we've saved us a lot of code in producing it. It's also worth noting that this Map.of() method creates an unmodifiable map
+
+6.4 - Factory Methods
+	Empty collections:
+		Collections.emptyList()
+		Collections.emptyMap()
+		Collections.emptySet();
+	They're collections that can hold zero values. They are in fact, immutable, as well, so you can't add any elements to them. One of the things that's really useful about empty list/maps over calling , say, new ArrayList, which is empty by default, is their reduced memory consumption. These factory methods just refer to static instances and thus don't allocate any objects whatsoever
+	When you want to pass a value to a method that takes a collection but you don't have any values you want to pass in yourself, that's a good use case for an empty collection. They can also be used in lots of places where, for exmaple, you need to return a collection over a method but actually you've got no useful values to return and it's more efficient to return an empty list than create a new ArrayList
+	Singletons:
+		Collections.singletonList("one");
+		Collections.singletonMap(1, "one");
+		Collections.singleton(1);	// Set
+	Singletons are collections that only contain one element. These are all factory methods on the collections class
+	These collections are immutable
+	They are more memory efficient than calling the new ArrayList class or the new HashMap and then adding one element in. By default things on that list get sized to 10 elements once you've added one in. So there's a bunch of wasted memory space on things like ArrayList when you're only trying to hold one element
+	They're useful for use cases where you've got a collection that you're either returning or passing to a parameter. But in the case of your specific instantiation of that method, you only actually want to pass one value in
+	Interesting set of collection factories that got added in Java 9:
+		Interfaces such as list, map and set have these static factory methods added to them
+		List.of()
+		This is a massive improvement in boilerplate reduction over previous efforts to, call the new ArrayList constructor and then add multiple elements onto them. In fact, when they were added, they were added as an alternative to collection literals. So Java ha an array literal syntax where we can create some specific instantiation of array, but it was actually decided that these factory methods were so short that the JDK devs didn't need to add any special syntax for instantiating collection literals
+		These classes are runtime immutable, so they all implement the list or map or set interface. But when you call the add method or remove method, they will throw an exception
+		These factory methods have multiple different overloads. By default, if you have varargs argument in Java, there's a bit of overhead with that varargs argument. There's effectively an array that gets created under the hood, passed over a method call boundary, and then throw away immediately afterwards. So List.of() with more than 10 elements does use a varargs parameter just for flexibility but therer have been overloads added for the 1 to 10 argument cases just just multiple numbers of parameters
+		Map has multiple different ways of instantiating it. Map.of() can be used for different specific instantiations up to 10 elements
+		Now the problem with map is that if you want to have more than 10 elements, you want to have that varargs variant on map, you need to have a way to creating multiple varargs, one for key, one for values. So a general varargs factory method wouldn't work. This is why Map.ofEntries() method exists. So it takes a varargs of the Map.Entry interface. So that's the same type as you can see on the entry set of the map. And in fact, a factory method for Map.entry() has been created in order to allow you to build implementations for those Map.entry interface elements
+	In Java 10, a slightly different variation of this concept of the immutable factory method was added, and that is the immutable copy. e.g. List.copyOf(). We create a new list and that list is a copy with the same values in as the original ArrayList, but it's an immutable copy. The collection that you copy it into cannot be modified in any way. If you want a mutable copy, most of the collection classes have constructor overloads that take collections as parameters, and those will copy the other elements in
+	You can do the same thing with maps as well - Map.copyOf()
+	Unmodifiable views - Collections.unmodifiableList()
+	Unmodifiable views are super useful for cases where we want to keep a mutation within a class. So we could have a private field called "countries" that we update over time, and we only expose the countriesView to other classes in your app, and they can read the data but not modify it
+
+6.5 - Collection Operations
+	Collections.min() and max()
+	List.of() method is very syntactically short, but it does also have one other facotr. It produces an immutabl list. How would we get a mutable list? Normally, we would use the new ArrayList() constructor and indiv call add()
+	But we've got a bit of a problem now. We won't have a convenient way of taking those products and adding those elements in. Multiple liens of code just to do something very simple here
+	Actually, there's a better way. Collections has an convenient Collections.addAll() method that takes a collection and a varargs argument of the elements. And this collection is mutable so we can still modify it later on in our app if we want to
+	Collections.shuffle() - re-sort elements according to a random order
+	Collections.fill() - takes one object and fills all the elements within that list with that one object
+	The point here is really that if there's a certain algorithm that you're thinking of, that it's always worth taking a look at the Collections class first before going off and writing it on your own. It's a real time-saver and again, these are tested, shipped implementations, these algorithms come with the JDK. They'll often be more performant and more reliable than code you'll write yourself, as well as save you time in terms of not having to write it to begin with
+
+7.1 - Introduction (Collection with Uniqueness: Sets)
+	Sets are collections that have uniqueness as a fundamental property
+	Implementations of sets may require you to implement other methods within your object such as hashCode(), or provide a defined sort order in order to efficiently implement this equality contract
+
+7.2 - Set Features (Live Coding)
+	In List<>, if you use addAll() and there's a duplicate, it throws an exception "no match for ..."
+	This is where sets come in
+	The addAll() method within a set will delegate to the add() method and the add method will only add in products once it doesn't have any duplicates in the set. And set implementations are written in such a way that they are efficient and you only get one element in there in a much, much faster way than having to scan the entire collection of values every time around
+
+7.3 - Hashcode and Equals
+	The hashCode() and equals() contract defines a kind of fine print to an API. A lot of APIs have a sort of contract within them. The contracts are assumptions that are being made by the HashMap or HashSet clsses within the JDK and there are obligations on your code that you need to meet in order for HashMap to work. If you don't meet the hashCode equals contract within your code, you can find situations where you get duplicate objects within your set, which breaks the whole invariant and purpose of using sets to begin with
+	The reason behind is that the HashMap and HashSet classes us the hashCode() method to find a slot and then they only check the equals method between either the value in the HashSet case or the key in the HashMap case using the equals method once you've hit that slot. If 2 different objects that are equal result in different hashcodes, then they can end up in different slots and that means that the contract is very simple. That means that the contract is very simple. If your object equals another object, then the hashcode of that object should also equal the hashcode of the other object
+	Note, this is a one-way implication. 2 different objects can have the same hashcode, but if they're the same object, they must have the same hashcode
+	There are 2 different kinds of equality. Either reference-based equality or value-based equality. So reference-based equality is when 2 objects are equal because they're the same exact object and value-based equality is when they're equal because they have thte same values in their fields
+	Now what the implication of this is is if you have a reference-based equality system between objects, you just inherit the equals method from the Java lang object, but you've got a value-based equality system, you need to have a custom equals method and that is where you need to get the equals hashCode contract from. This java lang object correctly implements hashCode equals contract itself
+	The first thing you need to think about when creating a hashcode is that you want to combine the hashCode info from each field. So a standard approach is to have a variable called result. You're going to initialize result to a number that will be a prime number, and not definitely 0. 17 is often is a good choice. That result at the end of your hashCode method is going to be returned and that will be the new hashCode value
+	If you've got a normal object field, you can call the hashCode() method on that field and add it into the result previously. It's important not just to add values in, because this results in a poor distribution of hashCode values and often can result in poor HashMap or HashSet performance
+		e.g. result = 31 * result * obj.hashCode();
+	So we multiply the previous result here by prime, it's 31 in the example, but it could really be any prime
+	If you just call the hashCode method on an array, you will ge a reference-based hashCode just like we saw at the beginning of this course. If you call toString() or equals() on arrays, you get useless values. Well, at least you don't get value-based values. Here, it's the same thing:
+		e.g. Arrays.hashCode()
+	We want to call Arrays.hashCode() in order to get the correct hashcodoe method for an array
+	Now, when it comes to primitive values like ints or longs, as of Java 9 or later, all the primitive relevant classes like Long or Integer have had a hashCode() static method added to them. You just pass the value of your field into the hashCode() method and you get an appropriate hashcode value. So if you're using Java 8 or later, you should use these convenience methods
+		e.g Long.hashCode(longValue)
+	Older versions need a different approach
+	It's also worth noting that if you're using a modern IDE, which you definitely should be doing, that can auto generate implementation of your hashCode and equals methods for you based upon just saying, here are some fields, go do it for me. In general, if you're using an IDE, just use the auto generate method. It will save you time and it will result in less bugs. But it's important that you understand the rules in order that you know what the correct code is here if you're reviewing someone else's code or if you're reading other code that you might see in a legacy system
+	As of Java 7 or later, a method was added called Objects.hash() that just takes a varargs array of fields and that can be used to generate a correct hashcode from those fields. Now, this has a performance overhead to it because there is a varargs array creation. So a lot of people prefer not to use it, but it is a convenience method that's there and will result in less code
+	The final point and I think this is probably the error that most people make when they're implementing hashcode methods or at least the bugs that I've seen more frequently, is that you always want to use the same fields when calculating your hashcode value as you do an equals. Often errors in the hashcode equals contract aren't written when classes are first written, they're introduced into classes over time. You'll add a field to the class, you then realize you need it in your equals method, and you forget to update the hashCode() method. Often if I was adding a new field to a class that I wanted to include in my equals or hashCode method, I would just delete the equals and hashCode() method add the field and then get the IDE to regenerate it for me. It's often easier to do it that way.
+
+7.4 - Set Implementations (Live Coding)
+	HashSet:
+		HashSet is based upon HashMap and actually it uses the HashMap implementation in order to implement the HashSet. You can think about a HashSet as being a HashMap where there is only one value and whenever you call an operation like is an element within your set, it's just delegating to the containsKey method
+		Whenever you call an operation like contains, it just delegates to containsKey for example. 
+		So, similarly for HashMap, it uses the hashCode() method and it looks up a slot within a backing array, checks the entries, the entries can become linked lists if there are collisions, the equals method is used to check whether the value is unique compared to those other values. Very very simple, and in fact, for any given map implementation, you can create a wrapping set just by using the keySet capability to the map to implement your set
+		HashSet is a very good general purpose implementation, I would say 90% of the time you want a set, just use a HashSet out of the box, it's very fast, in most use cases in practice, it will be faster than TreeSet due to the reduced amount of pointer interaction and pointer chasing with the HashMap and TreeMap
+	Then there is TreeSet:
+		TreeSet is based upon TreeMap
+		You're using a red/black binary tree with a defined sort order. That means as the tree starts to contain more elements, the height of the tree expands bounded by the log_2(n) where n is number of elements, and that is how the asymptotic performance of different operations on TreeSet like adding, removal, contains, or perform
+		Just like TreeMap, it provides extra features over HashSet. That is to say it implements the SortedSet and NavigableSet interfaces. These mean that the entries within your TreeSet have a defined order so you can have capabilities a bit like a list where you had a defined order within the elements but also with the uniqueness capabilities of the TreeSet
+		And it also means that when you're using TreeSet, you have certain extra requirements, that is to say, you either need your elements to implement comparable or you need to provide a comparator to the constructor of the TreeSet in order to use it
+	NavigableSet interface has a whole series of methods that let us tkae elements and defined other elements like ceiling, floor, higher elements, lower elements, things like that that take advantage of the fact that we can go through elements in order
+
+7.5 - Conclusion
+	If you get the fundamentals right, you're on the way to building a powerful piece of software. Collections are a key part of the Java fundamentals and a key part of becoming a good programmer. There's lots and lots of useful functionaltiy within the JDK collections framework, stuff that you can use in your app on a day-to-day basis. And picking the correct collection can really help you write simpler code, more readable code, less buggy code, and also faster code, compared with inventing your own collections and building your own collection or framework itself

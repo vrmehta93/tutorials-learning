@@ -1,0 +1,854 @@
+Jose Paumard
+
+1.1 - Introduction: What Are You Going to Learn In This Course? (Understanding Concurrency, Threading and Synchronization)
+	Concurrency is the art of doing several things at the same time
+
+1.2 - Agenda: What Should You Know to Follow This Course?
+
+1.3 - Definition of a Thread, Existing Thread in Java
+	What is a thread? A thread is defined at the OS level. And the java language, as well as the other languages, uses, leverages, the service that is given by the OS
+	From a developer point of view, a thread is a set of instructions that I'm going to write in my application and execute in a certain way
+	An application itself can be composed of several threads
+	Different threads can be executed at the same time and we're going to see that this notion of same time is not the same on all CPUs we can use
+	The JVM itself, works with several threads. There are threads for garbage collection, there are threads for Just In Time compiler, and other technical threads
+
+1.4 - What Does It Mean for Tasks to Happen at the Same Time?
+	What does "at the same time" mean?
+	Let us take a very classical example. Suppose you're writing a text document, and then at the same time you're writing your text document, spell check is running in the background, it doesn't prevent you from writing your doc, and it will trigger a visual signal when you have something wrong in what you'e typed in. And then you might want to print the document you're typing and it won't prevent you from typing or spell checker from checking. And at the same time, your OS will check regularly for your mailbox
+	All these 4 operations are happening at the same time
+	Now let us have a look at what's happening at the CPU level deep inside my computer
+	1st case - CPU with only one core
+		So this CPU can only do one thing at a time
+		It does a lot of context switching
+
+1.5 - Happening at the Same Time on Multicore CPU
+	What we see obviously is that at the CPU level, if I have one one core, nothing is really happening at the same time
+	So the question is, why do I have the feeling that everything is happening at the same time?
+	Everything is a matter of time scale. all those little actions we saw are just happening so fast that I have the feeling that they're happening at the same time
+	2nd case - CPU with multiple cores (2 cores)
+		This time, my CPU is able to do 2 things at the same time, one on each of its core
+	Only on a multicore CPU, things are really happening at the same time. Why? Because my CPU is really able to run several tasks at the same time. And of course, this has a big impact on concurrent programming, on multi-thread programming
+
+1.6 - CPU Time Sharing Using a Thread Scheduler
+	We saw that there's some kind of magic happening behind the scene. Who is responsible for the CPU time sharing? Who is going to tell that the CPU should be used for writing my text or should be used to run the spell checker? 
+	There's a special element called a thread scheduler, that is going to share evently, the CPU timeline, divided into time slices, to all the tasks that need to be run
+	There are 3 reasons for the scheduler to pause a thread, and to tell a thread, ok, now it is the time to run another thread, so you should stop running
+		First, CPU resource should be shared equally among the threads, and there are sometimes very sophisticated priority stuff that are taken into account to share equally the CPU as a resource
+		A thread might be waiting for some more data
+		A thread might be waiting for another thread to do something. For instance, to release a resource
+
+1.7 - What is a Race Condition in Concurrent Programming?
+	What is a race condition? A race condition deals with the access of data concurrently
+	What does it mean accessing data concurrently? It means that 2 different threads might be reading the same resource
+	A race condition occurs when 2 different threads are trying to read and write the same variable or same field, at the same time. All those words are important
+	And you see that this notion of same time really needs to be very precisely defined, because on a monocore or on a multicore CPU, same time doesn't mean the same thing as we saw in the previous example
+	This concurrent reading and writing is what is called a race condition
+
+1.8 - Analysis of a Race Condition in the Singleton Pattern
+	Let us see an example with the very well-known singleton pattern
+		public class Singleton {
+			private static Singleton instance;
+			
+			private Singleton() {}
+			
+			public static Singleton getInstance() {
+				if(instance == null) {
+					instance = new Singleton();
+				}
+				
+				return instance;
+			}
+		}
+	The idea is to have a class that is allowed only one single instance. So this instance is stored in a private static field, here called instance
+	The constructor of this class is made private, so that it is not possible to build this class outside of itself
+	And we have a getInstance, a public static method that will first check if the instance of the Singleton class has already been created
+	The question is, what is happening if 2 threads are calling this getInstance method at the same time?
+		Threads being paused at different times causing one thread to over-write Singleton instance
+	This is a well-known race condition case and we're going to see how to prevent that
+
+1.9 - Synchronization Code to Prevent Race Conditions
+	So the question is how to prevent that? In the java language, the answer is very simple, it is called "synchronization"
+	By synchronizing a block of code, we're going to prevent this to happen
+	Synchronization prevents a block of code to be executed by more than one thread at the same time, and from a technical point of view, it will prevent the thread scheduler to give the hand to a thread that wants to execute the synchronized portion of code that has already been executed by another thread
+	How does it work technically?, it's pretty simple, we just have to add the "synchronized" keyword on the declaration of the method
+		public static synchronized Singleton getInstance() {...}
+	How does synchronization work under the hood?
+	The singleton class is a class with a getInstance method that we want to synchronize. If it is not, any thread can run this method freely
+	Synchronizing means protecting this method by a fence, declared with the synchronized keyword
+	Under the hood, the JVM uses a special object, called lock object, that has a key. In fact, every object in the java langauge, has this key, that is used for synchronization
+	What does it change to our code? When a thread wants to enter this protected method, it will make a request on this lock object, "give me your key". If the lock object has the key available, it will give it to this thread, and this thread will be able to run the getInstance method freely
+	If another thread wants to enter this synchronized block of code, it will make the same request on the lock object, but this time, the lock object has no key available for him.
+	Why? Just because he already gave its key to the first thread. The lock object has only one single key. So the other thread has to wait for the key to be available. At some point, the first thread will finish to run the getInstance method, will give back the key to the lock object
+	So this lock object will be able to give the key to the other thread and that thread will be allowed to run a getInstance method
+	When it has finished running this method, it will give the key to the lock object
+	This mechanism is very simple, and will prevent mroe than one thread to execute the getInstance method at the same time
+
+1.10 - Understanding the Lock Object in Synchronization
+	So for synchronization to work, we need a special technical object that will hold the key. We're going to see that this object can be made explicit in our code
+	In fact, every java object can play this role. This key is defined internally in the object class, thus making it available for all the java objects we define in our applications
+	It is worth noting that sometimes this key is also called a "monitor" in books and articles
+	Now we may ask the question, how do we know which object has been chosen to hold this key? There are several cases to consider
+	In our example, we put the synchronized keyword on a public static method of the singleton class. And in this case, the JVM uses the singleton class object itself. All the classes in Java are represented by objects
+	and in the case of a synchronized static method, the object chosen to hold the key is the class object itself
+	If we put the synchronized keyword on a non-static method
+		public synchronized String getName() {
+			return this.name;
+		}
+	then in this case, the key is hed by the instance of the class we're in. So a synchronized non-static method, uses the instance it is in, as a synchronization object holding the key
+	A third possibility is to use a dedicated, explicit object to conduct synchronization
+		public class Person {
+			private final Object key = new Object();
+			
+			public String init(){
+				synchronized(key){
+					// do some stuff
+				}
+			}
+		}
+	Here we're creating a private final object called key. It doesn't have to be an instance of a special class. In fact, the object class itself is enough. And this key object will be used as a synchronization object holding the key
+	So instead of synchronizing the init mehtod, we can create the synchronized block inside this method and pass this key object as a parameter of this synchronized keyword
+	And this is probably the best thing to do because it is always a good idea to hide the object used for synchronization whether we are in static context or not
+
+1.11 - Understanding Synchronization Over Multiple Methods
+	Now let us have a look at some use cases and corner cases
+	Suppose we have a Person class (instance of Mary in our example) with 2 declared methods getName and getAge and we added the synchronized keyword on the declaration of those methods
+	The lock object used by the JVM is the Mary object itself, that is, the instance of the class we are in
+	So what is going to happen if a thread wants to execute getName? Well, it will just take the key from the lock object, and remember, the lock object is the Mary object itself, thus preventing another thread from executing getAge at the same time
+	Why? Because since we did not declare any explicit object on the synchronization of our methods, the same key is used to synchronize both methods
+	This might not be what we need. If we need to synchronize getName independently of getAge, then we need to create 2 lock objects in the Person class and synchronize the block of codes inside the methods on those 2 different objects
+	But now suppose that we have 2 instances of our Person class, Mary and John and once again the getName and getAge are synchronized using the synchronized keyword on the method declaration
+	It means that the instances Mary and John are used to synchronize those methods. So we have 2 lock objects with 2 keys. So thread A executing getName of the Mary object, doesn't prevent thread B from executing the getAge from the Joh instance object
+	And it will not prevent another thread to execute this same getName method on another object
+	You really need to keep in mind that, to understand how synchronization works, you need to identify  which object is used as lock and what are the keys used in your application
+	Remember that using the synchronized keyword on a method declaration, uses an implicit lock object, which is the class object in the case of a static method, or the instance object itself in the case of a non-static method
+	If what we really want is to prevent 2 threads to execute the getName at the same time, in all the instances of the Person class, then we need our lock object to be bound not to each instance of our class, but to the class itself
+	So it has to be the static field of the class Person itself. And in this case indeed, thread A executing the getName method from the Mary object will be holding the key. Thus preventing thread B from entering the getAge method, but also a thread C to execute the getName method of John instance of Person class
+
+1.12 - What is a Reentrant Lock?
+	First of all, we say in Java that locks are reentrant. What does it mean to be reentrant?
+	Suppose we have 2 instances of our Person class, Mary and John, and we have a bunch of synchronized methods in those instances
+	Now it turns out that the first synchronized method from the Mary instance, calls another synchronized method of the John instance that happens to be synchronized with the same lock. 
+	If we apply strictly the rule that we told in the previous part, the "red" key needs to be available for this thread to enter this method. It turns out that this red key is not available. But the thread holding that key is precisely the thread that is asking for it
+	So this is an exception to the rule called reentrance. And this thread, since it is already holding the right key, will be allowed to run the other method
+	This rule is quite natural to understand, but it still has to be stated
+	So we say that locks are reentrance. When a thread holds a lock, it can enter a block synchronized on the lock it is holding. And this case is very frequently met in inheritance for instance
+
+1.13 - What is a Deadlock?
+	Suppose we still have our 2 Mary and John instances of the Person class and we have a synchronized method that is calling another synchronized method
+	Now we're not in the same case as the previous one, that is the first method is synchronized using a "red" key, and the method call used by this method is synchronized using a "green" key. And for some reason, this green protected method calls another method, the third one, protected also by teh red key
+	What is going to happen in this case?
+	The blue thread is going to take the red key and begin to run this first method and at the same time, the purple thread is going to take the green key, and to run the other method
+	At some point, the blue thread will need the green key to enter the green method, but the purple has it. So this blue thread has to wait. And the purple thread will arrive at the point of code where it needs the red key to continue to run
+	And unfortunately, the red key is not available, because it is held by the blue thread. And this case is a deadlock, that is, the green key will never be released by the purple thread, so because of that, the blue thread is blocked. And since it is holding the red key needed by the purple thread, the purple thread will never continue to advance, nor the blue thread
+	A deadlock situation is a situation where a thread T1 holds a key that is needed by another thread T2. And the deadlock is the fact that T2 also holds the key needed by T1
+	Fortunately, the JVM is able to detect a deadlock situation, and it can log information, mainly thread stack traces, to help debug the application
+	But unfortunately, there is not much we can do if a deadlock situation occurs, besides rebooting the JVM
+
+1.14 - Quick Overview of the Runnable Pattern to Launch Threads
+	The most basic way to create threads in Java is to use the Runnable pattern
+	In the runnable pattern, you need first to create an instance of the Runnable interface, which is very easy, there is only one method to implement
+	Then we pass this instance to the constructor of the Thread class
+	Then we call the start() method of this Thread object created, to launch a new thread that is going to run the task wrapped in our Runnable object
+		Runnable runnable = new Runnable() {
+			public void run() {
+				String name = Thread.currentThread().getName();
+				sysout(name);
+			}
+		}
+	This is the Java 7 pattern to do that, with an instance an anonymous class.
+	But we can also use a lambda expression to implement a runnable
+		Runnable runnable = () -> {
+			String name = Thread.currentThread().getName();
+			sysout(name);
+		}
+	Then we pass this runnable object to create a new thread
+		Thread thread = new Thread(runnable);
+		thread.start();
+
+1.15 - Live Coding: Launching Your First Thread
+	Thread.start()
+	Thread.setName()
+	Calling Thread.run() in main() - problem is that the task is correctly executed but it is not executed in the thread we've created. It is executed in the main thread which is the thread executing the main method. So this run method should not be called if we want to launch a new thread. start() needs to be called
+
+1.16 - Live Coding: A Race Condition in Action and How to Fix It
+	Thread.join() - Just to be sure, the call to this join method is executed once this thread has finished executed this runnable
+
+1.17 - Live Coding: A Deadlock in Action, and How to Fix It
+	Sample code that creates deadlock
+		private Object key1 = new Object();
+		private Object key2 = new Object();
+		
+		public void a(){
+			synchronized(key1){
+				sysout("In a()");
+				b();
+			}
+		}
+		public void b(){
+			synchronized(key2){
+				sysout("In b()");
+				c();
+			}
+		}
+		public void c(){
+			synchronized(key1){
+				sysout("In c()");
+			}
+		}
+	So here I am crewating a possible deadlock since if someone calls a and b at the same time, a will be blocked because b() call will be waiting key2 to be available but should be held by the other thread
+	In debug mode, during a deadlock, Debug perspective in eclipse shows "owns: Object (id=...)" and "waiting for: Object (id=...)" under each thread
+	So far the only way to fix this, is to shut down the JVM
+
+2.1 - Introduction: Agenda of the Module
+	The Runnable pattern is the first pattern used to launch threads in java. It has been introduced in Java 1.0
+	There are other patterns introduced in java 5, in the java.util.concurrent API. We're not going to see them. They're beyond the scope of this course
+
+2.2 - Launching a Task in a New Thread with the Runnable Pattern
+	How to launch a new thread?
+	A thread is something that executes a task. In java 1, the model for a task is the Runnable interface.
+	It's a very simple interface. There's only one method in it, run() that doesn't take any arguments and that doesn't return anything
+	Since it only has one method, in Java 8, it became a functional interface with this functional annotation added to it
+	It doesn't introduce any kind of backward compatiblity. It is just leveraging a new feature of the java 8 compiler
+	Be careful when you launch a new thread. It is the start() method you want to call and not the run() method
+	There is a trick to knowing which thread a task is executed. Static method Thread.currentThread().getName()
+
+2.3 - How to Stop a Thread Using the interrupt() Method
+	How to stop a thread? It might look simple to answer but in fact, it is a little tricky and there are traps behind that
+	There is indeed a method in the thread class called stop(). If I'm mentioning this method here, it is to tell you that you should NOT use this method at all. If you check the documentation of this method, you will have the exact reasons that this method has in fact been introduced in the first version of the thread class before the people who wrote it realized that it was a wrong idea to create such a method
+	The problem is once this method was published, it was not possible to remove it on the thread class without introducing a backward incompatiblity
+	this method is here just for legacy and backward compatiblity reasons. It will not be removed in future versions but the only thing you want to know with this method is that you should stay away from it
+	The right pattern to stop a thread is in fact to use the interrupt() method
+	Now the trick is the interrupt method will not stop a thread, but merely send a signal to the task  the thread is running telling it that it is time for this task to stop itself
+	How does it work?
+		Thread t1 = ...;
+		t1.interrupt();
+	I call the interrupt method on the running thread.
+	The code of the task this thread is executing should call the isInterrupted() method inside itself to decide to terminate itself
+		Runnable task = () -> {
+			while(! Thread.currentThread().isInterrupted()) {
+				// the task itself
+			}
+		}
+	So how can I stop a thread? I need to call interrupt on the thread I want to stop and this calling will cause the isInterrupted method to return true
+	So this isInterrupted should be scanned, should be regularly checked by the Runnable that is executed by that thread
+	If the thread is blocked or waiting, then the corresponding method will throw an InterruptedException
+	We have not seen in which case a thread can be blocked but there are several example of that, for instance, wait() and notify() that we're going to see now, offering this exception and the join() method that we saw in the live coding session of the previous module also throws InterruptedException
+
+2.4 - Implementing a First Producer/Consumer Example
+	What is a producer/consumer?
+	We have a producer that is producing values stored in a buffer, think about an array for instance
+	And we have a consumer that is consuming the values from this buffer
+	Most of the time, I'll have more than one producer, more than one consumer, and they'll all be executed in their own thrad. Of course, we need to take care of the fact that the buffer can be empty or full
+	As I said, producers and consumers run in their own threads. It means that this buffer, which is shared among all the threads, maybe be the object of a race condition if I do not properly synchronize my code
+	(sample code defining Producer and Consumer class updating values in an int array)
+
+2.5 - A First Synchronized Version of the Producer/Consumer
+	That was the very first and very naive way of writing a producer and a consumer. First question is what is wrong with this code?
+	Quite obvious is that we have a race condition here
+	How can I fix my producer/consumer?
+	One way to fix things here is to just synchronize the access to the array and this is what we learned in the previous module
+	(Adding "synchronize" in method signature) - Does it really fix our problems? It does not because synchronization will indeed be the solution of our problem if we write it like that. Why? Because as we said in the previous module, if we write synchronized like that, it means that the object holding the key that the thread will need to run the consume() and produce() method is the consumer instance itself and what we want is to avoid a thread from running the consume method when another thread is running the produce method
+	So we need a common synchronization object to all instances of consumer and producer
+	(Adding "private Object lock" as instance variable of Consumer and Producer) A private object lock that will made to all the consumers and producers instances and that will be used in a synchronized block inside the consume and produce method
+	This code will work if the lock object is the same for all instances of producers and consumers
+
+2.6 - What is Needed to Fix This First Flawed Version
+	Now Is our code really fixed? If we write it like that, will it really work?
+	The question is, what happens if the buffer is empty?
+	The thread executing this consumer will be running the isEmpty() inside this infinite while loop forever. So this thread will be blocked inside the consume method, inside the synchronized block, while holding the key of the lock object
+	So what is going to happen in the producer? The thread running the producer will be waiting for the key held by this lock object and since this key is not available because it is held by the consumer thread, it will not be able to execute its synchronized block
+	This way of writing things, this way of naively synchronizing our 2 methods is not the right way to do it, it will lead to a deadlock
+	We need another fix. What we need to do is a way to kind of "park" the consumer thread while waiting for some data to be produced. And when this thread is parked, it should not be blocking all the other threads and of course, namely, the producer threads that are going to add data in our buffer
+	So the consequence of that is that the key held by the consumer thread should be released and made available to the producer threads while this consumer thread is parked
+	And this is exactly what does this wait and notify pattern
+
+2.7 - Understanding How the wait() and notify() Methods Work
+	So how does it work, this wait/notify pattern?
+	From a pure technical point of view, wait and notify are 2 methods from the object class, thus available in all the java objects we create.
+	These methods are invoked on a given object
+	Now, there is a rule the thread executing the invocation should be holding the key of that object. If a thread that is executing a wait method does not hold the key of object on which it is executing this method, then exception is raised
+	Now, we must keep in mind that the only way for a thread to hold the key of an object is to be in a synchronized block, synchronized on this object
+	So the consequence of that is that wait and notify cannot be invoked outside a synchronized block. And if you have an invocation of these methods outside of a synchronized block, this is a bug, it will crash when you try to run that
+	Let us see what is happening when a thread calls the wait method
+		First of all, calling the wait on a lock object released the key held by the thread. So this key becomes available to the other thread. And this is exactly what we want in our example
+		The second thing it does is that it puts the current thread in a particular state called the WAIT state. This WAIT state is not the same as the state in whcih a thread is when it is waiting at the entrance of a synchronized block. It is a special thread state
+		The only way to release a thread from a WAIT state is to call notify() on the lock object this thread is using
+	so what happens when we call notify?
+		Calling notify releases a thread that is in a WAIT state so a thread that has called a wait method and it puts it in the RUNNABLE state
+		This is the only way to release a waiting thread. So if you never call notify in your code, at some point, the new application will most probably not work properly
+		If there are more than one thread in the WAIT state, and this is the case most of the time, the released thread by the notify method is chosen randomly among those threads
+		I also have a notifyAll() method that will awake all the threads in the WAIT state
+
+2.8 - Fixing the Producer/Consumer Code Using Wait/Notify
+	Somewhere outside of Producer and Consumer
+		private Object lock;
+	Fixed Producer
+		class Producer {
+			public void producer() {
+				synchronized(lock) {
+					if(isFull(buffer)) {
+						lock.wait();
+					}
+					buffer[count++] = 1;
+					lock.notifyAll()
+				}
+			}
+		}
+	Fixed Consumer
+		class Consumer {
+			public void consume() {
+				if(isEmpty(buffer)){
+					lock.wait()
+				}
+				buffer[count--] = 0;
+				lock.notifyAll();
+			}
+		}
+
+2.9 - Understanding How Synchronization Works with wait() and notify()
+	(Great illustration of explaining with one producer and one consumer)
+
+2.10 - Live Coding: Unsynchronized, Flawed Producer/Consumer in Action
+
+2.11 - Live Coding: Synchronized, Flawed Producer/Consumer in Action
+
+2.12 - Live Coding: wait/notify, Correct Producer/Consumer in Action
+
+2.13 - Understanding the States of a Thread
+	A thread has a state, as we saw. A thread can be running or not, which is already a first glimpse at what the state of the thread could be
+	The question is: if a thread is not running, can the thread scheduler give it a hand? That is, can the thread scheduler awake the thread and give it a time slice so that the thread can run its task?
+	This question is interesting because it has, infact, several answers
+	In most of the time, the answer is yes but we saw several cases in which the answer is no and namely, if the thread is in the wait list, then the thread scheudler should not try to give this thread a hand and a time slice to run its task
+	So the answer to this question is not that simple. It's not that obvious and we need to know the exact different states a thread can have and what are the relationships between those states
+
+2.14 - Understanding the State Diagram of a Thread
+	State diagram
+		NEW -> RUNNABLE -> TERMINATED
+						-> BLOCKED
+						-> WAITING
+						-> TIMED_WAITING
+	The first state we have is the state NEW. It has not been run yet. It has not been executed its task yet
+	The second state is the RUNNABLE state. Once we call the start method on this thread, the thread is set in the RUNNABLE state. It means that the thread scheduler is free to give a time slice of the CPU to the thread so that this thread can execute its task
+	And once the task is completed, this thread enters the TERMINATED state, in which the thread scheuler knows that the thread should not be run anymore
+	This is a basic state machine, but as we saw there are other states in which a thread can be
+	The first one is the BLOCKED state. When a thread is blocked at the entrance of a synchronized block because the key of the lock object is not available, it is in a BLOCKED state and the thread scheduler will not try to awake this thread as long as the key is not available. This is a very common state in which threads can be put
+	The second state is the WAITING state. It is a state in which the thread is put once the wait() method has been called
+	The last state that we did not see, which is called the TIMED_WAITING state. The wait method that we saw also can also take a time out, which is a time out expressed in milliseconds. At the end of the time out, the thread will be automatically modified by the system and in this case, this thread will be awakened without calling the notify method on the right object
+	So in that case, the thread wil lbe put in a TIMED_WAITING state. It is the same state as the one the thread is put when we call the sleep method on a given thread
+
+2.15 - Wrap-up on the State of a Thread
+	If we take a look at what the thread scheduler can do, a thread scheudler can run threads that are in the state RUNNABLE
+	A BLOCKED thread can only run again if the key is released. Remember a BLOCKED thread is blocked at the entrance of a synchronized block of code
+	And a WAITING thread can only run again when the notify method is called
+	It is very important to keep in mind that in the last 2 cases, if the key is never released or if the notify method is never called, then the blocked and the waiting threads will never be released, thus blocking our entre application
+	We can read the state of a thread using Thread.getState(). It returns enum values of type Thread.State
+
+3.1 - Introduction: Agenda of the Module (Ordering Read and Writes Operations on a Multicore CPU)
+	In the previous module, we saw what synchronization is and how it works in Java concurrent programming
+	This module is about visibility	. Visiblity is the second fundamental notion you need to understand in java concurrent programming
+
+3.2 - Introduction to Visibility: Back to our Producer/Consumer Case
+	Let us talk about synchronization and visibility
+	We saw that synchronization is about protecting a block of code, which might be a whole method or some portion of a method
+	It guarantees that the code protected is a synchronized block is executed at one time by only one thread. So synchronizing a block of code is about preventing 2 threads from executing this piece of code at the same time
+	It is there to prevent race conditions and race condition is when several threads are trying to read and write the same fields of a java class at the same time
+	(sample code of producer/consumer with only synchronized and no wait/notify with emphasis on the count variable)
+
+3.3 - Organization of Caches on Multicore CPUs
+	Let us talk a little more about memory access because this is precisely the key point in visibility
+	20 years ago, this code was just working fine with no side effect, but nowadays things are different, they do not work like that anymore
+	The CPU doesn't read a variable from the main memory, it reads it from its internal cache. Let us have a closer look at that
+	How does CPU work with its main memory? We have first electronic component called CPU, but there are many sub-CPUs on it called "cores". And there is the main memory, which is a different electronic component, linked to the main CPU using a special electronic called "bus"
+	On a CPU I may have several cores, several physical cores, suppose we have 4. Each core has several layers of memory caches called "L1", "L2, and a common third layer called "L3". This i avery classic pool architecture that we have on Intel's CPU for instance
+	Why has it been made like that? Because access to caches is much faster than access to main memory. Access to main memory is limited by the speed of this electronic bus linking the main CPU to the main memory
+	Access  to main memory is ~100 ns. Access to L2 cache is 7 ns, access to L1 cache is 0.5 ns
+	Of course there are trade offs and the trade off is the amount of memory available. Size of main memory is several GB vs size of L2 cache is about 256 kB, size of L1 cache is 32 kB
+
+3.4 - Definition of Visibility on Multicore CPUs
+	Now that we have this architecture in mind, let us have a look at what is happening with our count variable
+	Our producer which is running in Core 1 needs a copy of this count variable, so this count variable will be copied in the L1 cache of the Core 1 of our CPU. Then Core 1 can modify this variable, that is increment it
+	But it turns out that Core 2, which is running the consumer, also needs the same count variable. Now the problem comes from the face that the count variable is really sotred in 2 places on my CPU, first in main memory and the value of count in main memory has not been updated yet because the write to this main memory is much, much slower than the write to the L1 cache
+	But my Core 2, since this variable is synchronized, should get the value 1 from the L1 cache of the Core 1 of my CPU and not the value of 0 from the main memory. So it needs a technical trick here to know that the write value is in L1 cache of Core 1 and not in the main memory
+	This is exactly what visibility is. Visiblity is about informing other caches of my CPU that a variable has been modified and that the write value is in one of the caches of the CPU and should not be fetched from the main memory
+	So what is visibility? A variable is said visible if the writes made on it are themselves visible which means that the reads made on this variable are going to return the correct value
+	The nice thing is that all the synchronized writes, that is all the modification of variables made within the boundary of a synchronized block, are visible
+
+3.5 - Understanding Why the Happens-before Link is So Important
+	And this is what this "happens before" link notion is about. In fact, the "happens before" linki is an abstract notion introduced in java that is going to help us order the read and write operations on a multicore CPU
+	First of all, why is it important to understand what "happens before" link is? There is one main reason, is that if you check the javadoc, especially the javadocs of several special classes from the java.util.concurrent package, you'll see that there are many references to this "happens before" link
+	And this "happens before" notion is not explained in the javadoc. It is explained in the Java Language Specification (JLS)
+
+3.6 - Definition of the Happens-before Link from the Java Memory Model
+	In the JLS there is a chapter called the Java Memory Model (JMM). What is the JMM about? As we saw, multicore CPU brings new problems since a variable can be stored in multiple places, main memory and several caches
+	Read and writes can really happen at the same time, and this is different from the situation we used to have in monocore CPUs. A given variable can be sored in more than one place, and different threads need to be aware of that because they need to read the correct value of a given variable
+	Visibility simply means that that a read operation should return the value set by the last write, and course the important word of the sentence is the word "last". What does it mean the last write in a multicore CPU world?
+	So basically, we need some timeline to put read and write operations on, and of course a CPU doesn't offer such a service, so we don't have this tool exactly, we need to reproduce it to have correct operations
+	So what does the JMM tell us? Suppose we have a write operation executed in a given thread T1. Here T1 just writes the value 1 to the variable x (x = 1). And we have another thread T2, which is reading this variable. It reads x and copy the value in another variable, r (r = x). So basically, this is a read operation
+	The question is, what is the value of r once this code has been executed? In fact, there are 2 answers to this question, and the JMM fixes those 2 answers
+	If there is no "happens before" link between the two operations, then the value of r is unknown. It should be 1, which is the correct value from x, it could also be 0, which is the default initial value of x
+	But if there is a "happens before" link (HBL) between the two operations, that is if x=1 is set to happen before r=x, then the value of r should be 1. This is the specification from the JLS, and it should be working like that in our code
+	Now the question is, how can we setup a HBL? Because there's no such keyword in the java language
+
+3.7 - Understanding the Happens-before Link on Basic Examples
+	The definition states that a HBL exists, is created, between all synchronized or volatile write operations and all synchronized or volatile read operations that follow
+	We saw what a synchronized read/write is, it is simply read/write operation within the boundary of a synchronized block of code. We didn't see what a volatile read/write is, and we're going to see that
+	(Example of 2 methods - one increments an index, second prints the index) - We have 2 operations here, an operation in the increment method, which is a write operation, and the read operation in the method print
+	What does this code print in multi-thread? This code, as it isi written here, without any synchronization and no volatile declaration, the answer is it is impossible to say. The printing of the index variable is not bound to the last write operation, so we can hope so really any kind of value printed out
+	Now if we synchronize our 2 methods on the same objects (adding "synchronized" in method signature) which is the instance in which those 2 methods have been declared, then we have a synchronized write and a synchronized read, so we have a HBL between our write and read operation. So the correct value is always printed, the value printed by the sysout is the last value updated by our write operation
+	Now if I don't synchronize my code my declare my variable but declare my variable index as being "volatile" then the write and read operations are volatile read and writes, and the correct value will also be always printed out
+
+3.8 - Understanding the Happens-before Link on a Complex Example
+	Let us see now a more complex example
+		int x, y, r1, r2;
+		Object lock = new Object();
+		
+		void firstMethod() {
+			x = 1;
+			synchronized(lock) {
+				y = 1;
+			}
+		}
+		
+		void secondMethod()  {
+			synchronized(lock) {
+				r1 = y;
+			}
+			r2 = x;
+		}
+	We have a method called firstMethod with 2 write operations, the first x = 1 unsynchronized and non-volatile since x is not declared as being volatile, and y = 1, which is a synchronized write
+	And the secondMethod with 2 read operations, first one r1 = y, synchronzied read, and r2 = x, non-synchronized read.
+	And the question is, if I execute this code in 2 different threads, the first one executing firstMethod and the second one executing secondMethod, what would the value of r2 is going to be?
+	Due to the way the code is written there is a HBL between the x = 1 and y = 1 operation. Why? Because those 2 pieces of code are written in the same method, and of course, a given thread is supposed to respect the order in which I have written my code
+	So I have a HBL between x = 1 and y = 1, and on the other hand between r1 = y and r2 = x
+	Let us suppose at first that T1 is the first thread to enter a synchronized block. So we know that we have a HBL between the write operation y = 1 and the read operation r1 = y. Since I also have a HBL between x = 1 and y = 1, and r1 = y, and r2 = x, I know that the execution will be in this order:
+		first x = 1, then y = 1, executed in my first thread
+		And r1 = y and r2 = x in my second thread
+	And the value of r2 is 1. Why? Because by transitivity I have a HBL between x = 1 and r2 = x.
+	But on the other hand, if T2 is the first thread to enter the synchronized block then things aren't going that well because I have a HBL between r1 = y and y = 1, but since r2 = x and x = 1 are not synchronized or volatized read/write operations, I have no HBL between those 2 operations, and I cannot know if x = 1 will be executed and visible before r2 = x.
+	So the value of r2 may be 0 or 1 and it is not possible to say  this in advance. So from a concurrent programming point of view, this code is buggy because I cannot tell in advance what value r2 will receive
+
+3.9 - Synchronization and Volatility on Shared Variables
+	As a conclusion, on one hand we have synchronization. Synchronization guarantees the exclusive execution of a block of code, only one thread can execute a special block of code at a given time
+	And we have visibility, that guarantees the consistency of variables. If a variable is visible, then I have the guarantee that when I read it, I read a correctly updated value. Visibility is a weaker constraint than synchronization because 2 threads can execute read/write operations at the same time but I still have the consistency of the variables guaranteed
+	So the conclusion of this is that all shared variables - and what does "shared" means? it means shared among more than one thread - should be accessed by those threads either in a synchronized way, either in a volatile way
+	If you see a variable in a piece of code that is read or written by more than one thread at the same time and that is neither synchronized nor volatile then you have a race condition and a bug in your code
+
+3.10 - Understanding the False Sharing on Multicore CPUs
+	Let us talk about false sharing because this structure of caches inside the modern CPU has a drawback which is precisely called false sharing
+	False sharing happens because of the way CPU caches work. It is a side-effect, unfortunately, it can have a tremendous effect on performance. So it's good to understand that and have it in mind when designing applications
+	In fact, the cache of a CPU is orgnaized in lines of data. Each line can hold 8 longs, which is 64 bytes. And when visible variable is modified in an L1 cache, all the line is marked "dirty" for the other caches. A read on a "dirty" line triggers a refresh on the whole line, not just on the variable that has been modified
+	Suppose we have this very simple code,
+		volatile long a, b;
+		
+		void firstMethod() {
+			a++;
+		}
+		
+		void secondMethod(){
+			b++;
+		}
+	The first thread is running firstMethod and a second thread running secondMethod. So the first thread is only interested in variable "a" and the second thread only in variable "b"
+	The first thread is running in Core 1, and since it needs the variable "a", it loaded a line of cache from the main memory with this variable in this line. And the second thread did the same
+	Now because of the way the memory is organized in our application, organized by the compiler and the JVM, it turns out that "a" and "b" are written in 2 contiguous areas of the main memory. So while loading this line of cache T1 also loaded the "b" variable and T2 also loaded the "a" variable
+
+3.11 - How False Sharing Can Impact the Performance of Applications
+	So what's going to happen now? Well, the thread T1 is going to increment the "a" variable, thus marking this line of cache as dirty and this mark as "dirty" will be broadcasted to the other caches of the CPU, including the cache of Core 2
+	Then Core 2 wants to increment the "b" variable but unfortunately the line of cache it loaded from the main memory has been marked as dirty by Core 1, so when it tries to read the variable "b" it is a cache miss, it has to go back to the main memory to fetch the value of "b" it is going to increment. Which is really bad luck because the variable "b" has not been touched by Core 1, the "b" variable has been made dirty by the side effect of the fact that the CPU cache is orgnaized in lines
+	This is a very well-known drawback of the cache organization called false sharing. False sharing happens in our application, in our code, in a completely invisible way, because when we write some code and when we write a class, we have no idea of how the class and its field are laid out in memory
+	It is hard to predict but it is with no doubt hitting the performances of our applications
+	There are workarounds to prevent false sharing from happening in very simple cases, and we're going t see an example of that
+
+3.12 - Live Coding: Setting up a Simple Example to Observe False Sharing
+	An example of false sharing artificially created in a piece of code, and the influence of variable padding to try to fix this
+		public class FalseSharing{
+			...
+			private static VolatileLongPadded[] paddedLongs;
+			priate static VolatileLongUnPadded[] unPaddedLongs;
+			
+			public final static class {
+				public long q1, q2, q3, q4, q5, q6;
+				public volatile long value = 0L;
+				public long q11, q12, q13, q14, q15, q16;
+			}
+			
+			public final static clas VolatileLongUnPadded {
+				public volatile long value = 0L;
+			}
+			
+			....
+		}
+	We have a first class called VolatileLongPadded and VolatileLongUnPadded. What does VolatileLongUnPadded do? It doesn't do anything, it just wraps a long value that is set it to 0. So if we create several instances of this class most probably they will be recorded in the same cache line of the CPU thus sharing this cache line and probably expose the false sharing problem we have identified in the slides
+	And we have a second class which is basically the same, it also wraps long value with the value 0, but just to be sure that that we will not come across the same false sharing, we've created 6 other long before this long value, and 5 more long values after it. So here we have 13 long, thus we're sure that this value will be isolated in a cache line and if we create several instances of this VolatileLongPadded class, we can be sure that this volatile field here will not share the same line of cache with another instance
+
+3.13 - Live Coding: Observing False Sharing on a Simple Example
+	(Running the code - showing dramatic performance difference between padded and unpadded)
+	So clearly on this example we can see that the false sharing is there, and that variable padding can protect our code from this false sharing
+	Now, is this variable padding trick, should be used all the time? Most probably not, this is just a toy example, you can probably reproduce it very easily on your machine, but on real applications it will probably be different
+
+
+4.1 - Introduction: Agenda of the Module (Implementing a Thread Safe Singleton on a Multicore CPU)
+	This module is entirely devoted to a case study based on a well known Singleton pattern and we're going to see how we can implement the Singleton pattern in a thread safe and efficient way on a multicore CPU
+
+4.2 - a First Implementation of the Singleton Pattern
+	As we've seen, the Singleton pattern is a well known pattern described in the famous design pattern books called Gang of Four
+	The idea is that a Singleton class should have only one instance. It is very easy to write in a non-concurrent environment, in a non-multi threaded application, but if my application is multi-threaded, if I'm in a concurrent environment, I need to be careful. If I'm not I might end up with a Singleton with multiple instances
+	Let us have a look at the first implementation of the Singleton pattern in java, a quite naive implementation
+		public class Singleton {
+			private static Singleton instance;
+			
+			private final Singleton() {}
+			
+			public static Singleton getInstance() {
+				if(instance == null) {
+					instance = new Singleton();
+				}
+				return instance;
+			}
+		}
+
+4.3 - Identifying the Race Condition in This First Implementation
+	What are the problems with this code?
+	In getInstance(), instance == null is a read operation and instance = new Singleton() is a write operation
+	If those 2 operations occur in different threads, I have here a good example of a race condition
+	I have no HBL between those 2 operations, so I have no guarantee that our first thread has created a new instance, and the second thread will see this new instance
+	So this first implementation is not thread safe, which is not a surprise, we already knew that.
+	The first solution that can come to mind is to make the read and write operation synchronous
+
+4.4 - Fixing the Race Condition Using Naive Synchronization
+	The is the first fix to this problem called the Synchronized Singleton pattern
+		public class Singleton {
+			private static Singleton instance;
+			
+			private final Singleton() {}
+			
+			public static Singleton synchronized getInstance() {
+				if(instance == null) {
+					instance = new Singleton();
+				}
+				return instance;
+			}
+		}
+	Added "synchronized" keyword on the declaration of the getInstance method
+	What is this fix going to do? It's just going to prevent 2 threads from executing this getInstance method, so we have a guarantee that only one instance of the singleton class is going to be created
+	From a purely functional point of view, this fix is perfect, it will make our singleton class work as expected even in a multi-threaded environment
+	Let us have a closer look at the execution of this code on a single core CPU
+	Suppose that 2 threads T1 and T2 are calling the getInstance method at the same time. T1 is the first to enter the synchronized block, let us suppose that, and let us see what's going to happen
+
+4.5 - Analyzing the Performance on a Single Core CPU
+	Let us take a closer look at what is happening at the CPU level
+	At the core level, T1 is entering the getInstance method and executes a test
+	The thread scheduler gives the hand to T2
+	T2 tries to enter getInstance but since the key is not available, T1 is still holding it, it will realize that it cannot do that
+	T1 has the hand again, finishes getInstance
+	T2 can enter getInstance and read instance
+
+4.6 - Analyzing the Performance on a Two Core CPU
+	Let us have a look at what is happening on a 2 cores CPU
+	Here T1 is entering getInstance
+	T1 executes the test
+	The thread scheduler knows that it has 2 cores on its end, so it's going to give the hand to T2 on the second core of my CPU at the same time T1 is running
+	T2 tries to enter the getInstance method. Of course, it cannot because T1 is in it, holding the key of the synchronized block. But something different is happening here because I'm on a 2 cores CPU. What is different is that T2 knows htat some other thread is running on the other cores so there is a little chance that the key might be released without T2 leaving the core of my CPU. So it's going to wait a little for this key to be released. There is a little time out here running. At some point it will realize that the key is not released, so maybe the thread scheduler will give the hand to another thread in my application
+	T1 will finish to execute getInstance
+	T2 can then enter the getInstance method with the key and read the instance. Once again, this is a synchronized write followed by the synchronized read, so everything is fine. T2 is going to read the correct value of the instance variable
+
+4.7 - Understanding the Performance Issue of a Synchronized Singleton
+	But something weird happened, because suppose I have not 2 cores on my CPU but 4 cores. I saw that T1 was running first, then T2 needs to wait for T1 to leave the synchronized method to be able to read instance
+	And if on my other 2 cores I have 2 other threads, T3 and T4 who also want to read my instance variable, well those threads will ahve to wait for T2 to leave the getInstance method
+	At this point instance has been created, so all the reads could happen at the same time, the exact same time, but since my method is synchronized, no more than one thread can enter it at a given time, so no more than one thread can read instance at the same time
+	And this is really a performance hit because the more cores I have, the more I'm going to lose since the reads cannot be made in parallel
+	Of course, all the reads could be made in parallel in a correct way, but the synchronization doesn't allow that
+	In the case of an execution on a multi core CPU, since the read is synchronized, it cannot be made in parallel
+	Once instance has been initialized, I want to be able to allow the reading of this variable in parallel in a correct way. This synchronization of the Singleton pattern used to be a good idea in a mono core CPU world, now that we're in a multi core CPU world, it is not the right pattern to use because it is not performant enough
+
+4.8 - Fixing the Race Condition Using Double Check Locking
+	The first solution that has been proposed to fix this performance problem was the double check locking singleton pattern. We'll see why it's bugged and why of course it should NOT be used
+	The fact is I don't want to synchronize my getInstance method because it prevents the reads to be conducted in parallel
+	The idea of the double check locking is the following
+	Let us first check inside the getInstance method if the instance field has been created or not. If it has been created then I just return it and this is fine becaue it's not in the synchronized block, then all my reads will be made in parallel
+		public static Singleton getInstance() {
+			if(instance != null) {
+				return instance;
+			}
+			
+			synchronized(key) {
+				if(instance == null) {
+					instance = new Singleton();
+				}
+				return instance;
+			}
+		}
+	And then if instance has not been created I have the synchronized block on a special key object which will be static of course, and inside this I havea classical code. 
+	Check if instance is null or not. This is a good idea because between the first test and this one, another thread could have created this instance of Singleton. If it is null then I create it and return this value
+	This seems to be a nice way of doing things but there is a bug in this code which is very subtle and that we're going to see now
+
+4.9 - Understanding the Concurrent Bug in the Double Check Locking
+	It looks like the double check locking is solving our reading problem. Is it really solving this problem? Let us take a closer look at this code
+	The first operation is if instance is not null, then we read it and return it. Here we have obviously a read operation on the instance field of the Singleton class
+	Is it a synchronized or volatile read? The answer is no. Instance is not a volatile variable and this test is not in a synchronized block
+	As for the write operation, is it a synchronized or volatile write? It is not a volatile write because instance is not a volatile variable, but it takes place in a synchronized block, so the answer is yes
+	So we have a non-synchronized read that is supposed to return the value set by a synchronized write. Do we have a guarantee that the read will get the value set by the write operation?
+	As we saw in the previous module, this either HBL question. For that to have this guarantee, we need a HBL between this write operation and the read operation outside of this synchronized block
+	And the fact is we do not have this HBL because HBL are created between synchronized or volatile read/writes
+	So this code is buggy because there is no HBL between the read returning the value and the write that is setting this value. This is a very subtle bug indeed, it is not very obvious to see this bug, but this bug is here indeed
+
+4.10 - Possible Issues with the Double Check Locking
+	There is a concurrency bug in the way the double check locking is written. It is a very subtle bug because you will never observe this bug on a single core CPU because there are no visibility issues on a single core CPU. Visibility issues can only be seen on multicore CPUs due to the different caches on each core of the CPU
+	In fact, the effect of this buggy double check locking can be very weird. One can observe an object that is not fully built. To understand this let us have a closer look on how this instance field is created
+	In our Singleton class we have a private static field instance. It is just a pointer that will point to our only instance of the Singleton class. But the creation of this object is in fact a 2 step process
+		a. The first step is the memory allocation as in all the languages
+		b. Then the copy of the pointer that points to this newly allocated memory into the singleton field which is called instance
+		c. And then the construction process of the Singleton object. This allocated memory belongs to the Singleton class, it has a certain number of fields, certain number of methods, etc
+	And between the b step and c step, we do not know which is going to be executed first. If the construction process is executed first, then the copy of the pointer, everything will be fine because we cannot observe a non null instance pointer that points to a non fully built piece of memory, but if the copy of the pointer occurs first, and that we read this instance field in another thread, then we have visibility on a portion of memory that has been allocated but it's not fully initialized
+	And this weird case could happen in the double check locking we do not have the guarantee that this second case will not happen, and if it does then very bad things can happen to our applications because basically what we can do is call methods on an object that is not fully built, that is completely corrupted at this step
+	Of course, this is something that should be avoided in our applications
+
+4.11 - Fixing the Race Condition the Right Way: Using Enumeration
+	It is not possible to use this double check locking and the bug comes from the fact that the read of the instance variable is neither synchronized nor volatile
+	A possible solution could be write, let us make it a volatile read so that we get rid of this problem
+	And the code will be this one
+		public class Singleton {
+			private static volatile Singleton instance;
+			
+			private final Singleton() {}
+			
+			public static Singleton getInstance() {
+				if(instance != null) {
+					return instance;
+				}
+				
+				synchronized(key) {
+					if(instance == null) {
+						instance = new Singleton();
+					}
+					return instance;
+				}
+			}
+		}
+	This time the Singleton instance is a volatile field. We have a synchronized write followed maybe in another thread by a volatile read so everything is fine
+	From a pure functional point of view this code will work perfectly well
+	Indeed, in this case the double check locking is fixed, the problem is that we will fall back on the same kind of performance issues as in the synchronized case
+	So in fact we have fixed our problem without really fixing it since we have the same performance issues
+	What is the right solution to this Singleton pattern in java?
+	We find the right solution is to use an enumeration just like that
+		public enum Singleton {
+			INSTANCE
+		}
+	It is also a very simple solution, very easy to read and to write and to understand, so if you've Singletons to implement, forget about the basic Singleton pattern. Do not forget about the double check locking because you absolutely want to keep in mind that this pattern is buggy, so do not forget that you should avoid the double check locking at all costs
+	This pattern is so simple that it might look suspect, but in fact it has been used in several places in the JDK. For instance, in the Comparator interface in java 8 where we have a static method called naturalOrder() that returns Comparators.NaturalOrderComparator.INSTANCE
+	What is this NaturalOrderComparator stuff? It is indeed an enumeration that implements Comparator that has only one instance with the implementation of two methods compared() and reversed(), so yes this pattern based on enumeration can be used
+	It is in fact the right pattern to use to implement Singletons in Java
+
+4.12 - Live Coding: Trying to Fix the LongWrapper Example with Volatile
+	Let us come back to the first example of the first module of this course
+	To fix the race condition problem we just synchronized the incrementation of the wrap value from this long wrapper
+	The first question I would like to see is would it have been correct to just declare this "l" variable as a volatile long
+		(BEFORE)
+		...
+		private long l;
+		...
+		
+		public long getValue() {
+			return l;
+		}
+		
+		public void incrementValue(){
+			synchronized (key) {
+				l = l + 1
+			}
+		}
+		
+		(AFTER)
+		...
+		private volatile long l;
+		...
+		
+		public long getValue() {
+			return l;
+		}
+		public void incrementValue(){
+			l = l + 1
+		}
+	(After running this and verifying it doesn't work) So this fix is not working
+	Why isn't it working? Because here I have a volatile read (l + 1) and the incrementation and then a volatile write (l = ...), so this value will get the correct value created here
+	But the problem is not this one, the problem is that this operation should be atomic. It should not be interrupted when a thread is running it by another thread, so what we need here is not just volatility, it is really synchronization to guarantee that the thread will not be interrupted between the reading and writing of this variable
+	So yes indeed synchronization was the correct answer, volatility is not enough
+
+4.13 - Live Coding: Fixing the LongWrapper Example with Synchronization
+	 If we take a second look at this code, we might not that this is buggy and it is a very subtle bug once again because this code runs correctly on my IDE, that is in the development process
+	 Of course I don't have that many threads, I am not in the real concurrency context that I can have in a production environment, but let us take a closer look at this one
+	 What do I have here? (reference to l = l + 1) I have a synchronized read followed by a synchronized write which is correct. This block of code will correctly increment my variable
+	 But this getValue() here is neither synchronized, neither volatile, so this getValue doesn't offer the guarantee of returning the last value returned in this synchronization block (of incrementValue() method)
+	 If I want this code to be completely correct, I need to make this read also synchronized just by putting in synchronized block
+		public long getValue() {
+			synchronized(key) {
+				return l;
+			}
+		}
+	Of course the result will be the same but the difference is that now this code is correct. It was not correct in the first version. Why? Because I didn't have the HBL between this write (in incrementValue) and this read (in getValue())
+
+4.14 - Live Coding: Presenting the Java Puzzler LockMess Case Study
+	This example is taken from the famous book by Neal Fagter and Joshua Bloch  called Java Puzzlers
+		public class Worker extends Thread {
+			private volatile boolean quittingTime = false;
+			
+			public void run() {
+				while(!quittingTime) {
+					working();
+					sysout("Still working...");
+				}
+				
+				sysout("coffee is good");
+			}
+			
+			private void working() {
+				try {
+					Thrad.sleep(300);
+				}
+			}
+			
+			synchronized void quit() {
+				quittingTime = true;
+				join();
+			}
+			
+			synchronized void keepWorking() {
+				quittingTime = false;
+			}
+			
+			main() {
+				final Worker worker = new Worker();
+				worker.start();
+				
+				Timer t = new Timer(true);	// Daemon thread
+				t.schedule(new TimerTask() {
+					public void run() {
+						worker.keepWorking();
+					}
+				}, 500);
+			}
+			
+			Thread.sleep(400);
+			worker.quit();
+		}
+	quit() and keepWorking() method are synchronized on the same object so if a thread is executing this code, another thread cannot execute this one at the same time
+	And in quit(), I set quittingTime to true then join the thread, that is wait for the thread to complete before releasing the key
+	What I expect in this code is that I should have "still working" printed, then "coffee is good" and then this timer will run but after the worker thread is completed
+	Let us run this code and we can see that this is not quite what we expected since it seems that our system is still working and never quitting
+
+4.15 - Live Coding: Analyzing the Bug in the LockMess Case Study
+	We would like to be sure that this quittingTime equals true is properly called and quittingTime = false is never called
+	In fact, quittingTime = false should not be called before this thread has finished to execute the quit() method but it seems that it's not exactly the case. Let us try to add some code here to try to understand what's happening (adding sysout statements)
+		public class Worker extends Thread {
+			private volatile boolean quittingTime = false;
+			
+			public void run() {
+				while(!quittingTime) {
+					working();
+					sysout("Still working...");
+				}
+				
+				sysout("coffee is good");
+			}
+			
+			private void working() {
+				try {
+					Thrad.sleep(300);
+				}
+			}
+			
+			synchronized void quit() {
+				quittingTime = true;
+				sysout("calling join");
+				join();
+				sysout("back from join")
+			}
+			
+			synchronized void keepWorking() {
+				quittingTime = false;
+				sysout("keep working")
+			}
+			
+			main() {
+				final Worker worker = new Worker();
+				worker.start();
+				
+				Timer t = new Timer(true);	// Daemon thread
+				t.schedule(new TimerTask() {
+					public void run() {
+						worker.keepWorking();
+					}
+				}, 500);
+			}
+			
+			Thread.sleep(400);
+			worker.quit();
+		}
+	Let us run this code once again and we can see that something really weird is happening
+		(output)
+		still working
+		calling join
+		keep working
+		still working
+		still working
+		...
+	So it seems that our thread here is blocked on the join call after having printed "calling join". And let the other thread execute and print "keep working"
+	Why is this thread blocked on the join? It seems that the other one could take the key of the synchronized block (from quit()) and execute this synchronized block (from keepWorking)
+	Let us have a closer look at this join method here. This join method is a public final void method here that just calls another join(0) that takes 0 as an argument
+	Let us see this other join method. There are several things in it.
+		First it's a synchronized method, while the join method was not synchronized.
+		Since locks are re-entrant in java, and we saw that in our previous module, we can call this join method because we're holding the write key, but inside this method we can see that there i sa call to the wait(0) method of the object we're synchronized on
+		And we also saw in the previous module about the wait/notify pattern that this wait call will release the key that is held by the thread
+	So in face, here (in Worker class), this join call releases the key held by the thread in this synchronized method, letting another thread to execute this code here (in keepWorking())
+	This code is not doing what we want it to do just because there is a lock mess here. Something went wrong since this call releases the key our thread is holding (join method in quit())
+
+4.16 - Live Coding: Fixing the Bug in the LockMess Case Study
+	How can we fix this problem? There's a very simple solution, we can just change the key we're holding by creating a special lock object
+		public class Worker ... {
+			
+			private Object lock = new Object();
+			...
+			
+			synchronized void quit() {
+				synchronized(lock) {
+					quittingTime = true;
+					sysout(calling join)
+					join()
+					sysout(back from join)
+				}
+			}
+			
+			synchronized void keepWorking(){
+				synchronized(lock) {
+					quittingTime = false;
+					sysout(keep working)
+				}
+			}
+			
+			...
+		
+		}
+	This time we have a double synchronization, but this block of code (synchronized block inside quit()) is synchronized on a lock object that is hidden in our class and not visible from the outside
+	Let us run this code and we can see this time that our system is working as expected
+		(output)
+		still working
+		callign join
+		still working
+		coffee is good
+	What we should learn from this example is in fact 2 things
+		First never suppose anything on how an external call is dealing with the key of our synchronization, always check for that because you might have surprises as is the case for this join method here
+		And the second thing we can see is that you will enver have any problem if you use private Object to synchronize your block of code. Never expose to the outside the object you use to synchronize your code. This is really a golden rule in concurrent programming
+
+4.17 - How to Write Correct Concurrent Code Wrap-up
+	Simple step-by-step procedure to check if your concurrent code is correct
+		1. Check for race conditions
+			So you need to have a look at your code and especially what is happening to the fields of your classes because race conditions cannot occur on variables inside methods or parameters
+			If you have more than one thread trying to rad or write a given field then it means that you have a race condition on that field
+		2. Check for the HBL
+			On this given field if you want things to be correct, you need to have a HBL between your read operations and your write operations. It is quite easy in fact to check these points. There are 2 questions you need to answer for that
+				First, are your read or write operations volatile?
+				Second, are they synchronized?
+			If the field you're checking has been declared volatile, they're synchronized if they occur inside the boundary of a synchronized block, so it is very simple to check for that.
+			If it's not the case you must probably have a bug. Remember, the double check locking bug, those bugs can be very subtle, very sneaky
+		3. Side question you might also want to ask yourself - Should I go for read or write operations that are synchronized or volatile?
+			There is no simple answer to this question. You need to answer another question in fact to answer this one which is, do I need atomicity on a certain portion of code? If you have a certain portion of code that should not be interrupted between threads, then you need to have a synchronized block to protect this portion of code
+			If it's not the case, then volatility is enough. It will ensure visibility and correct concurrent code

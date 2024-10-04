@@ -1,0 +1,37 @@
+Jim Wilson
+
+2.9 - Introducing Packages (Creating Your First Java App)
+	Packages provide organization
+	Follow standard naming convention - ensures packages names are unique
+	Affect source code structure
+	Naming conventions
+		All lowercase
+		Use reverse domain name notation to assure global uniqueness
+		Add further qualifiers to assure uniqueness within a company or group
+	Type Names are qualified by their package
+
+2.10 - Using Packages
+	Package name affects how you run from cmd
+	If you open cmd from (base directory is project folder) "./out/production/{project name}" folder, to run the Main.class file that's located in com/pluralsight/organized folder, execute "java com.pluralsight.organized.Main"
+
+7.8 - StringBuilder
+	The StringBuilder class provides a mutable string buffer. Remember that strings are immutable and that meant that any modifications we make to a string don't actually change that string but create an entirely new string
+	So what the StringBuilder class does is give us a way to efficiently construct string values piece by piece. 
+	So it has an append method that allows us to add content to the end of the string buffer and it has an insert method that allows us to insert content within the string buffer
+	Now it's important to understand that StringBuilder itself is not a string. Once you build up the content that you're interested in, you need to extract the string from the StringBuilder instance and we do that by using StringBuilder's toString method
+	You add size to StringBuilder to make it a little bit more efficient
+
+9.2 - Understanding Time
+	3 General categories of how we deal with time: time of events, local human friendly time, global human friendly time
+	Tracking time of events - Instant class
+		Optimized for time-stamping events
+
+9.3 - Local and Global Date/Time
+	LocalTime, LocalDate, LocalDateTime classes
+	No aspect of time zones
+	ZonedDateTime - operations similar to LocalDateTime but also understands time zones
+		String time zone support. It knows when daylight saving time starts/ends
+
+9.6 - Formatting Dates
+	When we work with dates and time values, we often need to present them as strings or parse them from strings. But by default, each of the date and time types is limited to a single string format, which means that if we want to present any of those values in any format other than the default, we're goign to need some help
+	That's where our DateTimeFormatter class comes in

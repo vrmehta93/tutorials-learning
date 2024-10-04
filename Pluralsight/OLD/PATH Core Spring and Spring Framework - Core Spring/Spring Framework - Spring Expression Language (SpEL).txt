@@ -1,0 +1,198 @@
+Buddhini Samarakkody
+Jan 12, 2020
+
+2.1 - Version Check (Getting to Know SpEL: Simple SpEL Expressions)
+	SpEL 5.2.2
+	Maven 3.6.1
+	Java 1.8
+	Spring Boot 2.1.8
+
+2.2 - Module Overview
+	Spring expression language is a powerful feature in spring that enables developers to manipulate and query objects and object graphs at runtime, which makes it possible to perform dynamic bean wiring
+	It has been around from spring version 3.0 onwards
+	Dynamic bean wiring or dependency injection at runtime, what does it mean?
+		Let's look at a simple requirement
+		Imagine that we want to pick a bean or assign a default value to a bean property at runtime based on some conditional situation
+		The conditions could be which hardware platform the application is running on, which OS or application server and so on
+	For example, in our e-commerce application, we need to render the order details in a locale-specific manner
+	For this, we would need to set the country, language and time zone of a user bean based on their locale
+	How would you do this? If you're using Spring MVC, you'd think of using something like a LocaleResolver
+	However, this will require you to include some additional beans, which means writing more code. And it doesn't involve any dynamic bean wiring, hence will not be the most dynamic way of doing it
+	So this is where SpEL can come in handy
+
+2.3 - SpEL Overview
+	You might have come across many expression languages in programming. What they essentially do is access data that is stored in objects or beans
+	Similarly, SpEL enables to query and manipulate an object or object graphs at runtime, making it possible to perform dynamic bean wiring in spring applications
+	Using SpEL, we can write expressions as strings and parse them so that they can get evaluated to whatever they're supposed to at runtime
+	The results of such evaluations can then be used to dynamically inject beans or values into other beans
+	Let's have a look at SpEL syntax
+		In SpEL, we write expressions as strings
+		In the context of using SpEL in plain java code, we can simply write any expression within double quotation marks
+			"expression"
+		If we're accessing defined variables in our expression, we use a hash symbol in front of the variable
+			"#variable"
+		In the context of using SpEL in metadata, which is annotations and XML, we add a hash symbol and a pair of curly braces inside of which we write our expression
+			"#{expression}"
+	Here are some examples of using SpEL syntax within plan java code, meaning not in annotations or XML
+		Literal string expression - "'Hello World'"
+		Expression that accesses a defined variable named greeting - "#greeting"
+		Say our greeting variable is a string variable. So in the next expression, I'm doing a method call by calling the length() method on it - "#greeting.length()"
+		Here's how we can use a simple mathematical operation (multiplication) - "#greeting.length()*10"
+		With relational operation - "#greeting.length()>10"
+		With logical operator - "#greeting.length()>10 and #greeting.length()<20"
+	Now I'll show you some examples of how SpEL syntaxes are used in annotations and XML
+		Literal expressions - "#{'John Doe'}", "#{30}"
+			Notice the curly braces
+		We call the country property of a bena called user - "#{user.country}"
+		Simple mathematical operation - "#{100.55 + 500.75 + 400.66}"
+	SpEL can, of course, be used with plain java code. However, it's much more likely that you will use it in your annotation or XML-based metadata
+	However, it's worth looking at what really happens inside
+	Inside of spring, a collection of classes are used to parse and evaluate spring expressions
+	(sample code showing SpelExpressionParser and related classes)
+		SpelExpressionParser parser = new SpelExpressionParser();
+		Expression exp1 = parser.parseExpression("'Hello World'");
+		String message = (String) exp1.getValue();
+
+2.4 - Demo: Writing and Parsing Basic SpEL Expressions
+	We will not need any special dependencies for SpEL in a spring boot application since SpEL is a part of spring core technologies and all of the core dependencies are added automatically to the final archive at the time of building
+	However, if you're not using spring boot, you'll need to have spring-core and spring-context dependencies in your pom.xml
+
+2.5 - Evaluation Context
+	The EvaluationContext is an interface in the SpEL API that is used when evaluating an expression to resolve fields, properties, and methods, and to perform type conversions
+	The out of the box implementation of this interface that Spring provides is the StandardEvaluationContext class
+	Let's see how EvaluationContext helsp to resolve fields with this code snippet
+		StandardEvaluationContext ec1 = new StandardEvaluationContext()
+		ec1.setVariable("greeting", "Hello USA")
+		String msg = (String) parser.parseExpression("#greeting.substring(6)").getValue(ec1)
+	Output - "USA"
+		StandardEvaluationContext ec2 = new StandardEvaluationContext()
+		ec2.setVariable("greeting", "Hello UK")
+		String msg = (String) parser.parseExpression("#greeting.substring(6)").getValue(ec2)
+	Output - "UK"
+	So you can see the point. It helps to resolve fields when evaluating expressions
+	Further, the StandardEvaluationContext cna be used to specify a root object against which an expression should be evaluated when resolving bean properties, methods and performing type conversions. It uses reflection to do all of this
+
+2.6 - Demo: Evaluation Context in Action
+	(demo of creating a user class that has bunch of attributes with getters and setters)
+	Then create a new User object in our class and set it as the root object of our StandardEvaluationContext by passing it to the constructor like this
+		User user = new User();
+		StandardEvaluationContext userContext = new StandardEvaluationContext(user);
+		parser.parseExpression("country").setValue(userContext, "USA")
+		sysout(user.getCountry())
+	Similarly, we can set other properties of the User bean
+	So once the root object is specified, SpEL knows how to resolve its properties when evaluating expressions
+
+2.7 - The systemProperties Predefined Variable
+	Another interesting feature that SpEL provides is the systemProperties predefined variable
+	systemProperties is an object of key/value pairs that stores information about the current runtime environment
+	These include information such as
+		OS, user's locale-specific informationsuch as country, language, time zone and many more
+	This information becomes extremely useful when we need to conditionalize the behavior of an application based on runtime properties
+	SpEL makes accessing of these system properties in expressions convenient by providing an built-in variable called systemProperties
+
+2.8 - Demo: Populating Bean Properties at Run Time Using systemProperties
+	In this demo, we will look at how the systemProperties predefined variable can be used to access the user's country, language, and time zone, and set them to our user bean
+	Our aim here is to be able to render the order details depending on the locale of the user at runtime using dynamic dependency injection
+	Here are the steps
+		Add code to the ExpressionParser class to be able to access systemProperties in SpEL expression
+		And then wire the user bean properties dynamically at runtime based on the user's locale-specific information
+	In our parser class (with main method)
+		User user = new User();
+		StandardEvaluationContext userContext = new StandardEvaluationContext(user);
+		
+		StandardEvaluationContext propsContext = new StandardEvaluationContext();
+		propsContext.setVariable("systemProperties", System.getProperties());
+		Expression expCountry = parser.parseExpression("#systemProperties['user.country']")
+		parser.parseExpression("country").setValue(userContext, expCountry.getValue(propsContext));
+		sysout(user.getCountry())
+		
+		Expression expLanguage = parser.parseExpression("#systemProperties['user.language']")
+		parser.parseExpression("language").setValue(userContext, expLanguage.getValue(propsContext));
+		sysout(user.getLanguage())
+	Getting back to our parser class, we create a StandardEvaluationContext to be able to use the systemProperties variable in the evaluation of our expressions
+	Then set the systemProperties as a variable in this context and then we'll be able to parse expressions that access values from the system properties
+	Prior to running this, you should go to edit configurations in IntelliJ and set the VM options for the parser like this
+		-Duser.language=en -Duser.country=US -Duser.timezone=America/New_York
+
+3.1 - Module Overview (Leveraging the Power of SpEL: Advanced SpEL Expressions)
+
+3.2 - The @Value Annotation
+	The @Value annotation is an annotation available in spring for specifying default values or injecting values into fields of spring managed beans
+	It can be placed in fields, methods and constructor parameters to specify default values
+	In an annotation based spring configuration, we can write SpEL expressions inside of @Value annotation for dynamic bean wiring
+	Let's look at few examples
+		@Value("#{'John Doe'}")
+		private String name;
+		
+		@Value("#{30}")
+		private int age;
+	This is how we use @Value annotation on a method with SpEL to set a default value to the timeZone property of our user bean
+		@Value("#{systemProperties['user.timezone']}")
+		public void setTimeZone(String timeZone) {
+			this.timeZone = timeZone;
+		}
+	In this, we're using @Value annotation in constructor parameters, country and language once again with SpEL expressions to initialize them with default values
+		@Autowired
+		public User(
+			@Value("#{systemProperties['user.country']}") String country,
+			@Value("#{systemProperties['user.language']}") String language) {
+				this.country = country;
+				this.language = language
+			}
+	These are just a few examples. There are more usages of the @Value annotation with SpEL, which you will see in the upcoming demos
+
+3.3 - Demo: Using SpEL with @Value Annotation
+	Put a "T" in front of the fully qualified classname
+		@Value("#{T(java.text.NumberFormat).getCurrencyInstance(T(java.util.Locale).getDefault()).format(order.amount)}")
+		private String formattedAmount;
+
+3.4 - Collection Manipulation with SpEL
+	SpEL comes with the capability of accessing collections like lists and maps
+	It's also possible to manipulate collections using SpEL expressions by performing an operation called collection selection
+	The syntax of the collection operator is ".?" - period and question mark
+	The collection selection involves filtering an existing collection and returning a new collection
+
+3.5 - Demo: Collection Manipulation with SpEL in Action
+	In code
+		@Value("#{shipping.locationsByCountry[user.country]}")	// Accessing "shipping" which is a map
+		private List<City> shippingLocations;
+		
+		@Value("#{order.shippingLocations.?[isCapital != true]}")
+		private List<City> nonCapitalShippingLocations;
+
+3.6 - Expression Templates
+	Expression templates let us mix literal text with one or more evaluation blocks
+	Each evaluation block is delimited with a prefix and suffix, which would commonly be hash and open curly brace and a closing curly brace - #{}
+	This allows you to concatenate literal text with the results of evaluating expression blocks
+	If we take a closer look at how it's done, literal text can be mixed with one or more evaluation blocks that can appear in the middle like this surrounded by a prefix of hash open curly brace and a suffic of close curly brace
+		"literal text #{} literal text #{}"
+	The expressions are written inside of the evaluation blocks like this
+		"literal text #{exp1} literal text #{exp2}"
+	Here's how SpEL expression templating can be done in plain java code
+		parser.parseExpression("#{name} your order total is", new TemplateParserContext())
+	Notice that we pass a TemplateParserContext to the ParserContext parameter of the parseExpression method
+	The TemplateParserContext determines how the string expression should be parsed when it encounters the prefix and suffix characters
+	The default TemplateParserContext class looks like this (implementation of TemplateParserContext)
+		public class TemplateParserContext implements ParserContext {
+			public String getExpressionPrefix() { return "#{"; }
+			
+			public String getExpressionSuffix() { return "}"; }
+			
+			public boolean isTemplate() { return true; }
+		}
+	Note that you can define your own prefix and suffix characters as well if you want. But here, we'll just go with the default
+
+3.7 - Demo: Expression Templates in Action
+
+3.8 - Demo: Using SpEL with XML
+	In applicationContext.xml
+		<bean id="user" class"....User">
+			<property name="name" value="#{'John Doe'}">
+			<property name="age" value="#{30}">
+	Need to use XML escape characters
+
+3.9 - Typical Usages of SpEL
+	Few typical scenarios where SpEL can come in handy
+		You can choose to use SpEL when your application needs to dependency inject an existing bean or its properties into another object
+		You can also use SpEL when you want to dependency inject a bean or set bean properties based on some environmental situation or condition
+		And in general, whenever you need to access and manipulate object graphs at runtime, you can choose SpEL

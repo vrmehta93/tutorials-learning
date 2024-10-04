@@ -1,0 +1,182 @@
+Esteban Herrera
+
+2.2 - Null and Reference Types (Working with Reference Types and Nulls)
+	Null doesn't work with var. e.g. var obj = null;
+	Var variables are syntactic <something> to avoid having to write a reference with a specific type but they don't work when you initialize them with null unless you write something like this:
+		var obj = (Object) null;
+	The reason, the compiler cannot guess what's the type we actually want
+	There are 2 kinds of types in Java - primitive and reference types. But The Java language spec also defines a special null type, the type of expression null, which has no name. (from doc) "Because the null type has no name, it is impossible to declare a variable of the null type or to cast to the null type. The null reference is the only possible value of an expression of null type. The null reference can always be assigned or cast to any reference type. In practice the programmer can ignore the null type and pretend that 'null' is merely a special literal that can be of any reference type"
+	So the type of value null is null. But we can neither use this type or declare a variable of this type and that's why null instanceOf Object or any other class returns false. However, you can assign null to any reference because the assignment involves an implicity type conversion
+	Now regarding primitive types, "int i = null;" doesn't compile because primitives are not objects. They are just basic values. If you want to use primitive vlaues as if they were objects, you have to use wrapper classes e.g. Integer class
+
+2.3 - Traditional Ways of Dealing with Nulls
+	Assertions:
+		assert book != null : "Book is null";
+	By default, Java ignores assertions. They must be explicitly enabled during either the -enableAssertions command line argument or its shorthand -ea for inidivdual classes and packages
+	Java 7 introduced java.util.Objects, a class with helper methods such as requireNonNull() that checks that the object reference is not null, also accepting an optional string as a customized error message
+	Java 8 added a few more methods to this class, in particular nonNull() and isNull()
+	Something to consider is that the method requireNonNull throws a NullPointerException if the object is null
+
+2.4 - Best Practices for Data That You Don't Control
+	Outside data vs inside data
+	Most of the time, these parts will be the outer layers of the app, such as the presentation layer or the entry point of a public API or web service. You need to ensure that no unwanted null references are passed from outer layers to the inner layers. The resposibility of checking for null lies in the layers closer toward the data that is out of our control is entering into our app
+	In the inner layers, just let null pointer exceptions happen because handled this way, null pointer exceptions in the inner layers will mean that there's a programming error, and those errors should be detected using unit or integration tests
+	Good practices
+		- You need to document properly any public or exposed elements, services or APIs where you don't have control of the input
+			- This means every class interface constructor, method and field declaration must have a Javadoc comment
+			- For methods, you should describe the contract between the method and its caller
+		- Always validate parameters at the beginning of the method
+			- Fail-fast
+		- After detecting an invalid null value
+			- Replace the null value with some default value. The problem is that this is not always possible
+			- Second option is to throw an exception
+				- NullPointerException or IllegalArgumentException? Both are RuntimeExceptions. Both can provide meaningful message. Choose one and use it consistently
+
+2.5 - Best Practices for Data That You Control
+	No need to chekc for null in every method, especially if you avoid using null by never passing null as an argument and never returning null values
+	About never passing null as an argument, you can do 2 things
+		- Use primitives instead of wrapper classes
+		- For optional parameters, you can overload the method with different sets of parameters
+	On the other hand, never return null from a method. e.g. return an empty collection. This way, callers of this method won't have to handle null value. Returning something that is not a collection might be harder but for these cases, we can use the null object pattern and the optional type
+
+3.1 - Introduction (Checking for Null Using Annotations)
+	There are annotations that can help you prevent NullPointerExceptions
+	In Java, there are no standard annotations to prevent nulls. This was supposed to be the goal of JSR 305 but specification was abandoned in 2012. FindBugs created an unofficial implementation under the package javax.annotation but including this library in your project is NOT recommended. There are 2 problems:
+		1. If you use in the same project other annotations of the javax.annotation package post construct for example, and you use Java 9 modules, the module system will complain because a module is not allowed to read the same package from 2 different modules. You have to create a split package
+		2. Using annotations that use the javax packages has potential license issues because according to the Oracle license agreement, apps cannot use and ship dependencies in this package
+	However, the annotations defined in JSR 305 are popular and supported by many tools and there are libraries that don't make them a compile dependency for your project
+	There are alternatives like the annotations of libraries developed by Eclipse, JetBrains, SpotBugs (the successor of FindBugs), and the Checker Framework. Ther are a lot of options. Some will be better in certain situations than others. So here are some pointers to choose the best one for your project
+		- The first thing you have to consider is where you can use the annotation. Java 8 added support for type annotations which can be applied anywhere a type is used. So for example, we can define a list of NonNull strings
+		- The most common context are method parameters and return values, fields, local variables and packages
+		- Another thing is at what point is the null check performed? There are annotations that perform static code analysis, meaning that they detect null values at compile time, generating a compile error if the NonNull restriction is violated. Other annotations check for nulls at runtime, adding checks to your code in the appropriate places and throwing an exception if a field or a parameter gets a null value
+		- You also have to think about compatibility because in most cases you'll have to configure the annotations in your IDE or build tool. But it's not only about tool compatibility. If you use Java and Kotlin in your project, Kotlin has no safety features, and it supports annotations that will prevent you from passing a null value to a Java method that requires a NonNull argument. Kotlin's compiler supports quite a few annotation libraries for this purpose, but not all
+	We'll erview the annotations of 3 different libraries to see how they work - Spring Framework, Bean Validation and Project Lombok
+
+3.2 - Spring Annotations
+	Sprint provides null-safety annotations since version 5.0. They are located in org.springframework.lang package of the Spring Core project
+	@NonNull indicates that a specific element like a parameter or a return value, cannot be null
+	@Nullable that indicates that a specific element can be null
+	@NonNullApi - a package level annotation that declares NonNull as the default behavior for parameters and return values
+	@NonNullFields - another package-level annotation but this one only declares NonNull as the default behavior for fields
+	These annotations are configured inside an IDE to provide warnings or errors at compile time whenever a NonNull restriction is violated
+	Since they are meta-annotated with JSR 305 based annotations, some tools will recognize Spring's annotations automatically. However, it's not necessary nor recommended as I explained before to add an unofficial JSR 305 implementation to your project.
+	These annotations also work with other Spring projects. This also applies to Spring projects where Kotlin is used, making a Java API null safe from the perspective of Kotlin
+	[Demo in IntelliJ IDEA to show how to configure Spring's annotations in this IDE]
+		If you add @NonNull annotation, IntelliJ doesn't show any warnings. To fix that, File > Settings > Editor > Inspections > Search for @NonNull > Select "@NonNull/@Nullable problems" > Under "Options", select "Configure Annotations" button > You'll see some preconfigured nullable and non-nullable annotations from other projects. Click "+" > Search for "Nonnull (org.springframework.lang) > OK ...
+		Restart IDE. After that, you should see a warning for null
+		That's basically what static analysis annotations do. They produce warnings or errors at compile time whenever a NonNull restriction is violated. But in the case of Spring's annotations, they can also change the functionality of the repositories generated by Spring Data.
+		To you this, I'll use the package level annotation NonNullApi, which declares NonNull as the default value for parameters and return values. To use it, we need to have a file name "package-info.json" in the root directory the package and annotate the package with NonNullApi. Onc ethis annotation is in place, the invocation of methods of the repository will get validated at runtime for null constraints. If a query doesn't produce a result, it will violate the null constraint and an exception will be thrown. If the argument is null, an exception will be thrown too. We can obtain for nullable results again using the @Nullable annotation on individual methods
+		This way if a query doesn't produce a result, the method will return null instead of throwing an exception. We can also annotation the parameter with @Nullable to allow null arguments
+		We can check all of this with Unit tests
+
+3.3 - Bean Validation Annotations
+	Bean validation is a standard validatin specification defined by JSR 303 for its first version and JSR 380 for its second version. It allows us to validate objects by using a set of constrains in the form of annotations, passing those objects into a validator which checks if the constraints are satisfied
+	In addition to @NotNull, the spec provides many other annotations that can be combined. Some exampls are @Size, @Min/@Max, @PositiveOrZero, etc
+	Hibernate Validator is the reference implementation of this spec
+	Usually, Hibernate is associated with the persistent layer and that can be a source of confusion, especially about 2 things
+		1. Does Hibernate Validator only validate objects of the domain model? The ones used in the persistent layer of the app. This is not true
+		2. Both @NotNull and @Column(nullable=false) ensure that field doesn't get a null value (are they equivalient?). This is not true. The @Column annotation is part of hte JPA specification. Hibernate doesn't perform any validation if you annotate a field with this annotation. Only if Hibernate creates a table, it adds a not null constraint to the database column. But the database is the one that checks if the value is not null when you insert or update a record
+			On the other hand, @NotNull annotation is part of the Bean Validation specification, and it triggers a validation during an update or persist lifecycle event. So the validation happens with the Java app. And if it fails, Hibernate will not execute any SQL statement
+	[Demo - use Hibernate Validator to validate objects of controller, service and persistence layers with the @NotNull annotation. For simplicity, I'll use Spring Boot web project. If you look at dependencies of Spring Boot web starter, you'll see that Spring-Boot-starter-validation is one of them, and this start is the one that contains the dependency to Hibernate Validator]
+		javax.validation.constraints.NotNull
+		You can annotation list. e.g List<@NotNull String> tags
+		You customize the message with "message" property of the annotation
+		To perform validation in the web layer, add @Valid annotation to the parameters we want to validate
+		In the service class, in addition to the @Valid annotation, we need to add @Validated annotation to the class. In case a constraint is violated, a ConstraintViolationException is thrown
+		Finally, for the persistent layer, you don't need to use the @Valid or @Validated annotations. You only need to annotate the entity class with the Bean Validations annotations. Bean Validations is only triggered by Hibernate once the entity manager is flushed
+
+3.4 - Project Lombok Annotations
+	Project Lombok is a library that generates boilerplate methods, such as getters and setters
+	Works as an annotation post-processor. It reads the annotations during the pre-compilation process to auto-generate code and inject it into the app
+	In includes @NonNull annotation that is used on the parameters of methods and constructors to have Lombok insert a null check at the top of the method or immediately following any explicit test or super calls in the case of a constructor. The check is a simple if statement that throws an exception if the parameter is null
+	You can also combine the @NonNull annotation with the @Data annotation, which generates getters, setters, toString, equal, and hashCode methods as well as a constructor that initializes all final fields of the class. For the fields that have been marked with @NonNull annotation, Lombok will add null checks in setters and constructors
+	You can configure the type of exception thrown. By default, a NullPointerException will be thrown. It can also throw an IllegalArgumentException or AssertionError if assertions are enabled
+	Another thing you can configure is whether any usage of NonNull is flagged as a warning or as an error or not flagged at all, which is the default behavior. This is meant for people that want to use only a subset of Lombok's annotations. It doesn't change the auto-generated code
+	[Demo - IntelliJ. I'll show you how to configure Lombok's annoations for this IDE] We need to do 2 things:
+		1. Enable support for annotation processing by going to File > Settings > Build, Execution, Deployment > Compiler >Annotation Processors > Make sure you have the option "Enable annotation processing" checked. And in the same window, go to Plugins > Search for Lombok plugin, install it and restart IntelliJ
+		Now to use Lombok, you have to add the Lombok dependency to your project with a "provided" scope. It's required to compile the code, but it's not needed at runtime
+		Example of adding @NonNull to constructor param - if we take a look at the decompiled class file, we'll see that Lombok inserted a null check at the beginning of the constructor
+		We can create Lombok config files (e.g. lombok.config) in any package and put configuration directives that apply to all sources files in those packages under children
+
+3.5 - Final Thoughts
+	We reviewed 3 libraries:
+		Spring - they work at compile time but when applied to Spring Data repos, they affect how empty results are handled
+		Hibernate Validator - reference implementation of Bean Validation spec. Performs null checks at runtime in all layers of the app
+		Lombok - generates null checks for params and fields
+	Each annotation library has different purposes. In general, we can say that null-safety annotations work either at compile time, treating violations of null-safety restrictons as compile errors or warnings, or at runtime, either adding null checks automatically or changing the functionality when null values can be returned
+	When choosing an annoation library for your project, in addition to this, also take into account where you can use the annotations and compatibility with tools and language interoperability
+	Of course, this can also be viewed as disadvantages. For example, since there's no official standard, you might require a complex null check that can be implemented only with annotations that are not 100% compatible with your tools
+	Also, be aware that using these annotations may give you a false sense of protection
+	No tool is perfect, and even if the tool reports no warnings or errors, there may still be errors in your code
+	Annotations are only useful to warn you of potential null pointer errors, give you hints or throwing exceptions at runtime when restrictions are violated. But they are not enough to completely avoid null values are runtime and sometimes, you'll still have to check for nulls or apply other techniques
+
+4.1 - Understanding the Null Object Pattern (Using the Null Object Pattern)
+	It's common to use nulls to represent the absense of data. The problem is that when a method returns null, you have to check for it to either use the return value, supply a default behavior or even do nothing at all. Wouldn't it be great if the mothod will just return an object with the behavior already encapsulated so you can just the method for it? This method will be the one executing that default behavior or even doing nothing at all in the appropriate cases so you don't have to check for a null value
+	That's what the null object pattern is about
+	Instead of using a null reference to represent the absense of an object, it uses an object that implements the expected interface, but does nothing, hiding the details from its collaborators
+	What "do nothing" means is subjective. It can mean an empty method body but it can also mean implementing the full behavior or something that does nothing really useful
+	This is NOT a Gang of Four (GoF) pattern
+	Other names for this pattern are Active Nothing or Stub
+	But null objects come in different forms. For certain types, we can consider some types as null objects, for strings, an empty string, for collection, an empty collection, for numbers, a constant value such as 0 or 1. But regardless of their form, they all help to avoid using null values and if conditions to test for these values.
+	In relation to other patterns, null objects may be confused with proxies. But null objects don't work like proxies. Proxies act as the objects they are proxying and they may also provide some behavior. A proxy hides another object thus controlling access to it. A null object shouldn't do this. It cannot transform itself to become a fully functional object. If at some point the object starts providing real behavior instead of the do nothing behavior, it's not a null object. This can also be a special case of  the State pattern in which a state may implement most of its methods to do nothing and only do something useful in other states
+	A null object can be seen as a special case of the Strategy pattern. This pattern specifies many classes with many different approaches to accomplishing a task. If one of those approaches is to do nothing, that strategy class is a null object.
+
+4.2 - Implementing the Null Object Pattern
+	The key to the null object pattern is an abstract class that defines the interface for all objects of this type. The NullObject is implemented as a subclass of the abstract class. If the object requested by the client doesn't exist, an instance of NullObject will be returned. On the other hand, if the request object is located, an instance of ConcreteObject will be returned
+
+4.3 - Criticisms of the Null Object Pattern
+	Null objects sounds great in theory but in practice, there are, in particular, 2 disadvantages that you should be aware of
+		1. This pattern should be used carefully because an incorrect implementation can make bugs harder to detect since the program executes with errors. Because null objects aren't explicitly checked for nulls, they can fail slow, sometimes until one of its methods is used. But other times, they never fail, allowing invalid values in your program. The null object pattern isn't always necessary. Do not implement this pattern just to avoid null checks. Sometimes you do want to do something upon stumbling like a null value. The null object pattern is best suited when a default value can be assigned or a simple default action can be taken
+		2. The second disadvantage is that creating a proper null object in every possible scenario may not be easy. You have t owrite a do nothing implementation for each class you need it for, which may lead to creating a lot of classes. What if you don't know what this do nothing behavior should be? Should it do nothing or should it fail with an exception? If you jsut want to throw an exception in the methods of your null object, maybe it would be better to do that directly instead of using a null object. And what if you still have to check for the null object? In this case, the adv is not obvious, and it's more use case dependent. Another problem is that if a class is final (parent class), you cannot even create a null object for it. This will not apply to everyone but if you're working with an external library or legacy code, there's a chance this could happen
+
+4.4 - Things to Remember
+	Null object pattern replaces null values with objects that implement - a default/do-nothing behavior. This allows you to avoid null checks making your code cleaner and more maintainable
+	It's not a bulletproof solution. Implementing the null object pattern can simplify your code, but it's always possible to make mistakes. And this is particularly dangerous when using this pattern because an incorrect implementation make bugs harder to detect.
+	Also, cleaning a proper Null obj may not be easy. Sometimes you'll have to change your design so much that it will not be worth it just to avoid some null checks. Other times, yo uwon't know exactly what the do nothing behavior should be. And if a class is final, you can't even create a null object for it. For cases like this, another technique that can help us avoid nulls and null checks is the use of the Optional type
+
+5.1 - The Optional Type (Using Optional Instead of Null)
+	Since in Java, every reference can potentially hold a null value. This is important because if we store the null value for later use, a NullPointerException may result at some point that probably has nothing to do with the original method call. Throwing an exception might be an alternative if we're unable to return a value. This way, if we speicfy in the method signature that we are throwing an exception, which we have to if we're talking about a checked exception, callers of the method will know something might be wrong and they'll have to deal with this immediately. 
+	But exceptions should be used fro exceptional conditions. And sometimes, the absence of data is not an error
+	Good practices say that when using collections, we should return an empty collection instead of null to indicate the absence of data. And the reason is that representing the absence of something when it's contained in a container is easy because whatever it is, it can be represented by an empty container. That's the concept behind the Optional type
+	Optional doesn't implement the collection interface, but it represents an immutable container that can hold either a single object of type T or nothing at all. In that case, the optiona is set to be empty
+	A method that returns Optional<T> is more flexible and easier to use than one that returns null or that throws an exception and it allows the caller to deal with the possibility of the absence of a value without the disadvantages of the alternatives. However, if a method returns a collection, there's no need to wrap it in an optional. Rather than returning an empty optional of List, you should simply return an empty list. Remember, the important thing is to return a container, and a list is already a container
+	You can create an optional from another object with the static factory method of(). However, if the object is null, a NullPointerException will be thrown which kind of defeats the purpsoe of using an optional
+	In constract, ofNullable() allows you to create an optional object that may hold a null value
+	You can also manually create an empty optional object by using the static method empty()
+	You can unpack the value inside of the optional to work with it. get() is the simplest, but the least safe of the methods to unpack the value. It returns the correct value if one is present or throws a NoSuchElementException otherwise
+	Sometimes, this method is combined with isPresent() that returns true if the optional contains a value or in Java 10 isEmpty() that returns true if the optional is empty. But this is not better than null checking
+	Other methods to unpack the value are orElse() that allow you to prvide a default value when the optional doesn't contain one. And orElseGet(), similar to orElse(), but it takes the supplier that is invoked only if the optional doesn't contain a value
+	However, to work with an optional, you don't need to unpack its value. Optional has methods similar to the ones of the Stream API that allows you to work in a declarative functional style, filter, map, and flatMap
+
+5.2 - Optional Type Good Practices
+	The best way to use optional is through composition. The filter() method takes a predicate as an argument. If a value is present in the optional object and that value matches the predicate, the filter method returns the optional. Otherwise, it returns an empty optional object
+	Then we have map() method that applies the provided function only if the optional contains a value, returning the value wrapped inside of an optional instance. If the optional is empty, nothing happens. An empty optional is returned
+	Another common pattern is to exract the info from an object. In this example:
+		String title = service.findBookById(id)
+			.map(book -> book.getTitle())
+			.orElse("");
+	getTitle() returns a string. However, if it were to return an optional, we will have to use flatMap()
+	Signature of flatMap()
+		Optional<U> flatMap(Function <? super T, Optional<U>> mapper)
+	Notice that the only difference between with map is that the Function returns an optional instead of a plain value
+	So the rule is simple, if the function you are calling reutrns a plain object, use map(). If the function returns an optional, use flatMap(). This way, flatMap() allows you to chain or combine may optional instances in other words to compose functionality
+	The most useful advice I can give you is to always start from an Optional. Apply a chain of filter, map or flatMap() methods, and at the end, use the orElse() or orElseGet() to unwrap the value
+	Never use Optional.get() unless you are sure that the optional is not empty
+	About using optional in fields, generally you shouldn't. The optional class is not serializable and was not intended to be used in field. But some fields are truly optional. And in such cases, it is valid to have a getter method return Optional, while the field setter still use the plain type
+	In the same way, the use of optional as a method argument is discouraged because it can cause conditional logic inside the method since the optional argument can represent a null optional reference, an empty optional and an optional with a value inside. Besides, it's not necessary. To compose methods returning an optional, use methods of the optional type itself. Don't use methods that take optional as their argument
+	Optional was designed to be used as the return type of methods that might return nothing in some cases. So most of the time, we should use optional as a return value
+
+5.3 - Using the Optional Type
+	[Demo]
+	Having optional as a method parameter is a bad practice and unnecessary
+
+5.4 - Things to Keep in Mind About the Optional Type
+	The optional type doesn't completely solve the problem of nulls and NullPointerExceptions. There are some things to keep in mind
+	Optional is a Java class, so a reference of this type might be null, which is one reason to not use optional as  the argument of methods, but as the return type of methods you can control
+	Optional doesn't address other important sources of NullPointerExceptions, such as partially initialized objects hwere an object that has been initialized in a constructor by one thread is not seen as fully initialized by another thread. Something similar can happen when an exception occurs in the constructor, and it is allowed at some point. In that case, the object reference will be null because the object couldn't be initialized. Also,as optional is not generally used as the type of the elements of collections or maps, when getting an element from these structures, you can potentially get a null value
+	Optional can make your code harder to read because it makes it more verbose for types and for checking which is not the recommended way to use an optional but still, it can be a problem
+	Finally, if you use get or another method for an optional that can throw an exception, it just converts a possible NullPointerException into another exception that can make your app crash
+
+5.5 - Course Summary
+	Don't use Optional in fields unless necessary
+	It's valid to have a getter method return an Optional

@@ -1,0 +1,562 @@
+Dan Bunker
+June 29, 2020
+
+2.1 - Version Check (Getting Started)
+	Spring Framework 4.1.2.RELEASe
+	Java 8
+	Not applicable to Spring 5
+
+2.2 - Introduction
+
+2.3 - What Can Spring Data JPA Do?
+
+2.4 - What is Spring Data JPA?
+	Spring Data JPA also builds upon and enhances JPA, which stands for Java Persistence API
+	One of the core objectives of Spring Data JPA is to reduce your code and simplify your data access layer, while still maintaining a rich and full-featured set of functionality
+	To make this possible, spring data jpa allows you to build intelligent spring repository interfaces. These repositories are java interfaces that allow you as the developer to define a data access contract
+	The spring data jpa framework can then inspect that contract and automatically build the interface implementation under the covers for you
+	For spring data jpa to intelligently generate an implementation of your repository interface, a query DSL is needed. DSL is an acronym for domain specific language
+	The query DSL allows you to create java interface methods that utilize certain keywords, along with JPA entity attributes, to perform the work needed to correctly implement your queries without having to provide much in the wayof actual coding
+	Spring data jpa provides some nice extras that are often see and used in data access layers and persistence tiers. Features such as auditing, paging  and handling native SQL queries can be utilized with spring data jpa
+
+2.5 - What This Course Is Not About
+	JPA is an ORM, objection relational mapping tool, that maps relational databases structures to software objects
+	In simpler terms, jpa maps a software object model to a database table
+	How does that work? It generally begins iwth the database table, you set up a java object and by using annotations, yo ucan tell JPA how this model maps to the database
+	By declaring an @Entity with a name or using the @Table annotation, you can tell jpa what table this maps to
+	You can then create attributes that will map to columns
+	The @Id annotation specifies that this is the primary key, and the @Column annotation allows us to map the column name to the attribute name which is useful if they happen to be differently named
+	Finally, you can set up relationships in jpa like Parent-Child, or Many-to-Many or other common data structure relationships
+	Once you have the mapping set up, jpa can then auto-generate and manage the actual SQL that needs to be sent to the database to perform CRUD
+
+2.6 - Tip: Choosing a Java Data Access Layer
+	Spring data jpa is actually part of the larger spring data umbrella project in the spring ecosystem
+	Spring data's goal is to make working with a variety of persistent stores easier than if you were to just use them directly
+	Spring data provides a Commons artifact that defines the general repository contract and functionality that all spring data project must adhere and comply with. This includes CRUD operatoins and query generation
+	From there, spring provides several persistence libraries that implement the spring data commons API and contract. Examples
+		Spring Data JPA
+		Spring JDBC
+		Spring Data KeyValue
+		Spring Data LDAP
+		Spring Data MongoDB
+		Spring Data Redis
+	You'll notice that spring data jpa is just one of these and that the spring data project as a whole really is an essential core library in any spring-based application regardless of the persistence technology used
+	There are also many community-based spring data projects. Examples
+		Spring Data Couchbase
+		Spring Data Neo4j
+		Spring Data Hazelcash
+		Spring Data DynamoDB
+	These projects have been contributed by the open-source and can still be found on the spring site, but they aren't part of the main spring data project suite
+	Concepts that you will learn from this course on spring data jpa are going to be similar if you need to work with one of these alternate spring data implementations since each of these projects adhere to the core spring data Commons interfaces and contracts
+
+2.7 - Spring Data
+	https://github.com/dlbunker/ps-spring-data-jpa
+
+2.8 - Getting Started
+	Postgres DB
+
+2.9 - Demo: Setting up the Project
+
+2.10 - Project Overview
+
+2.11 - Installing Spring Data JPA
+	In pom.xml, add dependency
+		groupId - org.springframework.boot
+		artifactId - spring-boot-starter-data-jpa
+	Used with spring boot
+	For Postgres JDBC driver
+		groupId - org.postgresql
+		artifactId - postgresql
+		scope - runtime
+
+2.12 - Demo: Installing Spring Data JPA into Your Project
+
+3.1 - Introduction (Spring Data JPA Repositories)
+
+3.2 - Spring Repositories
+	Spring has supported the concept of a repository for some time now. The @Repository annotation is one of spring's core stereotypes, and you should plan on using them in your data access layer, regardless of your chosen data access layer API and framework
+	The repository's whole point is to define the contract that your data access layer will implement
+	This contract or interface can then be included and bound to by client code that needs to access data in some fashion
+	What this really means is that a spring core repository is essentially the data access object pattern or DAO pattern
+	By defining an interface that the service code uses, the data access layer is free to implement the DAO contract any way that makes the most sense to be successful
+	That may mean that when you started the project, you implemented your data access layer with JPA. Maybe at some point later in the project, you needed to replace that implementation with a JDBC implementation instead of a JPA
+	When you switch the interface out, the client side didn't notice or care that anything changed implementation-wire in the data access layer
+	Who knows? Maybe at some point in the future, you will need to switch out your JDBC implementation with something else
+	This pattern also allows you to set up hybrid data access layers, giving you full flexibility for your application needs
+	Your implementation may actually do some operations using jpa while utilizing JDBC for other operations
+	The purest definition of a DAO pattern would say that you need to define a contract with an interface. Spring repositories don't necessarily need to be an interface, though
+	In our sample project, you may have noticed that we have classes with the @Repository annotation on them. In this case, we're still following the DAO pattern to a point because any method or attribute that you set up as public scope becoems your DAO contract
+	You can still choose your implementation details for your public methods. You just need to make sure to keep the scope private or protected on those implementations
+	Most of the time, this is sufficient for most data access layers
+
+3.3 - Repository Architectural Overivew
+	Repositories fit into the data access tier, but they aren't the only objects and concepts that you have to keep in mind when working on the server side
+	Let's take a look at a typical modern spring application from an architectural point of view to see how everything fits together
+		Let's start with the actual database, and work up from there. Your database typically consists of one of more tables. They may or may not be related
+		These strucutres all live in the database, which is typically a standalone server separate from your application code and server
+		In our case, this would represent Postgres database
+		As we move into our application's persistence tier, we're using JPA, so we have jpa entities mapped to database tables. The entities map one-to-one with a jpa repository
+		By keeping the repository focused on a single entity, it keeps the DAO pattern limited to that specific data and data structure
+		With standard spring repositories, you don't have to follow the standard. You can technically have the repository access anything and everything on the data side
+		But with spring data jpa repositories,  the repository is limited to a single entity
+		Spring services can then be used to perform logical and transactional bundles of work for your application (service tier)
+		A service may need data from a couple of repositories or a single repository, or the service may not even need to use the data access layer
+		The spring @Service annotation is another Spring stereotype, and you would use it on classes and interfaces that live in your service tier
+		In our particular application, we don't have a service tier since we're only focused mainly on the persistence tier
+		And last, your application will typically have some kind of API controller-based tier that handles REST-based requests to the application
+		Controllers can utilize one or more services and are responsible for returning a response paylaod
+		This is usually done by returning a JSON or XML payload to the caller
+		The important thing to remember is that your code dependencies and bindings should only move to the right of this diagram (left side is API tier > service tier > persistence tier > database)
+		So the controllers can inject services or repositories, and services can inject repositories, but services and repositories should NOT inject controllers
+		This prevents cyclical code dependency issues
+		Keep in mind though, that you're free to create a dependency within your tiers, meaning that services can inject other services, and repositories can inject other repositories
+
+3.4 - Spring Data JPA Repositories
+	Hopefully by now, you're starting to see the standard spring repositories and spring data jpa repositories differ slightly in concept and structure
+	Here are the differences
+		First, all jpa repositories are java interfaces, instead of classes. There is one exception to this that I will discuss later. But for now, just think of all of them as always being an interface
+		These interfaces are associated to a jpa entity as you saw in the previous slide
+		So each repository can only perform data access operations for that particular entity and its data attributes (map one to one with a jpa entity)
+		This helps focus the jpa repository on the DAO contract for that entity and it's backing data
+		How did jpa repositories tie to a particular jpa entity?  This is accomplished by using java generics and typing
+		By supplying the jpa entity and its primary key data type, the jpa repository now knows exactly database table and columns it can work with because all of that information bundled nicely inside your jpa entity
+		Again, if you're confused what a jpa entity represents, go back to the jpa primer in this course or look at a specific jpa course or jpa basics
+		The last big difference between spring data jpa repositories and standard spring repositories is how the implementation happens to fulfill the DAO pattern
+		If you remember from a couple of slides ago, the DAO pattern allows you to implement the DAO contract however you want
+		With spring data jpa repositories, we no  longer care about the implementation details since the framework is going to provide that for us.
+		Did you catch that? We don't have to implement the interface, spring does it automatically
+		This lets us as the develop focus on the DAO contract while fulfilling spring data jpa's goal of simplifying our data access layer without any loss of functionality
+	The big takeaway that you need to remember is that when our application starts up, spring data jpa recognizes your jpa repositories and automatically generates an implementation for the DAO contract
+
+3.5 - Demo: JpaRepository in Depth
+	Extend the interface with JpaRepository<(object type), (primary key type)> 
+
+3.6 - JpaRepository Features
+	When you extend JpaRepository interface, you get access to a lot of features
+		Query DSL
+		CRUD operations
+		Paging and sorting
+		Helpers
+			count()
+			existsById(ID)
+			flush()
+			deleteInBatch(Iterable)
+	Here is the interface hierarchy of the spring data repository interfaces
+		JpaRepository > PagingAndSortingRepository > CrudRepository > Repository
+	Each repository hierarchy provides certain functionality
+	The Query DSL, which we'll cover later, is a core feature of the framework and is provided by the Repository based interface
+	The CRUD operations allow you to create, find, update and delete data and we use some of these operations when we added our first and second JpaRepository, and this functionality comes from the CrudRepository
+	Next, the PagingAndSortingRepository does what the name implies, and that is it can page and sort your data
+	Finally, there are a lot of helper functions and operations scattered throughout the interface hierarchy. There are a few sample methods, but spring data provides a lot more
+	JpaRepositories provide all of the functionality simply by extending it
+	However, the nice thing about breaking functionality out into separate interfaces is that it gives you the opportunity to reduce functionality in your data access layer if you need to
+	One final thing to note about the JpaRepository hierarchy is that the JpaRepository interface is the only interface in the spring data jpa project itself. The other 3 parent interfaces actually come the core spring data project
+	This means that if you need to utilize one of the spring data jpa sibling projects, such as Spring Data MongoDB, you're going to get similar functionality with that framework as you are with the spring data jpa framework
+
+3.7 - Tip: Customize JpaRepository Hierarchy
+	When you're working with your persistence tier, you should always be thinking about the big picture of your entire system
+	This includes not repeating yourself and setting up convenience helpers and methods across the board where it makes sense
+	For example, most enterprise databases have some kind of auditing columns on every table. When setting up the jpa entities for all your data models, you could create a super class base entity that has your auditing attributes on them
+	This is an example of good object-oriented inheritance and keeps your subclasses from always having to define and set up these same attributes
+	On the jpa side of things, we're not repeating ourselves and we're enforcing auditing standards on all of our entities by providing a base entity super calss that all entities will extend from
+	On our repository layer, we may asked to provide auditing access methods and operations that ultimately apply to all of our entities
+	We could add these operations on all of our jpa Repositories and let spring data jpa implement them for us, but what happens if the auditing attributes change or need some kind of modification? We would then need to update all of our jpa repositories that declare those operations
+	Of course, there is a better way. We can provide a custom repository of our own that extends the spring data jpa repository hierarchy (aka custom interface that extends JpaRepository)
+	This custom repository would then define our common auditing operations and helpers
+	Then any of our other jpa based repositories can extend from our custom repository and gain that common auditing functionality
+	This now sets up our repository layer to match what we have in our jpa entity layer and prevents repeating ourselves
+	So this is a simple tip to keep in mind when you start working on your own real world application
+
+3.8 - Tip: Refactoring Existing Repositories
+	If you're lucky enough to be starting a project from scratch, then you should begin with jpa repositories from the start, and build out your persistence tier from there
+	However, many times you'll be faced with a situation where you'll have to convert existing core spring repositories that have already been build into spring data jpa repositories
+	Here are some tips to help with this particular situation
+		First, make sure that you have sufficient tests built up for your persistence tier
+		This is a common refactoring practice that makes sure that as you rework code you don't break anything or introduce new bugs
+		So if you don't have any tests, or the tests aren't adequate, make sure to add them before getting started
+		Next, you should create a new interface that extends JpaRepository, and give it a new or more descriptive name
+		You typically don't want to keep the same repository name going forward, because your existing method names won't match up 100% with the spring data jpa methods and Query DSL method naming conventions
+		Creating a new repository name also allows you to refactor pieces of the repository one method at a time, while you support both the old and new repository simultaneously in your application
+		From here, you can do one of two things
+			First, you can switch out your client code dependencies with the new jpa repository contract
+			Second, probably more efficient strategy, is to leave the existing repository in place and turn it into a proxy to the new jpa repository that you're replacing it with
+			This allows you to keep your client code completely unchanged, while gaining all the flexibility and power of the spring data jpa framework
+
+3.9 - Demo: JpaRepositories as Proxies
+	This demo will show how to replace using proxies
+	Create your new interface as usual extending JpaRepository
+	And this is where the beauty of the proxy pattern comes into play. We can swap out the functionality that we know about and leave the custom finder alone for now (custom method)
+	Best part is that we don't have to adjust our test or any of our client code at all because we're going to proxy our calls
+	So here's how this will work
+	We'll go ahead and open up the old SessionRepository again. And the first thing that we'll do is go to the top that class,  and we'll inject our new repository into this repository (aka adding SessionJpaRepository variable and autowiring it inside SessionRepository)
+	So now we have the private SessionJpaRepository injected as JpaRepository into our SessionRepository
+	I can now go through all the CRUD methods and just replace them to proxy over to our JpaRepository (aka re-write the methods using SessionJpaRepository methods)
+	I do like this pattern because you don't have to modify any of our client code, so we din't have to modify the controller or the session test, in this case
+
+3.10 - Demo: Best Practices
+	I want to talk about naming conventions and best practices when working with repositories in your persistence tier
+	Of course, these are simply suggestions and you don't need to follow them, because spring data allows you to set up your persistence tier pretty much however you want
+	However, consistency and standards are always a good idea when working in a team setting
+	First, let's talk about naming conventions and package structures
+	You should consider namespacing and grouping your entities and your repositories into specific packages that have those names on them
+	I want to point out one major difference between standard repositories and jpa repositories. One has @Repository annotation above class name and other is an interface that extends JpaRepository
+	The @Repository tells spring that this is a special stereotyped spring class that and acts as a data repository. Without that annotation, our code would fail because spring would treat this just as another standard java class
+	For jpa repository, how does spring data know that these are repositories and implement them? The answer is not obvious. When this spring boot based spring app starts up, spring data is enabled and does a classpath search for any interface or class that is of type JpaRepository
+	If it is, it treats it as a repository and implements it and stores is in the spring context that way
+	By utilizing the repository name in your class and interface names, it makes it easy for any developer to look at your code and get an idea of what is happening
+
+4.1 - Introduction (Query DSL Overview)
+
+4.2 - Advantages of Using a Query DSL
+	Advantages of using a query DSL will give you overriding custom queries and finders
+	First, think about all of the effort that you spent creating the right data model in your database and in your persistence tier. If you have a large database schema, setting up your jpa entities takes a lot of work
+	Your entity layer contains loads of information about the database tables it maps to
+	If you've gone the entra mile with your entity mapping, you can specify constraints and relationships, which give you even more knowledge about your database from the software level
+	So why should you throw this knowledge away to have to implement queries and finders manually?
+	Let a framework like spring data jpa use this info, so that you can just define the query contract and let the framework do the dirty work of implementing it
+	Becase we aren't adding actual implementation code, that frees us as application developers from having to maintain that code
+	Think of this like a garage or storage area. Over time it collects tools and other various items and after a while, you find yourself cleaning, decluttering, and orgnaizing your garage on a Saturday, just so you can park your car in there again
+	From an application development standpoint, don't waste your precious Saturday time cleaning out your garage. Let's spring data jpa deal with your implementation mess while you go to the beach or do something else
+	Another time saving advantage of using spring data jpa query dsl is that the framework checks the validity of your queries when your application starts instead of at runtime. This saves time from having to actually find and test the point in your application that the query is called
+	Startup checks also safeguard against refactoring changes. If an entity attribute changes, you will quickly know if that broke any of your queries when you start your application
+	Last, query DSLs have been in use in scripted language platforms for a long time now
+		Ruby on Rails' Active Record Framework or Django's ORM stack are both good examples of this
+	Java has been slow to adopt this methodology because of its compiled and type checked nature. It's easy to add functionality on the fly in a scripted language because the code inside isn't type checked or compiled
+	This gives scripted languages a lot of flexibility in this particular area
+	Spring data jpa has found a great balance by requiring the developers to define the data contract, and then the framework can implement that contract much like Rails or Django would
+	Client code can then bid and compile against that interface contract
+	DSL is an acronym for domain specific language. This is a term used to classif yan extension of a programming language to address a specific domain
+	In spring data jpa's case, this means that the framework is enhancing java to be better suited at creating and working with jpa queries
+	We use dsl in speech all the time
+	The spring data jpa query dsl is imply all about defining terms and syntax to work the jpa queries
+
+4.3 - Demo: Query DSL
+	In your SessionJpaRepository interface, add a custom method signature
+	(demo of create a method name with specific syntax to define what the method needs to do) Examples
+		List<Session> findBySessionNameContains(String name);
+
+4.4 - Query Method Syntax Basics
+	Query dsl methods are simply method names defined in your jpa repository that spring data jpa will auto implement on your behalf
+	They are one way that spring data jpa can implement queries for you
+	When you create a query method, the query parser will look for methods that start with
+		findBy
+		queryBy
+		readBy
+		countBy
+		getBy
+	These prefixes can be enhanced with other keywords, until eventually you get to the "by" or by sesion of the method name
+	This signals that the criteria or filter piece of the query is beginning and spring data jpa matches up the entity attributes of the method criteria with the actual "where" clause in your sql
+	Multiple criteria definitions can be added to your method name with the "and" or "or" keywords
+	By piecing the query dsl keywords together with the jpa repository generics typing, you can see how spring data jpa can generate the jpql for us. This in turn gets mapped to actual sql that will get issued against the database, thanks to the jpa orm framework
+	This breaks down how the method name gets mapped to queries
+
+4.5 - Query Method Return Types
+	Once your query method executes, you need to tell spring data jpa how to handle the results
+	Since your jpa repository is typed with an entity, spring data jpa likes to return data using that entity object
+	This leaves you with a couple of obvious options - You can return a single result or a collection of that result
+	If you know your query will return one row, you can set the method return type to the entity
+	If your query will be returning more than one row of data, then you need to set the return type to a list and type it to your jpa repository's entity
+	When you're returning count value, you can just set the return type to the long data type
+	There are a few other return types that we can return from our query methods, we'll discuss those later
+
+4.6 - Query Method Learning Instructions
+
+4.7 - Keyword: And and Or
+	The "And" and "Or" keywords work pretty much like the jpql "and" and "or" and the sql "and" and "or" keywords
+	There's a couple of caveats though when using these keywords with the query methods
+	You can string as many criteria pieces together as you want, but you don't have control over the grouping of the conditionals
+	You'll also create some extremely long method names if you have many "ands" and "ors" that are needed for your query
+	From a java and a compiler standpoint, this isn't really a problem, but from the standards and human visual aspect, having the method name that is super long can just get really ugly
+
+4.8 - Keyword: Equals, Is, and Not
+	When you pass in a parameter to your findBy query method, spring data jpa will, by default, use the equals syntax when comparing the criteria with the actual filter value
+	By ending your query with the entity attribute name or appending the "Is", "Equals" keyword onto the method name, you will end up with the same jpql in each case
+	If you want a comparison that is the opposite of the Equals, you can use the "Not" keyword to do a not equals comparison
+
+4.9 - Keyword: Like and NotLike
+	The spring data jpa "Like" keywrod is pretty much on part with the sql "like" keyword
+	Instead of using equals comparison to match the entire value, the "Like" comparison matches a portion of the value when you add the percent symbol at the beginning or the end of the filter value
+		Example - findBySessionNameLike("Java%")
+	Keep in mind that if you use these 2 keywords, you are responsible for adding a "%" character on your filter value
+	If you want spring data jpa to add the percent value for you, then you need to look at StartingWith, EndingWith, and Containing keywords
+
+4.10 - Keyword: StartingWith, EndingWith, and Containing
+	StartingWith, EndingWith and Containing are special convenience keywords that ultimately map to the jpql and sql like keyword
+	The big difference is that spring data jpa will automatically add the percent character to the parameter  that gets passed into your query method
+	This small enhancement prevents all of your client code from having to format the incoming parameter with that percent sign
+
+4.11 - Keyword: LessThan(Equal) and GreaterThan(Equal)
+	The Equals and Like comparisons generally are looking for an exact or fuzzy match and work on a variety of data types
+	If you're working with number data types, you may also need to perform an inequality with a less than and greater than comparison
+	The LessThan, LessThanEqual, GreaterThan, GreaterThanEqual keywords added after your attribute name will generate these type of comparisons
+
+4.12 - Keyword: Before, After and Between
+	Date comparisons also have their own set of keywords, when you need to compare a date with something other than the equals comparison. You can use Before, After and Between
+	One thing to note is that there currently isn't a BeforeEqual or AfterEqual keyword that gives you less than equals and greater than equals functionality with your dates
+	You can get this behavior by adjusting the date parameters correctly, so if you're looking for dates after or equal to today, you would just adjust the date parameter to yesterday
+	Dates are one of those areas in programming where things can get complex, when you need to do things like get the delta of 2 dates or deal with internationalization, locales and time zone offsets
+	You'll still have to deal with these issues as spring data jpa simply sets up your date comparison for querying
+
+4.13 - Keyword: True and False
+	True and False keywords handle boolean comparisons. You could set up query methods with the standard equals and passing a true or false parameter to get the same functionality but the true and false keywords are shorthand for this and will help to cut back on parameters needed for your queries
+	Generally, I don't recommend using a string or an enum for your primary key. I like synthetic or natural keys, which are integers or longs but sometimes you're working with a legacy database and you've got to kind of roll with the flow with whatever you're given
+
+4.14 - Keyword: IsNull, IsNotNull, and NotNull
+	We need to check for null or not null values, and this requires some special jpql and sql syntax
+	To create query methods that handle null checking, you'll want to use Null, IsNull, IsNotNull, NotNull keywords
+	The advantage to these keywords is that they don't require parameters to be passed in to get them set up, and they act very similar to the true or false keywords that we just covered
+	The only difference here is that we're comparing nulls instead of booleans
+
+4.15 - Keyword: In and NotIn
+	One area you may have found painful to work with when working with straight JDBC is collection comparisons with the "In" and "NotIn" sql keywords
+	Creating the comma-delimited list used for the in comparison can be tedious and error-prone
+	Now with jpa, you can pass in a collection type and the framework will convert that into a comma-delimited list for you
+	Spring data jpa adds convenience keywords to set up In and NotIn queries, and all you need to do at that point is build up the collection of object comparison values, and between spring data jpa and jpa, your collection comparisons should become a little bit easier to work with
+
+4.16 - Keyword: IgnoreCase
+	This keyword is very handy to add to any of your attribute names to create a case insensitive search
+	If you combine IgnoreCase with a like or a contains keyword, you get a very flexible and handy search that can be used for say, something like an auto-complete drop-down or some kind of filter on your user interface
+	Just remember that if you're doing like searches and case insensitive searches, you can run into performance issues on extremely large datasets since most databases end up having to bypass indexes and do table scans for those type of queries
+
+4.17 - Keyword: OrderBy
+	Up to this point, all the keywords we've been talking about deal with how the where clause of your sql statement gets generated and implemented
+	The "order by" keyword doesn't affect the where clause, but is used to set up by the "order by" clause of your sql query
+	After you specify the "order by" keyword, you add the entity attribute that you want to order on, followed by either "Asc" or "Desc" for ascending or descending order
+	When you use the "OrderBy" keyword, you should plan on using it as the last piece of your query method
+	So the rule of thumb here is plan on using this at the very end of your query methods
+		Example - findByLastNameOrderByFirstNameAsc(name)
+	One of the drawbacks to these query DSLs - if you do anything complex, you get really long method names
+
+4.18 - Keyword: First, Top, and Distinct
+	These 3 keywords, are used to limit the amount of results returned from the query
+	The First and Top keywords map to the actual limit jpql keyword.
+	First limits your results to one row, always resulting in a single entity returned rather than a list
+	And when you use Top, you can pass it a number to tell spring data jpa how many records you want to limit the results to
+	This should only be used when you always want to limit the query results to that specific number and you don't want to use this for paging
+		Example - findTop5ByFirstName(name)
+	And last, Distinct will remove duplicate records from the returned result set. This is typically useful when you're returning a related object.
+
+5.1 - Introduction (More Fun with Queries)
+	Even though query methods are flexible and can handle a lot of your needs, sometimes they just can't quite do exactly what you want
+	In that case, you can jump back to jpql queries and let spring data jpa still handle the implementation for you
+
+5.2 - Demo: @Query Annotation
+	(demo) In the interface, instead of using query dsl to create a method, create a normal mehtod signature and add @Query on top of it method signature with the jpql query
+	(example)
+		@Query(
+			"select tp from TicketPrice tp where tp.basePrice < ?1 " +
+				"and tp.ticketType.includeWorkshop = true"
+		)
+		List<TicketPrice> getTicketsUnderPriceWithWorkshops(BigDecimal maxPrice);
+	(demo of running a test for this method in console output with having executed 3 queries for the above jpql - first one related to the query)
+	The other thing I want you to notice are these following 2 select statements. We only issues one query in jpql. Why is it that we have these other statements?
+	And answer lies in the fact of how jpa populates and builds its entities
+	(open the TicketPrice.java file and shows TicketType having @ManyToOne) Many-to-Ones are essentially eager loaded and set onto your entity
+	So once it popualtes the TicketPrice, Hibernate, which in this case is the entity manager provider for jpa says, "we also need to populate the TicketType and PricingCategory on this entity"
+	It goes out and it does the selection, and it creates those objects and sets them here on your entity
+
+5.3 - @Query Annotation
+	When you're struggling to get the functionality from the spring data jpa query dsl keywords, you should next jump to the @Query annotation
+	Here's some reason that you might want to use the @Query annotations over the query dsl methods
+		If you have an existing persistence layer tier with lots of jpql queries already defined, you may want to simply port that work to jpa repositories using the @Query rather than rework them into query dsl methods
+		Reworking your jpql akes time, and you may introduce errors
+		Another obvious reason to use the @Query annotation is if the query method functionality just can't accomplish what you have to do
+		Handling things like parentheses groupings in your where clause or explicitly join strategies such as right or left joins, make good candidates for @Queries
+		Even if query methods did support this more advanced query syntax, the method's name would begin to get extremely long
+		If you work with jpa long enough, you'll eventually run into an N + 1 query situation, where you will see queries issued for child records or other relationship records. You notice that we saw that in our last demo
+		Using the fetch keyword in your jpql can help control this functionality to remove the extra unneeded queries. This functionality is not currently addressed with query dsl keywords
+		Adding fetch to your jpql is one way to address this issue, but certainly isn't the only way
+		You have options like the @EntityGraph annotation, which you can also use with spring data
+		You should consult a good jpa resource for more information about fetching and performance improvement options
+ 
+5.4 - @Query Options
+	The @Query annotation has several options and some related annotations you'll want to be aware of. I'll cover the most useful ones
+	First is the ability to specify named parameters in your jpql
+		Query("select tp ... :maxPrice ...")
+		List<TicketPrice> getTicketsUnderPriceWithWorkshops(@Param("maxPrice") BigDecimal maxPrice);
+	Named parameters replace the "?(number)" parameter placeholder with a ":(name)" parameter value
+	You can then match up the passed in method parameters to the jpql named parameters with an @Param annotation with a name that matches the named parameter
+	Next, spring data jpa adds some extra niceties when dealing with like queries
+	In this example, you'll notice that the percent sign in the jpql can be embedded next to the parameter
+		@Query("select ... like %?1")
+		List<Session> getSessionsWithName(String name);
+	Normally, this is invalid jpql syntax. This is a nice convenience so that your passed in parameter is automatically set up and bound with the percent symbol, which keeps that logic out of your client calling code
+	This might not look like a big deal, but small features like this really add the icing on the cake with this framework
+	Setting up native sql queries are pretty easy with the @Query annotation as well. By setting the annotation value to a native sql string, and specifying the "nativeQuery = true", spring data jpa will execute the sql and then marshall the results set back into your entity
+		@Query("select ...", nativeQuery=true)
+		List<Session> getSessionsWithName(String name);
+	Using this option is good if you're really trying to customize or tweak your query for performance reasons where you can use some specific syntax your database offers or maybe you're just more familiar with standard sql than jpql
+	Keep in mind though that once you start adding native queries in, you begin to get locked in with your database platform
+	This generally isn't a big deal, as long as you know about it and your application needs are okay with not needing to switch out databases easily
+	And last, you can actually use the @Query to perform updates that modify your database instead of read from it. By including the @Modifying annotation with the @Query, the jpql will be executed and the return count will be sent back to the caller
+	Again, this is just another way of expanding on the functionality of the basic CRUD operations provided by the base JPA repository classes
+		@Modifying
+		@Query("update ...")
+		int updateSessionName(String name);
+
+5.5 - JPA NamedQueries
+	Earlier in this course, I mentioned that using query methods and the @Query annotation, that spring data jpa will check your queries at application startup time to determine if they're valid or not
+	This is generally always better than at runtime since you can immediately tell if you have any issues with your queries
+	When using standard JPA, you get this same functionality when using the named query annotation or equivalent definition in the orm.xml file
+	Spring data jpa has support for incorporating named queries with the jpa repository structure
+	Here's how it works
+		@Entity
+		@NamedQuery(
+			name = TicketPrice.namedFindTicketsByPricingCategoryName"
+			query = "... :name"
+		)
+		public class TicketPrice {...}
+	Named queries are normally defined in your entity class using the NamedQuery annotation
+	The basics of the annotation define the jqpl query and the name that this NamedQuery will be known as 
+	The biggest thing that you'll need to worry about when using named queries in spring data jpa is the name
+	Chances are if you're working with an existing jpa app, these names will contain just about any text and typically don't have any rhyme or reason to them
+	Spring data jpa will force you to use some consistency here by cleaning up the names of your queries
+	You'll first need to start the name with the entity name followed by a period. You can then specify some kind of descriptive name after the entity name
+	When you define your named queries this way, spring data jpa will map the named queries to the respective jpa repository wit hthe matching entity generic type
+		public interface TicketPriceJpaRepository extends JpaRepository<TicketPrice, Long> {
+			List<TicketPrice> namedFindTicketsByPricingCategoryName(@Param("name") String name);
+		}
+	The name value after the period will attempt to match a method definition in your jpa repository interface with that same name
+	Since this named query is using named parameters, we also need to use the @Param annotation for the method param so the criteria value gets set correctly
+	Once this has been set up, spring data jpa will now handle the implementation for you, just like it would when using the query dsl methods or the @Query annotation
+	There's another way that you can set up named queries with spring data jpa and that is to use the name option on the @Query annotation
+		@Query(name = "TicketPrice.namedFindTicketsByPricingCategoryName")
+		List<TicketPrice> getTicketsByPricingCategoryName(@Param("name") String name);
+	This is a good option if you have named query names that don't match the spring data jpa standards that we just talked about
+	You can simply specify the named query name in the query annotation, and the rest should be looking familiar at this point
+
+5.6 - Demo: NamedQueries
+
+5.7 - Native SQL Support
+	I've already mentioned how to deal with the native queries using the @Query annotation
+	There's another way to work with native sql though. If you defined a named native query jpa definition on your entity model or in your orm.xml file, you can have spring data jpa repositories implement them the same way that spring data jpa handled the named queries
+		@NamedNativeQuery (
+			name = "TicketPrice.nativeFindTicketsByCategoryWithWorkshop"
+			query = "..."
+		)
+		public class TicketPrice {...}
+	As long as the name of the named native query begins with the entity name followed by a period, spring data jpa will try to match a method name in your repository with the suffix text of the query name
+
+5.8 - Demo: NamedNativeQueries
+
+5.9 - Tip: Where Should I Put My Queries?
+	Between this section and the last section of this course, you've seen a lot of ways that you can query with spring data jpa
+	With this framework and jpa, you have a lot of options as to where to put the actual query code
+	You have 3 basic query protocols that you can use any spring data jpa app - you have native sql, java persistence query language or jpql and spring data's query dsl
+	That tells us what we can use to get at the data, but where should all that code live?
+	You really have 2 places in your persistence tier that you can be thinking about putting your query code for your data models
+	You can either throw them in your jpa entities or in your repositories
+	In entities, you are limited to adding your query code in named queries or in named native queries
+	In repositories, and specifically, jpa repositories, you can manage named queries, named native queries, spring data queries, and spring data query dsl methods
+	So with all these options, is there one place or way to build and define your queries that is better than other? There's really no right or wrong here
+	Many prefer to keep the queries next to the entity model. The data access object pattern would suggest that queries are more appropriate in your jpa repository, since data access often extends beyond a single entity. So, think table join queries or views, for example
+	The repository pattern in spring data definitely gives you the most flexibility
+	Regardless of where you choose to put your queries and what methods you decided to build them with, you should sit down with your team and settle on some standards for your project
+	If that means that you decide to stick to query DSL and the query annotation or you want to move all of your queries to named queries, just be consistent and code review each other's code as you work on your data access layer
+	Keeping a tidy ship allows for better maintenance and prevents volatility with fragile queries and data
+
+5.10 - JpaRepository Query Precedence
+	Since there are multiple ways and methods defined in your jpa repository interfaces can be interpreted by spring data jpa, we have to understand the order or precedence structure to get an idea of how these get implemented
+	This isn't overly complex, but you should be aware of the order and way jpa repositories treat your methods
+	First, any method annotation with the @Query annotation will always be implemented, according to the @Query annotation instructions
+	Even if the mehtod name is a query dsl or matches a named query name, the @Query annotation will override that
+	Next, any method that follows the spring data jpa named query naming standard will be matched to that named query
+	And last, any methods that don't have @Query annotation and match a named or native query will be parsed as a query dsl method
+	If the method name doesn't comply with the query dsl standards, then spring data jpa will raise an exception, stating it doesn't understand how to implement that method name, and you will be required to fix it or provide an implementation
+
+6.1 - Introduction (Advanced Features)
+	These features are a little more advanced in nature can be useful for persistence tiers that need enterprise-level features
+
+6.2 - Paging and Sorting
+	Spring data jpa offers a better and more robust way to handle this type of functionality and this is with the built-in page and sort objects
+	If you remember the repository hierarchy of the jpa repository, it contains a PagingAndSortingRepository. This repository interface defines a finalAll() method that takes a Sort object and a Pageable Object
+	These special parameter types handle your sorting and paging needs
+	You can pass a combination of Sort and Pageable to your query methods or your @Query annotation methods
+
+6.3 - Demo: Paging and Sorting
+	Example
+		@Query("...")
+		List<Session> getSessionsWithName(@Param("name") String name);
+	Whether using @Query or a query dsl, to add paging and sorting support, all you need to do is add an additional parameter and change the return type
+	So instead of returning List<Session>, we're now going to return a Page<Session>, and we're going to add a second the second param called Pageable (from springframework.data)
+		@Query("...")
+		Page<Session> getSessionsWithName(@Param("name") String name, Pageable pageable);
+	That all we have to do to adjust a query method such as this or a dsl method. Just change the return type, and add that new parameter
+	PageRequest.of() - factory method. You can pass in Sort.of() as a parameter to the PageRequest.of()
+	(demo) This will be the exact same way that you'll want to handle paging for your user interface
+	In your controllers, you would set up the paging and return types to deal with your page needs
+
+6.4 - Custom Repositories
+	What happens when you need to create a custom method and implementation in your repository because the spring data jpa functionality doesn't quite do what you need it to do
+	That's where custom repositories will come in handy. This little trick will combine your custom implementation with the spring data jpa repository information all into one easily used repository
+	Here's how that works
+		Up until this point, all of our jpa repositories have been interfaces and have extended JpaRepository
+		Since they are interfaces rather than classes, we've had to rely on spring data jpa to do all of the implementation work for us
+		Now that we want to add our own custom code along with what spring data jpa offers, we need to do the following
+			First, we need to add a new interface for our custom methods. I like to add the world "custom" somewhere in the interface name so that when you're looking at hthe code, it's easy to identify and separate it out from the standard jpa repositories
+			Next, we have to hav ethe JpaRepository extend that custom interface. This gives your clide code visiblity into both the spring data jpa methods and your custom methods
+			And last, we need to create a class that implements the custom repository and provides the custom method definitions
+			The big gotcha here is that the implementation class must be named exactly the same as your JpaRepository interface but with the suffix "Impl" on the end
+			This is the default way for spring data jpa to match your custom implementation with your spring data jpa repository
+		Once this is set up, on application startup, spring data jpa will create an implementation class that will implement your JpaRepository and extend your CustomImpl class, which will combine the built-in spring data jpa features with your custom implementation features
+
+6.5 - Demo: Custom Repositories
+	(demo)
+		Create custom interface - SessionCustomJpaRepository (add custom method customMethod())
+		Make SessionJpaRepository extend JpaRepository AND SessionCustomJpaRepository
+		Create SessionCustomJpaRepositoryImpl that implements SessionCustomJpaRepository and implement the customMethod()
+		Run test and see it pass
+
+6.6 - Auditing Support
+	Many enterprise systems require auditing and tracking in their persistence tier, especially when writes happen to that data
+	The typical information that is audited is who created the record, when was it created, who modified the record last, and when the record was modified last
+	It's very common to see these 4 attributes on every database table
+	Spring data jpa provides the following annotations that correspond with those 4 basic auditing attributes
+		@CreatedBy
+		@LastModifiedBy
+		@CreatedDate
+		@LastModifiedDate
+	These annotations are placed in your jpa entity class on the columns that represent your database audit columns
+	When added to your code, it will look something like this
+		@Entity
+		public class Model {
+			@CreatedBy
+			private User user;
+			
+			@CreatedDate
+			private DateTime createdDate
+		}
+	The CreatedBy and ModifiedBy should map to your related user entity or a string or number data type containing text that identifies that user or the user ID
+	The date audit fields are set to a DateTime datatype. Because setting the date timestamp at the time your data is written or modified is an easy operation for spring data jpa to do, the framework handles updating these two audit values automatically for you
+	The CreatedBy and ModifiedBy are harder for spring data jpa to set because the security implementation and user info can vary from application to application, so spring data jpa provides a nice mechanism to handle that
+	Spring data provides an auditor-aware interface that you can implement with the correct way to obtain  the current user information
+		public class SecurityAuditorAware implements AuditorAware<User> {
+			public Optional<User> getCurrentAuditor() {
+				...
+				return user;
+			}
+		}
+	If you're using spring security, you can access the authorized principle in the getCurrentAuditor method
+	If you happen to be using another security framework, you would then access the current user in this method with the appropriate logic
+	When the data is written or modified, spring data jpa will use the returned user to update the appropriate audit values
+	The AuditorAware uses generics, so if you'd rather return a string or a long, you can set up the code to match your user auditing needs
+	To enable auditing with spring data jpa, you simply need to set up the @EnableJpaAuditing annotation with a java configuration class
+
+6.7 - Locking
+	You may find that you need to set up specific locking strategies for your persistence tier
+	If you're not familiar with locking concepts and what they do, I'm going to briefly cover them, but this is no way will be an in-depth view on what locking is and when and how you would use it. I'll mainly cover how to use it with spring data
+	Locking revolves around concurrently accessed data. If you have lots of users trying to access and modify your data all at the same time, you need to implement a locking strategy to prevent one user's data getting overwritten by another user's data in a lat one to write the data wins scenario
+	JPA provides a version annotation that you can assign to a persisted attribute on your entity that gets updated by your persistence manager every time the data is written
+	If you set up locking, the persistence manager can check to see if the latest version number is ahead of its own and prevent the write from happening
+	There are 2 basic lock types
+		Optimistic
+		Pessimistic
+	The Optimistic locking strategy checks the version number on a write, and if it doesn't match, then it throws an optimistic lock exception, which rolls back the transaction and your client code has to handle the error and any repercussions thee transaction rollback may have caused
+	Pessimistic locking is a little nicer on your client code in the sense that it locks the data so other users can't access the data until the transaction commits
+	This prevents exception handling but also can cause performance bottlenecks since data may be locked an inaccessible until other users are done with the data
+	To set the lock strategy for your queries, spring data provides the @Lock annotation, which you can set the lock type to match your data needs
+		@Lock(LockModeType.PESSIMISTIC_WRITE)
+		List<Model> findByAttributeName(String name);
+	A couple of things to note with the lock annotation
+		First, you need  to make sure that your queries are running in a trasaction or you'll get exceptions
+		Second, you can override base jpa repository method definitions, such as findAll() or getOne() methods. You can then specify the lock mode for those base methods if you need them to be something different than the default unlocked nature

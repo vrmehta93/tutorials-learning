@@ -1,0 +1,1021 @@
+Dustin Schultz
+June 5, 2017
+
+2.1 - The Infamous Cloud (Getting Familiar with Spring Cloud)
+
+2.2 - New Challenges with the Cloud
+	We also can't just move our existing applications to the cloud and expect them to be automatically cloud enabled. This is often referred to as the "Life and shift" migration
+	And sure we're going to see some benefits by moving to the cloud, but we're not fully utilizing the cloud
+	In order to fully utilize the cloud, it requires change. And that's where spring cloud helps
+	Spring Cloud helps you build cloud-native applications
+	Now you're probably asking what is cloud-native application? A cloud-native application means that your application was specifically built and engineered for the cloud
+	It means your application fully utilizes all of the cloud computing paradigms
+	Spring Cloud itself is not actually a framework. Loosely speaking, spring cloud is used to describe a number of projects that fall under the same umbrella
+	In this course, we'll focus on the fundamentals, which is spring cloud config and spring cloud netflix
+
+2.3 - Your Focus for the Course
+	http://dustin.schultz.io/ps-scf/ for FAQs and additional resources
+
+2.4 - Prerequisites
+	Java 8
+	Spring Boot
+	Knowledge of Microservices or SOA
+	Maven 3+
+	STS 3.8+
+
+3.1 - What is Service Discovery? (Finding Services Using Service Discovery)
+	What is service discovery and why do we need it?
+	Remember that the cloud is changing the way that we build software. We're moving from building these large applications and instead breaking them up into smaller and smaller pieces called services. And each of those individual services can then be deployed and scaled on their own, and together, as a whole, they form the overall application
+	And herein lies the problem: How does one service know where another service is at, its host and port, so that it can call it and use it?
+	For starters, we could simply configure all of our services to know the location and the port of other services that it calls. And depending on our needs, this actually might get us pretty far
+	But after a while, we'll learn that there are some problems to this approach
+	In a cloud environment, you have instances that can come up and go in response to demand
+	Another thing to consider is that application services will eventually fail. And regardless of the situation, if you're using a simple configuration, your services are going to continue to try to send traffic to those failed instances
+	We need something that is more dynamic
+	That's where service discovery comes into play. Service discovery typically provides the following types of functionality
+		A way for a service to register itself and what that means is that when a service comes online it can call out to the Service Discovery Server and let it know the location and port of its service so that other application services can call it
+		For the exact opposite reasons, service discovery provides a way for a service to deregister itself. So if a service were to shut down or go away temporarily for upgrades, it would want to let the Service Discovery Server know that it's no longer available for clients to use
+		And most importantly, service discovery provides a way for clients to find other services. And what do I mean by clients? I mean other application services
+		Lastly, service discovery provides a way to check the health of a service and remove any unhealthy instances. So each application service would implement a health check, typically via a REST endpoint, and then the Service Discovery would call that endpoint. And if that health check were to fail, it would remove that instance from its registry
+
+3.2 - Introducing Spring Cloud Netflix
+	There are actually several different ways that you can discover services using spring cloud
+		Spring Cloud Consul project
+		Spring Cloud Zookeeper project
+		Spring Cloud Netflix project
+	We're going to specifically focus on the last one
+	The folks over at Netflix have some serious experience building scalable applications in the cloud. And in fact, you could probably argue they have some of the largest scalability problems you can imagine
+	And they build some projects internally to handle these problems and eventually released them as open source projects
+	The spring cloud project took the netflix opne source projects and added some spring and spring boot features
+	And what was born out of that was the Spring Cloud Netflix project
+	Similar to the spring cloud project, the spring cloud netflix is not actually a project in and of itself. Rather it's a collection of projects
+	And for service discovery, we're interested in two of those projects:
+		Spring Cloud Netflix Eureka Server
+		Spring Cloud Netflix Eureka Client
+
+3.3 - Key Components Involved in Service Discovery
+	At a minimum, there are 3 components involved in service discovery
+		Discovery Server
+		Application Service
+		Application Client
+	It's helpful to get a full understanding of how all the components work together
+		The first thing that happens is the application service starts up. And when it starts up, it calls out to the Discovery Server, and it registers itself. And it tells the Discovery Server its location, its port and a service identifier that others can use to find it
+		Then at some point later, a clients need to call that application service but it doesn't know the location and the port of the service, so it needs to ask the Discovery Server. It sends out a request to the Discovery Server (DS) and sends along the service identifier
+		And the DS knows that based on that service identifier which service you're asking for and it responds back with the location and the port of that service
+		From there, things proceed as normal, and the client can request the service at its location and service can respond back with data
+
+3.4 - The Discovery Server
+	At its core, the DS is an actively managed registry of service locations. It is responsible for allowing others to find services and for services to register and deregister themselves
+	It's the source of truth, if you will
+	And you would typically run more than one instance of the DS as it's the key component to locate all the other services. And if you can't locate the other services, then you can't call the other services
+	So this is an important piece of the overall architecture
+	And you can find the DS implementation within the spring cloud eureka server project
+	In pom.xml, add dependency
+		groupId - org.springframework.cloud
+		artifactId - spring-cloud-dependencies
+		version - Camden.SR2
+		type - pom
+		scope - import
+	Another one
+		groupId - org.springframework.cloud
+		artifactId - spring-cloud-starter-eureka-server
+	In application.properties
+		spring.application.name=discovery-server
+	And then in your main application class, you add one annotation - @EnableEurekaServer
+		@SpringBootApplication
+		@EnableEurekaServer
+		public class Application {
+			main() {
+				SpringApplication.run(...)
+			}
+		}
+	And that's all there is to it. Once you start this application up, you will have a running instance of a DS
+
+3.5 - Demo: Setting up a Service Discovery Server
+	(demo using spring initalizr to create project with these dependencies - eureka server, devtools and actuator; load project)
+	Add @EnableEurekaServer annotation in main application class
+	Run the application. In the console window, you'll notice that there are several exceptions in here
+	One of the exceptions is "cannot execute request on any known server". And if you look, it's coming from this DiscoveryClient.register method
+	And what's happening is this Service DS is starting up and it's trying to register itself with a peer Service DS
+	And this is mainly for high availability purposes
+	However, when we're running in standalone or development mode, it can kind of be a pain to have to set up multiple instances every time. So instead, we're going to configure the Eureka server not ot try to register itself with its peers
+	And you definitely only want to do this in development mode since you want that high availability in production
+	In application.properties, add
+		spring.application.name=discovery-server
+		eureka.client.register-with-eureka=false
+	And since we're the DS our self and we're running in standalone mode, we don't need to register with any other peers because there aren't any other peers. So make sure to set that value to false
+	The next property is also a eureka client property
+		eureka.client.fetch-registry=false
+	And this property controls whether or not the eureka client would fetch the registry from the eureka server and since we're the only eureka server, there's nothing else to fetch from anybody else, so we'll set this to false
+	And the last property we're going to add is
+		server.port=8761
+	which is the default port for eureka DS
+	Run the application again, now you'll see in console "Started Eureka Server" and it changed its status to UP
+	So now you have a running Service DS
+
+3.6 - The Application Server
+	Application service is whatever that is providing the functionality
+	It's the thing that's receiving the requests from clients and returning responses
+	And it's a dependency of other services. So other services depend on its functionality to perform their functionality
+	You would typically run one or more instances
+	Just like we did for the Service DS, we're going to details the steps needed to add a Eureka client to an application service and then we'll actually create one ourselves
+	In pom.xml, add dependency
+		groupId - org.springframework.cloud
+		artifactId - spring-cloud-dependencies
+		version - Camden.SR2
+		type - pom
+		scope - import
+	Add another dependency
+		groupId - org.springframework.cloud
+		artifactId - spring-cloud-starter-eureka
+	In application.properties
+		spring.application.name=service
+		eureka.client.service-url.defaultZone=http://localhost:8761/eureka
+	The first property you can name whatever you want
+	The second property tells the application service where Service DS is located
+	In the main application class of your application service, add @EnableDiscoveryClient. It's just one annotation. The spring cloud guys have made it so easy for us
+	And what this does is it makes our application service register itself with the DS so other services can find it
+
+3.7 - Demo: Making an Application Service Discoverable
+	(demo using spring initalizr to create project with these dependencies - eureka discovery, devtools and actuator; load project)
+	Add @EnableDiscoveryClient to the main application class. And this is what's going to turn our service application into a client of the DS and it's going to cause it to register with the DS when it starts up
+	Underneath the @SpringBootApplication annotation, add a new annotation - @RestController
+	And remember that we're doing quick and easy demos to solidify the concepts and some of the things that we're using here are definitely not best practices and you shouldn't use them in your regular applications
+	So for instance, you wouldn't put an @RestController on your main application class, but since we're using this to quickly demo something, it's okay
+	In application.properties, add the properties
+	Since we're going to be running more than one instance of our service application, we have to set up some run configuration so that each instance runs on a different port and has a different name
+	In run configuration, create a new configuration for instance you want to create and override the properties defined in application.properties (service name and port number)
+	Before you run application service, make sure the DS is up and running
+
+3.8 - The Application Client
+	The application client is the piece that would call out to another application service to implement some piece of functionality in its service
+	It's the issuer of requests, and it depends on other services
+	And similar to the application service, the application client is also a user of the discovery client but it uses the discovery client in a different way. It doesn't use to register or deregister anything. It uses it to find service locations
+	Just to be clear, it's perfectly reasonable for an application to be both a service and a client
+	What we're referring to here is if the application was just a client and it wasn't a service
+	The steps involved to set up a client are quite similar to the steps involved to set up a service
+	Add same pom.xml dependencies
+	The differences between an application client and an application service come in the configuration
+	In application.properties, we have the same 2 properties that we used within the application service
+		spring.application.name=client
+		eureka.client.service-url.defaultZone=http://localhost:8761/eureka
+	And since we're client, we're not interested in registering with the DS because we don't need anybody to discover us. We're just interested in discovering others. So you set the value to false
+		eureka.client.register-with-eureka=false
+	Just like we did with the application service, we'll add the @EnableDiscoveryClient annotation to our main class
+	And then to actually discover services, we have 2 different options
+		We can inject the EurekaClient (eureka server specific)
+		Or we can inject the DiscoveryClient (DS agnostic)
+	And just to be clear, this is the spring DiscoveryClient and not the Netflix DiscoveryClient
+	The first option is using the EurekaClient and the EurekaClient has a method, getNextServerFromEureka(). And that'll pick the next instance in a round-robin fashion from the DS
+		First argument is the virtual host name or a service ID to call. And this is the same as the spring.application.name property that we've used in our service application
+		The second argument is whether or not this is a secure request
+	Once we get a reference to the InstanceInfo, we can call instance.getHomePageUrl() and that'll give us the base url that we can use with our RestTemplate to call the service
+		InstanceInfo instance = eurekaClient.getNextServerFromEureka("service-id", false);
+		
+		String baseUrl = instance.getHomePageUrl();
+	The second option is to use the Spring DiscoveryClient and it has a method called getInstances, which returns you all service instances for a given service ID
+		First argument is the same first argument that we saw in the EurekaClient, which is a virtual hostname or a service ID of the service you want to call
+	And once you have a list of instances, you can get one of those instances, and you can get the uri, turn it into a string and that's your base URL that you would use in your RestTemplate
+		List<ServiceInstance> instances = client.getInstances("service-id");
+		
+		String baseUrl = instances.get(0).getUri().toString();
+
+3.9 - Demo: Find and Calling Services as an Application Client
+	(demo using spring initalizr to create project with these dependencies - eureka discovery, devtools and actuator; load project)
+	In main application class, add @EnableDiscoveryClient, and @RestController
+		And autowire EurekaClient and RestTemplate
+	In application.properties, add properties
+
+3.10 - Spring Cloud Eureka Dashboard
+	One of the really useful things that the spring cloud eureka server provides is a dashboard
+	It's enabled by default and it's a web-based dashboard. And it displays a bunch of useful information, like whether or not a service is up or down and how many instances of it are registered
+	In web browser, go to localhost:8761
+
+3.11 - Configuration
+	There are several different areas where you can configure spring cloud eureka. We'll take a look at the 3 main areas
+		eureka.server.*
+		eureka.client.*
+		eureka.instance.*
+	The first one is the eureka server configuration, and that's all configuration under the eureka.server prefix
+	And this is going to control everything that's related to configuring the DS
+	The second one is the Eureka client configuration, and that's all configuration under the eureka.client prefix
+	And this is responsible for controllign how the discovery client interacts with the DS. So for instance, you have things like the eureka.client.eureka-server-connect-timeout-seconds. This would control how long the client waits to connect to the Eureka server before it times out
+	The third area of configuration is the eureka instance and that's all configuration under the eureka.instance prefix
+	And a eureka instance is anything that registers itself with the eureka server so that it can be discovered by others. The properties under the eureka.instance prefix control how the instance registers itself with the eureka server
+	So for instance, you have things like eureka.instance.health-check-url or eureka.instance.hostname, and the instance could be configured with custom values there, and that's how it would register with the eureka server
+
+3.12 - Health and High Availability
+	The spring cloud eureka server also has some additional features around health and high availability
+	It's constantly ensuring that the application services that it's returning or handing back to clients are healthy and available
+	And it also ensures that in the event that the DS goes down, all clients can still continue to operate
+	Like I mentioned, the eureka server is constantly concerned with the health of the application services that it's handing out to clients
+	And it assess that health, at least by default, by sending the clients a heartbeat every 30 seconds
+	And if it doesn't hear back from that heartbeat after 90 seconds, it removes it from the registry
+	Sending a heartbeat is the default configuration, but you can also configure the eureka server to hit an endpoint, such as /health endpoint that comes with the spring boot actuator
+	Eureka was built with high availability in mind and one of the ways that it achieves that is when a client requests a service location from the DS, the DS actually send back a copy of the registry
+	And what ends up happening is the registry gets distributed across all of the clients
+	And if the service DS goes down, those clients can continue to operate
+	What if the DS has new information or one of the services goes down? Well, the client has to renew its lease or fetch new registry every so often, and it does so by fetching deltas to update its registry
+	So it's pretty smart about not fetching the full registry again and only getting the changes
+
+3.13 - AWS Support
+	It's well known that netflix is a heavy user of AWS. Given that eureka was born at netflix, it's only fitting that it includes AWS support
+	Let's take a look at the various support, as well as a typical deployment architecture
+	When an application that's using the eureka client starts up, it checks to see if it's running on an AWS instance. If it is, it calls out to the local metadata service and retrieves some metadata about that instance
+	And it gets things that are specific to AWS, such as the amazon machine image that's running or what region it's running in or what zone
+	And then it sends that information up to the DS when it registers
+	Given the fact that things can change so often in AWS, it's important that the DS be located at a well-known location
+	So eureka adds support for Elastic IP Binding. When a eureka server starts up and it notices that it's running on AWS, it'll try to bind to the next available Elastic IP so that it has a static or well-known IP
+	The Eureka client zone is also a zone aware with a preference for the zone that it's currently running in. So it'll try to contact the DS in its current zone and if it can't reach one, it'll try the next zone and try to find the next available DS
+	And last, you can configure the eureka client to fetch the registry of different remote regions
+	In order to utilize the AWS support, it requires a little bit of extra configuration
+	In your @Configuration class, you define a new method that returns a EurekaInstanceConfigBean
+	And within that method, you create a new EurekaInstanceConfigBean, then you create an AmazonInfo object using the AmazonInfo builder and you set the Data Center Info on the EurekaInstanceConfigBean and return that bean
+		@Configuration
+		public class AppConfig {
+			@Bean
+			public EurekaInstanceConfigBean eurekaInstanceConfig(InetUtilsProperties properties) {
+				EurekaInstanceConfigBean bean = new EurekaInstanceConfigBean(new InetUtils(properties));
+				AmazonInfo info = AmazonInfo.Builder.newBuilder().autoBuild("eureka");
+				bean.setDataCenterInfo(info);
+				return bean;
+			}
+		}
+	If you go look at the source of AmazonInfo class, you would see that it's utilizing the local metadata service to fill in all of the instance information
+	In addition to the configuration in your @Configuration class, there's also some additional configuration in your application.properties and that's around configuring the availability zones
+	The property is the
+		eureka.client.availability-zones.[region]=[az1],[az2],[az3]
+	Similar configuration is required in the application.properties for your service URLs
+	The property is
+		eureka.client.service-url.[zone]=http://[eip-dns]/eureka
+		* Use EIP DNS name. Do not use IP (as of version Eureka 1.4)
+	And you want to make sure, at least as of version 1.4, to use the Elastic IP DNS name as the code is specifically aware of the pattern that Elastic IPs use for DNS names, and it's looking for that specific pattern to recognize if it's using an Elastic IP
+	Now that we have an understanding of the AWS support that exists in Eureka, let's take a look at a deployment architecture
+	Typically, you would have one or more DS per each availability zone, and then you'd have multiple availability zones
+	And within each of those zones, you have one Elastic IP for each of the DS
+	Then you would typically have an auto scaling group set up that evenly distributes those DSs across the availability zones
+
+4.1 - What Is a Configuration Server? (Configuring Services Using Distributed Configuration)
+	What's exactly so different about managing the configuration in a cloud-native application vs a non cloud-native application?
+	The answer to that stems from the fact that a cloud-native application is a distributed system and a non cloud-native applications are not distributed
+	And in a non-distributed application, you typically only have a handful of configuration files
+	It's often a one-to-one relationship between a system and its configuration
+	And as you move to a distributed system, that configuration explodes. You go from having one or more to many, many configuration files because you have many, many systems that make up one system as a whole
+	For instance, if you're using microservices, each one of your individual microservices that compose your overall application would have its own configuration file
+	You might be thinking, no problem. That's why they make configuration tools like Puppet and Chef (and Ansible) for managing configuration in many many systems
+	Well, it'll work but it's not ideal for the cloud
+	Let's talk about some of the issues that you would face with using a typical configuration management system
+		The first is that it's typically deployment oriented and that means that any time you want to make a configuration change, you have to kick off a new deployment so that the configuration is modified. And typically the application is then usually restarted
+		What if, for instance, you needed to make a temporary logging configuration change to debug an issue? Kicking off a whole new deployment and restarting applications is a pretty heavy process just for a temporary change
+		Another issue that you would encounter is the way in which configuration changes make it to the application servers. And that's via a push. Pushing application configuration to servers in a cloud environment is usually not dynamic enough
+		And by that, I mean it needs to know where to push the configuration to. And in the cloud that's usually not a straightforward answer as application instances can come and go at any given point in time
+		When you push configuration, you run the risk of missing a newly started instance that came online as a result of auto scaling during a high-traffic period
+		If push doesn't work, we can just pull, right? That has problems too. When you pull configuration, you typically use a pulling mechanism where you check for changes every x number of minutes, and if there are changes, then you pull those changes down. And that introduces latency from the time that we change our configuration to the time that it actually takes effect
+	If configuration management tooling doesn't solve our problem, then what exactly does? The answer to that is something called a Configuration Server (CS), to  be more specific, an Application Configuration Server
+	An Application CS is a dedicated, dynamic and centralized key/value store for storing your configuration. And it could be distributed or non-distributed
+	And similar to configuration management, it's the authoritative source for all configuration. It provides things like auditing and versioning and it also has cryptography support so that you can encrypt or decrypt sensitive configuration values
+
+4.2 - Introducing Spring Cloud Config Server
+	By default, spring cloud provides you with several different ways to implement a CS with almost no work on your part
+	The first two options
+		Spring Cloud Consul
+		Spring Cloud Zookeeper
+	are integrations with third party applications
+	You may or may not be familiar with Consul and Zookeeper, it's important to note that neither them is just a CS
+	Both are commonly utilized for other purposes like service discovery
+	The third option
+		Spring Cloud Config Server
+	is an implementation that was built by the spring cloud team. And it has one sole purpose, and that's to be a CS
+	In addition to including the implementation of the spring cloud config server, the spring cloud config project also includes client-side support for connecting and interacting with the server
+	The config client, which is usually embedded in your application, fits perfectly into Spring's Environment abstraction (e.g. @Inject). And that means that all the ways that you're already familiar with getting access to configuration can be used to get access to configuration that was retrieved from the CS
+	The config server is usually a standalone application, and it also fits perfectly into one of the spring framework abstractions and that's the PropertySource abstraction
+	So if you're not familiar with the PropertySource abstraction, you've probably actually already used it. For instance, if you've ever referred to a properties file in your application using the "classpath" prefix, then you've already used the PropertySource abstraction
+	And all of the configuration that comes from the CS is just another property source. It's a property source that's remote
+
+4.3 - Using the Spring Cloud Config Server
+	As we already discussed, the Spring Cloud Config Server is an implementation of a CS
+	At its core, the config server is just another web application and it provides a REST-based interface for accessing your configuration files
+	So you set up your configuration files, you name them appropriately and then you tell the CS where they're located and it'll serve them up for you
+	It's important to point out that the config server doesn't facilitate writing any configuration files and it's only mainly concerned with serving those configuration files
+	It has support for various output formats, and the default is JSON, but it also supports properties and YAML
+	The config server doesn't need a database to store the configuration and instead it has support for retrieving and reading your configuration files from several different back-end storage configurations like Git, which is the default or SVN or just the plain old filesystem
+	Another nice feature that the CS supports is it has some notion of configuration scopes. And what I mean by that is that you can define a global configuration that applies to all applications as well as application-specific configuration or Spring Profile specific configuration
+	Using the spring cloud config server, like spring cloud's other servers, is very easy. In pom.xml, add dependency	
+		groupId - org.springframework.cloud
+		artifactId - spring-cloud-dependencies
+		version - Camden.SR2
+		type - pom
+		scope - import
+	Add another dependency
+		groupId - org.springframework.cloud
+		artifactId - spring-cloud-config-server
+	Next, create a folder to store all of your configuration that you want the CS to serve up. And in that folder you can optionally create an application.properties file or an application.yml file
+	And this file is for a global configuration that should apply to all applications and not any one specific application
+	An example of that would be something like your database configuration that is shared across all of your applications, you would put it in this application.properties or application.yml file
+	Next you add application and profile-specific configuration files in this folder and you can put them in either properties or yml format. And you use a special naming pattern for the filename
+		{application}-{profile}.{extension}
+	where application is the name of your application and profile is the spring profile that should apply for that configuration.
+	If you're not using a spring profile, you can omit the "-{profile}" section of the filename and just use the "{application}.{extension}"
+	Next you run "git init" within your folder that contains all of your configuration files. And this example assumes that you're using the default back-end storage, which is git
+	And from there you would git add your configuration files, git commit them and then the last step, which is optional but highly recommended, is to set up a remote git repository and git push the configuration up to the remote repository
+	Now we need to configure the actual CS itself. Now don't confuse this with the configuration files that the CS will be serving. This is the application configuration for the actual CS
+	In config server's application.properties file, you specific the server
+		server.port=8888
+		spring.cloud.config.server.git.uri=<uri to git repo>
+	server.port isn't required but that port is the conventional port that's used for the CS
+	Then you need to configure the location of the git repo that contains all of the configuration files that the server will serve. And you do that by specifying the property. Now, if you'd uploaded that to a remote repository, this would be the clone url of your repository
+	The next step is to add the @EnableConfigServer annotation to your main application class. And while you're in here, if you wanted your CS to be discoverable via service discovery, you could add the eureka client dependencies, configure the service discovery url, and add  the @EnableDiscoveryClient annotation, and then clients would be able to discover the CS
+	The last step is to ensure that your CS is set up in a secure fashion. And it's very easy to do that using the spring security library. And any of the methods that are supported in spring security are also supported in securing your CS
+
+4.4 - Config Server REST Support: Parameters
+	Typically, when you're interacting with the config server's REST endpoints, you're doing so using the config client. However, it's useful to understand the available endpoints, at least for debugging purposes and also if you want to use it in another language
+	Each of the available REST endpoints on the config server share a common set of parameters
+	And the values of those parameters influence the configuration that's returned
+	The first parameter is the {application} parameter. And if you're utilizing the spring cloud config client, it uses the "spring.application.name" property to fill in the value for that application parameter
+	The next parameter is the {profile} parameter. And again, if you're using the spring cloud config client, it's going to pull the value from the spring.profiles.active property to fill in the value for that profile parameter. So this translates into the active spring profile
+	The last parameter, the {label} parameter, is a feature for grouping your configuration files into kind of arbitrary named sets. And that could mean different things on the back-end you're using. So for instance, if you're using git as a back-end, the label translates to the git branch
+	Now take a second to look at each of these endpoint parameters, and consider them as a whole and think about how you might combine one or two or all of them together to identify a particular configuration
+
+4.5 - Config Server REST Support: Endpoints
+	By now we should have a good understanding of the purpose of each of the path-based parameters that are involved in REST endpoints
+	Let's take a look at the actual REST services themselves
+	The first endpoint that takes up to 3 of the parameters that we discussed with the third, label, being optional
+		GET /{application}/{profile}[/{label}]
+	Let's take a look at examples
+		/myapp/dev/master
+		/myapp/prod/v2
+		/myapp/default
+	The last example is kind of important. We've got 2 parameters that are required, the application parameter and profile parameter. And then the label parameter is optional
+	And when you use spring and you don't set an active profile, you might not know, but it sets one for you, and it's called default
+	So if you were wanting to get access to the configuration that didn't apply to any particular spring profile, you would give it your application name and then the value "default"
+	The next endpoint utilizes only 2 of the 3 parameters that we discussed
+		GET /{application}-{profile}.(yml | properties)
+	It allows you to request either yml or properties files, and it doesn't necessarily matter what the source file is. So for instance, if you had a source file in the yml format, you could request it in the properties format and it would automatically convert it for you
+	Examples
+		/myapp-dev.yml
+		/myapp-prod.properties
+		/myapp-default.properties
+	The last REST endpoint is very similar to the one we just looked at with the exception that you have to specify a label
+		GET /{label}/{application}-{profile}.(yml | properties)
+	In fact, they can be equivalent if the label you specified is master as the previous endpoint always assumes that the label is master
+	Examples
+		/master/myapp-dev.yml
+		/v2/myapp-prod.properties
+		/master/myapp-default.properties
+
+4.6 - Demo: Setting up a Configuration Server
+	(demo using spring initalizr to create project with these dependencies - eureka discovery, config server and actuator; load project)
+	In main application class, add @EnableConfigServer
+	In application.properties
+		server.port=8888
+		spring.cloud.config.server.git.uri=<git clone url>
+	Fork git repo and clone it 
+
+4.7 - Using the Spring Cloud Config Client
+	Let's look at the client. At its core, the config client is responsible for bootstrapping and fetching application configuration
+	So what do I mean when I say that the Config Client is responsible for bootstrapping application configuration? Well, when a spring application starts up, it needs to resolve its property sources. And it needs to do that very early on in the startup process
+	Some of the reasons for that are things like your property placeholders. When you resolve those, it needs to actually have the values to resolve the placeholders. And since the configuration lives on the CS, that means that the config client needs to fetch application configuration before the spring application context has even technically started
+	If it waited until the application was fully started, it would be too late in the process
+	There are 2 different ways that you can get the config client to bootstrap your application.properties and they booth use a special file called the bootstrap.properties or bootstrap.yml
+		The first way is Config First, and you do that by configuring a bootstrap.yml or bootstrap.properties that has the application name as well as the URL to the CS
+		The second way is Discovery First, and that's using service discovery. So you would configure your bootstrap.properties or bootstrap.yml to have the application name and then the location of the Service DS. And it would use that to then find the config server so that it could fetch your configuration
+	Setting up an application to use spring cloud config client is even easier than setting up the spring cloud config server. In pom.xml, add dependency
+		groupId - org.springframework.cloud
+		artifactId - spring-cloud-dependencies
+		version - Camden.SR2
+		type - pom
+		version - import
+	Another dependency
+		groupId - org.springframework.cloud
+		artifactId - spring-cloud-config-client
+	Then we need to configure how the config client will bootstrap the configuration. If you're using Config First, you define a bootstrap.properties or yml
+		spring.application.name=<app name>
+		spring.cloud.config.uri=http://localhost:8888
+	Second property is location of the config server
+	If you're using a Discovery First configuration to bootstrap the Config client, the configuration is similar to the one we just looked at but it's slightly different. In bootstrap.properties
+		spring.application.name=<app name>
+		spring.cloud.config.discovery.enabled=true
+	Note that I've only included that differences between config first configuration
+	You would also need to make sure that you added your eureka client dependencies in your pom.xml, configure the service url to the Service DS, and then add @EnableDiscoveryClient annotation
+
+4.8 - Demo: Retrieving Configuration with the Config Client
+	(demo using spring initalizr to create project with these dependencies - eureka discovery, config client and actuator; load project)
+	Fork service DS repo and import discovery server
+	In config server app, add @EnableDiscoveryClient annotation in main application class
+		In application.properties, add
+			spring.application.name=
+			eureka.client.server-url.defaultZone=  - location of the DS
+	In config client app, remember, that there's no special annotation that we need to add for the config client to get its configuration. As long as the libraries are on the classpath and the setup is correct, it should be able to find the configuration from the CS
+	However, we do want to participate in service discovery, so let's add @EnableDiscoveryClient annotation
+	Add new class for configuration
+	Create bootstrap.properties
+		spring.application.name=
+		spring.cloud.config.discovery,enabled=true	- find CS via service discovery
+		eureka.client.server-url.defaultZone=<> - location of DS (copied from config server project)
+
+4.9 - Updating Configuration at Runtime
+	Updating configuration at runtime is easily one of the best features of spring cloud
+	With it, you can do thing like refresh your @ConfigurationProperties at runtime
+	You can also use it to update the logging levels on any piece of code
+	And the changes happen almost instantaneously
+	And the best part is that you can do all of this without ever restarting your application
+	How do you do it?
+		First step is updating your configuration and you do that by cloning the configuration repository that your Config Server is looking at, make your changes, and then git add, git commit and git push your changes up to the configuration repository
+		From there, there are several different ways that the application gets the new configuration, both manually and automatically
+			The first way is manually, and that's by calling the refresh endpoint that's included in the spring actuator project. And just to be clear, you would need to do that for every individual service that needs it configuration updated
+			The second way is a combination of both manual and automatic. And you can imagine that if you had a lot of servers, calling the refresh endpoint on each of them manually could be a pretty painful process
+			Instead, if each of the applications were to subscribe to an event, and you were to call the /bus/refresh endpoint, spring cloud bus would send out a message to all of the subscribers indicating to them that they need to refresh their configuration
+			Now note that there isn't any sort of intelligence in whether or not the configuration changed. Every subscriber goes and gets its new configuration regardless
+			The third way is just like the second except for it adds a level of intelligence. And the way it does that is you hook it up with your version control system, like git, and any time you make a commit, the changeset of the commit is posted to a monitor endpoint and then that monitor endpoint can determine which services need to have their configuration updated
+		Let's visualize this. Imagine that you made a commit to some configuration,  and you pushed that up to the configuration repository. And the repository knows what changed, and it sent the changeset to the /monitor endpoint, and then it decided that it only needed to notify two of the 3 applications to update their configuration
+		Regardless of which method you chose to update to notify your applications about configuration updates, there's one last step. And that is to celebrate
+
+4.10 - Utilizing the @RefreshScope Annotation
+	We've alreaady talked about how @ConfigurationProperties and logging levels will be updated when configuration is refreshed, but unfortunately, that doesn't cover all of the use cases
+	Anything that gets its value only at initialization time, like an @Bean or an @Value, will not be automatically refreshed like the others
+	How do I refresh an @Bean or @Value that only gets its configuration during initialization? The answer to that is with @RefreshScope annotation
+	Add @Refresh to @Bean
+
+4.11 - Demo: Refresh Configuration Without Restarting Your App
+	(demo) Lauch all applications - DS, CS, and config client app (in correct order)
+	In browser, visit localhost:8080
+	In the forked config repository, update a property and push it to git
+	If you refresh in browser, it will still be old values. To refresh the application, in postman, send request to this endpoint
+		POST http:localhost:8080/refresh
+	Server will respond back with all fo the properties that changed
+	Now refresh the browser, and you'll see new values except for that is being loaded with @Value
+	Add @RefreshScope at the class level for file that's using @Value
+	Re-run and you'll see changes
+
+4.12 - Encrypting and Decrypting Sensitive Configuration
+	Spring Cloud Config Server also provides additional useful functionality for encrypting and decrypting your configuration
+	It has support for several different features
+	It supports encrypted configuration at rest or in-flight. And at rest, that simply just means that your configuration is encrypted when it's stored on disc. And in-flight means that it's encrypted as it travels between the config server and config client
+	It has utility endpoints for encrypting and decrypting your configuration
+		/encrypt
+		/decrypt
+	And one really important thing to point out is that by default, neither of these endpoints are secured unless you configure security for your CS
+	And we've already talked about hwo to secure your config server. And remember that any of the methods that are supported by spring security will also work for securing your config server
+	And last, it has support for encrypting and decrypting using either symmetric or asymmetric keys. So you can choose whatever works best for your situation
+	Before we get into the details on encrypting and decrypting configuration, I thought it would be useful to see how encrypted configuration looks
+		my.datasource.username=foobar
+		my.datasource.password={cipher}ASFIOWRODSKSDFIR32KJL
+	Notice before the random letters and numbers, there's a special value of cipher, and it's surrounded by curly braces. This is what denotes that the real value is an encrypted value
+	And notice that there's one minor difference in the application.yml vs the properties - the yml file requires us to surround the value in single quotes, whereas the properties file does not
+	Now that you've seen what encrypted configuration looks like, you're probably wondering at what point is the configuration decrypted? And there are 2 different options
+		The first option is upon request, and that's at the CS. So you make a request for a specific application and the config server decrypts the values in the configuration before sending it back
+		You'd only want to use this if the connection between your config server and config client is secure
+		If it's not, you can utilize the second option that decrypts the value's client side. And this is exactly opposite of the first option. Instead of decrypting the values before sending them back, the config server sends them in encrypted format and the client is responsible for decrypting them
+		Note that the default way is the first option, upon request
+		And if you want the client to decrypt the configuration, you have set a property on the config server
+			spring.cloud.config.server.encrypt.enabled=false
+		and that will tell the config server not to decrypt the values before sending them back to the client
+
+4.13 - Using the Encryption and Decryption Support
+	Before we get into the details about configuring our CS for encryption and decryption support, note that it assumes we have the Java Cryptography Extension (JCE) installed
+	And if you've never installed JCE or you just can't remember how to do it, the instructions are here
+		https://dzone.com/articles/install-java-cryptography-extension-jce-unlimited
+	The first step to encrypting your configuration is to choose the key type, and that could be either symmetric or asymmetric. And typically symmetric keys are easier to use, but less secure than asymmetric keys. And you can choose whatever works best for your situation
+	Step 2, if you're a symmetric key, is to configure the encryption key. And you can do that in the application.properties or yml
+		encrypt.key=<super secret key>
+	If you're using asymmetric keys, can be done in 2 different ways
+		The first way is to set the value of the encrypt.key property in the application.properties or yml
+			encrypt.key=<pem encoded key as text>
+		And the PEM encoded key would contain both the public and private key
+		The second way, if you're using asymmetric keys, is to use the java keystore. Once you've created or imported your public and private key into an existing or new keystore, you simply configure the location of the keystore
+			encrypt.keyStore.location=<path to keystore>
+			encrypt.keyStore.password=<keystore password>
+			encrypt.keyStore.alias=<key name in keystore>
+
+4.14 - Encrypt and Decrypt REST Endpoints
+	Once you have your config server all set up for cryptography, you can utilize some of the REST endpoints to encrypt and decrypt values that you will put or take out of your configuration
+	Both of these endpoints are really really easy to use
+	The first one is the /encrypt endpoint
+		POST /encrypt
+	and you'd use this to generate the encrypted values that you'll use in your configuration
+	All you do is send a POST request to the /encrypt endpoint, pass the value that you want to encrypt as the body of the request
+	The config server will use its configured key, either the symmetric or the asymmetric key, to encrypt that value
+	And again, I can't stress this enough, make sure that this endpoint is secure using spring security or any other means to ensure that this endpoint is only accessed by authorized users
+	The decrypt endpoint is literally almost identical to the encrypt endpoint with the exception of the name and the inputs. And you'd mainly use for this debugging purposes
+	So to decrypt a value, you would 
+		POST /decrypt
+	and you would send the encrypted value as the body of the request, and it would return to you the unencrypted value
+
+5.1 - What is Intelligent Routing?
+	Remember that in order to be as dynamic as possible and as scalable as possible, a cloud-native system is made up of individually deployable services, which together, as a whole, form an overall system
+	With that comes challenges though. Each of the individual services may be running on a different port, a different address, or a combination of both. And they'll also likely have different paths and different APIs to interact with
+	And as a user or a client of those services, such as a mobile or web app, interacting with each of these individual services, which could easily be in the double or triple digits would be nightmare
+	Instead, we can use Intelligent Routing (IR) to make our application appear as if it were a single system. Similar to how a completed puzzle appears as if it were a whole, but it's made up of several individual pieces
+
+5.2 - Intelligent Routing via a Gateway Service
+	Routing is typically implemented via something called a gateway service or an API Gateway
+	An API Gateway, or a gateway service, is defined as the single point of entry for all clients
+	So in many ways, the gateway service is a lot like the front door to our system. And each of these individual services is then located behind this door, and all requests must enter through it
+	A gateway service not only provides dynamic routing and delivery, which means at runtime it can decide where it should route a request and if it should even route a request at all, but it also provides an array of other functionalities
+	One of those pieces of functionality is security. It provides the ability to authenticate all of the incoming requests as well as filter out any sort of illegitimate or bad request
+	And it's actually a really good candidate for providing auditing and logging of requests since all of the requests must enter through the gateway
+	It also provides something called request enhancement which is just a fancy way of saying that it can add additional information to the request, or enrich the request, if you will
+	The gateway service can also act as a load balancer for the individual services that are behind it
+	Another interesting feature of the gateway service is the ability to provide different APIs for different clients. APIs are not a one size fits all kind of thing and different clients, such as web or mobile clients have different needs in the way they call your APIs
+
+5.3 - Using Netflix Zuul with Spring Cloud
+	IR is implemented using a combination of Spring Cloud and a project from Netflix
+	The project is called Zuul, and it's pronounced "zool" which rhymes with the word "tool"
+	the project page for netflix zuul project defines it as a gateway service that provides dynamic routing, monitoring, resiliency, security, and more
+	And the name Zuul is actually a pretty good name as Zuul refers to a fictional monster like character in the movie Ghostbusters that's the gatekeeper just like the gateway service is the gatekeeper
+	Just like all the other spring cloud projects, in pom.xml
+		groupId - org.springframework.cloud
+		artifactId - spring-cloud-dependencies
+		version - Camden.SR2
+		type - pom
+		version - import
+	Another dependency
+		groupId - org.springframework.cloud
+		artifactId - spring-cloud-starter-zuul
+	In your main application class, add @EnableZuulProxy annotation and this is the annotation that turns your application into a gateway service
+		@SpringBootApplication
+		@EnableZuulProxy
+		public class Application {
+			main() {...}
+		}
+	From a configuration standpoint, you have 2 different options
+		You can configure the gateway service to use service discovery or you can configure it without service discovery
+	If you're using service discovery, define the usual parameters for the name of the application and the location of the service discovery server
+		application.properties
+			spring.application.name=gateway-service
+			eureka.client.service-url.defaultZone=http://localhost:8761/eureka
+	If you're NOT using service discovery, you still define application name and you add an additional parameter
+		application.properties
+			spring.application.name=gateway-service
+			ribbon.eureka.enabled=false
+	Remember how I mentioned that the gateway service can serve as a load balancer for your services? Well, the name of the client-side load balancer project from Netflix is called Ribbon. We'll get into more details later
+
+5.4 - Configuring Routesin Netflix Zuul
+	Once you have everything configured, the next step is to define how Zuul should route requests
+	The default routing behavior when Zuul is set up using service discovery is to route requests by service name. So for example, if you requested /foo, Zuul would use service discovery to find the service with the name of foo (spring.application.name=foo) and send that request to that service.
+	Another example, if you were to request /categories/1, Zuul would locate the service with the name categories (spring.application.name=categories) and it would send the /1 request to that service. By default, the prefix is stripped from the request, so the service actually only gets the /1 part of the request
+	If you wanted to send the full request, the /categories/1, you could set the property zuul.stripPrefix=false and the service would get the request /categories/1
+	Also note that all services are added by default. So, you'll want to use zuul.ignoredServices=<pattern> to ignore specific services
+	In addition to the default configuration, you can also define more precise configuration for specific services
+		First you define the path with zuul.routes.<route_name>.path property where the route_name can be anything you want, and the path is defined as a path that's using Ant-style matchers
+		Then you define the same property prefix but end it with serviceId (zuul.routes.<route_name>.serviceId). And the service id is the service identifier that Zuul will look for when discovering the service via service discovery
+		You'll also need to set the zuul.ignored-services property so that Zuul doesn't try to automatically add a route for that service id
+	Here's what the application.properties will look like
+		spring.application.name=gateway-service
+		zuul.routes.<route_name>.path=/somepath/**
+		zuul.routes.<route_name>.serviceId=some_service_id
+		zuul.ignored-services=some_service_id
+	The configuration for when you're not using service discovery is actually pretty similar to when you are
+		application.properties
+			spring.application.name=gateway-service
+			zuul.routes.<route_name>.path=/somepath/**
+			zuul.routes.<route_name>.url=http://some_url_address/
+	You define the path, just like you did in the previous configuration, and then instead of defining a service id, you simply define the URL to the service
+
+5.5 - Demo: Using Netflix Zuul as an Intelligent Router
+	3 projects
+		gateway-service - (demo using spring initalizr to create project with these dependencies - eureka discovery and Zuul; load project)
+		hello-service - (demo using spring initalizr to create project with these dependencies - eureka discovery and Web; load project)
+		goodbye-service - (demo using spring initalizr to create project with these dependencies - eureka discovery and Zuul; load project)
+	We're also going to need the Service Discovery Server (from previous modules)
+		Or clone this https://github.com/dustinschultz/scf-discovery-server
+	In gateway-service
+		In main class, add @EnableZuulProxy and @EnableDiscoveryClient
+		In application.properties
+			spring.application.name=gateway-service
+			eureka.client.service-url.defaultZone=http://localhost8761/eureka
+	In hello-service
+		In main class, add @EnableDiscoveryClient and @RestController (just for demo purposes; this is a bad idea in real application)
+		Add method that returns "Hello" with @RequestMapping
+		In application.properties
+			spring.application.name=hello
+			server.port=1111 # Since we have multiple applications running at the same time, we don't want their ports to conflict
+			eureka.client.service-url.defaultZone=http://localhost8761/eureka # copy from gateway service
+	In goodbye-service, you're going to repeat basically the same process, except for all of the locations that it says hello will be goodbye. And instead of using all 1s for the port, we'll use 2s
+	We're now ready to start up all of the applications and try them out
+
+5.6 - Creating Filters with Netflix Zuul & Spring Cloud
+	One of the key features in Netflix Zuul is the ability to define filters
+	Filters allow you to intercept and control the requests and responses that pass through the gateway
+	Zuul has support for several different types of filters
+		The first one is the "pre" type filter, which is executed before the request is routed
+		Next comes the "route" type filter, which allows you to direct the request in any way you want. In fact, earlier when we defined the @EnableZuulProxy annotation on the main application class, we were telling spring to set up some predefined route filters to proxy our request to back-end services
+		After route comes the "post" filters, and as the name suggests, these filters are executed after the request is routed
+		And the last one is the "error" filter type. The error filter type is responsible for handling any of the previous filter types, the pre, route or posts, results in an error
+	To define a Zuul filter, you simply extend and implement the ZuulFilter class
+		public class MyFilter extends ZuulFilter {
+			// implement methods
+		}
+	And there are 4 different methods to implement
+		The first is the run() method and this is where hte main logic of the filter goes. Note that it returns an object, but the current implementation ignores it so you can just simply return null from this method
+			public Object run() {}
+		The next method is the shouldFilter() method, and as the name suggests, this method allows you to return true or false indicating whether or not the filter should be ran
+			public boolean shouldFilter() {}
+		The third method is the filterType() method, and here you can define one of the 4 predefined values - either pre, route, post or error
+			public String filterType() {}
+		The last method is the filterOrder() method, and this allows you to control the execution of your Zuul filters
+			public int filterOrder() {}
+	The RequestContext is an object that's responsible for holding the request, the response and any state or data information that needs to be shared between all of the filters
+		RequestContext ctx = RequestContext.getCurrentContext()
+		
+		// Get the servlet request
+		HttpServletRequest req = ctx.getRequest()
+		
+		// Get the servlet response
+		HttpServletResponse res = ctx.getResponse()
+		
+		// Set a variable
+		ctx.set("foobar", "PRE_FILTER_EXECUTED")
+		
+		String foobar = (String) ctx.get("foobar")
+	So, you'd use it to get access to the HttpServletRequest or Response as well as use it to set or get data for or from other filters
+	The RequestContext is unique to every request and only lasts the duration of the request
+	Once you've defined and implemented your Zuul filter, you need to tell Spring about it. In your @Configuration class, create a method that returns the Zuul filter and annotate it with @Bean
+		@Configuration
+		public class MyConfig{
+			@Bean ZuulFilter myFilter() {
+				return new MyFilter();
+			}
+		}
+	Spring cloud netflix will pick up and add any beans of type ZuulFilter to Zuul
+
+5.7 - Demo: Creating and Using a ZuulFilter
+	(pick up where we left off previous demo) Remember we had 4 services, discovery server, gateway-service and 2 application services hello-service and goodbye-service
+	In gateway-service
+		Create new class that extends ZuulFilter
+		In @Configuration class, define the bean
+	In hello-service
+		modify hello()
+
+6.1 - Module Introduction (Calling Services Using Client-side Load Balancing)
+
+6.2 - Client-side vs Server-side Load Balancing
+	What is load balancing? Simply put, load balancing is a way to improve the distribution of workload across multiple resources
+	The more important question is what role does load balancing play in a cloud-native architecture? A very important one, probably even more important than in a non-cloud-native architecture. And the reason for that becomes clearer when you look at the differences in architecture
+	In a non-cloud-native application,  you go from having multiple instances of a single application with a single load balancer to multiple services with multiple instances and multiple load balancers
+	And you can start to see the important of a load balancer just by sheer number of load balancers that we need in a cloud-native application
+	There are typically 2 different types of load balancers
+		Server-side load balancer where the server is responsible for the distribution of the load
+		And there's the client-side load balancer (LB) where the caller is responsible for the distribution of the load
+	Server-side LB
+		With server-side LB, a request to another service doesn't go directly to the service itself and instead goes to a server infront of the service which then decides which of the multiple instances it should forward the request to
+	Client-side LB
+		With client-side LB, there is no intermediary. The client or the caller of the service, is aware of all of the instances of a service via a known list of service discovery
+		And the client is responsible for deciding which of the multiple instances it should send the request to
+	To solidify our understanding of server-side vs client-side load balancing, let's look at each of them side by side
+		With server-side load balancing, the server obviously distributes the request, and with client-side load balancing, the client obviously distributes the request
+		Server-side LB is typically hardware based but it can also be software based. Client-side LB, on the other hand, is software based
+		You can incur an extra hop with server-side LB since the request doesn't go directly to the service and has to go through an intermediary first. Whereas with client-side LB, you don't incur any extra hops once you know the location of the services
+		Both server-side and client-side LB have support for various load balancing algorithms
+		With server-side LB, the actual load balancing happens outside of the request process whereas with client-side LB, the actual load balancing happens with the request process
+		Lastly, server-side LB can be either centralized or distributed, whereas client-side LB is typically distributed
+	Given all of these differences, it's clear that client-side load balancing is a natural fit for cloud-native architectures
+
+6.3 - Getting Started with Spring Cloud and Netflix Ribbon
+	We've set the stage for client-side load balancing. Now let's talk about how to actually implement it with spring cloud
+	We'll use a library called Netflix Ribbon to implement client-side load balancing. And Netflix Ribbon is an Inter Process Communication library that has built-in software load balancers
+	Spring cloud adds full integration with netflix ribbon to support Spring's RestTemplate class. And we'll go into detail about what this exactly means, but in essence our RestTemplate will now understand how to balance requests across multiple instances of a service
+	Spring cloud also adds features that make it really easy to declare different types of load balancing algorithms and availability checks
+	Let's talk about how to use spring cloud and spring ribbon. In pom.xml, add dependency
+		groupId - org.springframework.cloud
+		artifactId - spring-cloud-dependencies
+		version - Camden.SR2
+		type - pom
+		scope - import
+	Another dependency
+		groupId - org.springframework.cloud
+		artifactId - spring-cloud-starter-ribbon
+	Spring Cloud's netflix ribbon support adds 2 new annotations
+		@LoadBalanced annotation - this annotation is used when you're creating a RestTemplate. And it's used to mark that that RestTemplate should be a load balanced RestTemplate as opposed to just a standard RestTemplate
+		Second annotation is @RibbonClient annotation - this annotation is mainly for configuration purposes. You would use it to configure a custom Ribbon client, as well as when you're not using service discovery to set up an actual ribbon client
+
+6.4 - Using the @LoadBalanced Annotation
+	It's really easy to get started and create a load balanced RestTemplate
+	In @Configuration class, define a new method annotated with @Bean tha returns a new RestTemplate. Then you annotate that same method with the @LoadBalanced annotation
+		@Configuration
+		public class MyConfiguration {
+			@Bean
+			@LoadBalanced
+			public RestTemplate restTemplate(){
+				return new RestTemplate();
+			}
+		}
+	And what this does is it tells spring that RestTemplate should support load balancing. And what that means behind the scenes is that the RestTemplate thta's returned will actually have an interceptor, a RestTemplate interceptor, that utilizes the Ribbon load balancer client to actually call our services and balance between different instances
+	And by default, it'll use a round-robin algorithm for distributing that load
+	Next, let's look at how you would actually use this load balanced RestTemplate if you were trying to call a service and you were using service discovery
+		Suppose you had 2 instances of a service called my-service running on port 9000 on multiple servers at mycompany.com. And also suppose that my-service was discoverable via service discovery
+		Instead of passing the mycompany.com URL or IP address to the RestTemplate, you can actually pass a URL that uses a logical identifier to represent the service
+			Instead
+				restTemplate.getForEntity("http://mycompany.com:9000/u/1", ...)
+				OR
+				restTemplate.getForEntity("http://128.168.10.10:9000/u/1", ...)
+			Use RestTemplate like this instead
+				restTemplate.getForEntity("http://my-service/u/1", ...)
+		In this case, we've used the logical identifier my-service. And this is the same name that the service is registered under at the Service Discovery Server
+		And at runtime the RestTemplate will function as the client-side load balancer. And it'll use service discovery to resolve the real location of the my-service instances and then use the configured load balancing algorithm to distribute the load between them
+
+6.5 - Demo: Load Balancing Using Ribbon with Service Discovery
+	Assumed that you have service discovery set up
+	2 project
+		ribbon-time-service (demo using spring initalizr to create project with these dependencies - eureka discovery and Web; load project)
+		ribbon-time-app (demo using spring initalizr to create project with these dependencies - eureka discovery, ribbon and Web; load project)
+	In ribbon-time-service
+		In main class, add @RestController and @EnableDiscoveryClient
+		Add a request handler method
+		In application.properties
+			spring.application.name=time-service
+			eureka.client.service-url.defaultZone=http://localhost:8761/eureka
+		Create 2 configurations for launch applications on different port number values
+	In ribbon-time-app
+		In main application class, add @RestController and @EnableDiscoveryClient, create RestTemplate, add api method
+			@RestController
+			@EnableDiscoveryClient
+			@SpringBootApplication
+			public class RibbonTimeApplication {
+				@Inject
+				private RestTemplate restTemplate;
+				
+				main() { SpringApplication.run(...) }
+				
+				@GetMapping
+				public STring getTime() {
+					return restTemplate.getForEntity("http://time-serice", String.class).getBody();
+				}
+				
+				@Bean
+				@LoadBalanced
+				public RestTemplate restTemplate() {
+					return new RestTemplate();
+				}
+			}
+		Run app and notice
+
+6.6 - Using the @RibbonClient Annotation
+	First, we'll see how to use this annotation along with the @LoadBalanced annotation to achieve client-side load balancing without service discovery
+	In your @Configuration class, define the @RibbonClient annotation and set the name element to a meaningful value
+		@Configuration
+		@RibbonClient(name = "someservice")
+		public class MyConfiguration {...}
+	You'll refer to this value in the configuration as well as the URL of the RestTemplate
+	Then, in your application.properties, define 2 new properties
+		<ribbon_client_name>.ribbon.eureka.enabled=false	# tells Ribbon to disable service discovery support
+		<ribbon_client_name>.ribbon.listOfServers=http://host:9000, http://host:9001 # common separated list of URLs that Ribbon should use to distribute the requests among
+	Once you have everything configured, you can use the RestTemplate just like you did with service discovery except this time instead of calling the service name, you use the value of the name element that you set up in the @RibbonClient annotation
+		restTemplate.getForEntity("http://someservice/",...)
+	
+
+6.7 - Demo: Load Balancing Using Ribbon Without Service Discovery
+	In this demo, we'll learn how to utilize the Ribbon client without service discovery. Now, we're going to build on the previous demo that we did utilizing service discovery as each of the demos share a lot in common
+	In ribbon-time-service
+		In main application class, remove @EnableDiscoveryClient annotation
+		In application.properties, delete eureka.client.service-url.defaultZone property
+	In ribbon-time-app
+		In main application class, delete @EnableDiscoveryClient, add @RibbonClient(name = "time-service" annotation
+		In application.properties
+			time-service.ribbon.eureka.enabled=false
+			time-service.ribbon.listOfServers=http://localhost:4444, http://localhost:5555
+		Run app
+
+6.8 - Customizing Your RibbonClient Configuration: Introduction
+	In this last section, we'll learn how to customize an individual Ribbon client using declarative configuration
+	And what this will allow us to do is define custom configurations that applies to a specific Ribbon client instead of to all Ribbon clients
+	And what that buys us is it allows us to define different client-side load balancing behavior for different services
+	In your @Configuration class, define the @RibbonClient and set the name element just like before. This time though, you'll define an additional configuration element and you'll set that to another @Configuration class
+		@Configuration
+		@RibbonClient(name = "otherservice",
+			configuration = OtherServiceConfig.class)
+		public class MyConfiguration {...}
+	This additional @Configuration class will contain all of the custom configuration for a specific Ribbon client. And that configuration is defined by methods that are annotated with the @Bean annotation
+	So this configuration is just like any other @Configuration class. There's nothing special about it. You would just configure your @Beans just like you do normally
+	But since this configuration only pertains to a specific Ribbon client, it shouldn't be subject to any sort of component scanning. If it were, the configuration that was defined in that @Configuration class would end up applying to all Ribbon clients instead of just a specific ribbon client
+	There are a number of different classes that are needed to set up a Ribbon client, and by default Spring Cloud defines those as @Beans and then allows you to override any of them for custom configuration
+		@Configuration
+		public class <bean_type> <method_name>() {...}
+	Spring docs - https://cloud.spring.io/spring-cloud-netflix/multi/multi_spring-cloud-ribbon.html#_customizing_the_ribbon_client
+	I've loaded up the spring cloud documetation and we're looking at a number of different beans that are required to set up a Ribbon client. And for most part, you typically won't need to override any of these with the exception of 2 of the beans - IRule and IPing bean
+	The IRule bena controls the load balancing algorithm and the IPing bean controls the availability checks on the instances that are being load balanced
+
+6.9 - Customizing Your RibbonClient Configuration: The IRule Bean
+	As I mentioned, the IRule bean is used to control the load balancing strategy that's used to balance the distribution of workload between the instances that are being load balanced
+	You can choose to create your own custom IRule implementation or you can choose from one of the several different defaults
+	Let's talk about a few of our available options
+		RoundRobinRule - which is just like it sounds, an implementation of the round-robin balancing algorithm which distributes the workload evenly among all instances
+		ResponseTimeWeightedRule implementation, which is also a round-robin algorithm, but it dynamically assigns weights based on the average response times from each of the instances
+		RandomRule implementation which simply picks an instance to send traffic to at random
+		ZoneAvoidanceRule, which is also a round-robin algorithm implementation, however, it filters out servers to send traffic to based onthe AWS zone and availability
+	Let's look at an example to make this a bit more concrete. If for instance we wanted to override the default IRule to use the RoundRobinRule implementation, we'd define a new method annotated with the @Bean annotation and we'd return a new RoundRobinRule
+		@Configuration
+		public class OtherServiceConfig {
+			@Bean
+			public IRule ribbonRule(){
+				return new RoundRobinRule();
+			}
+		}
+
+6.10 - Customizing Your RibbonClient Configuration: The IPing Bean
+	The IPing bean is responsible for choose the strategy to check the liveliness or the availability of a given instance that's been load balanced
+	Just like the IRule bean, you can also implement your own custom IPing implementations, or you can choose from one of hte several defaults
+	Let's take a look at what's available
+		DummyPing implementation which is just as dumb as it sounds. It's simply always returning true when it's asked about the liveliness of a service. You'd do this if you simply don't care to check the liveliness or the availability and you always want to send traffic to all of the instances regardless
+		PingUrl implementation, which is an implementation that allows you to set an expected response and then makes an actual HTTP call to the service and checks the result. So you'd typically point this at something like the service's health check URL
+		NIWSDiscoveryPing implementation, which would be something that would be automatically configured for you if you were using something like Eureka service discovery. And what this would do is it would just consult with the discovery client to determine the liveliness of any particular instance
+	Again, let's take a look at an example to make this a bit more concrete
+		@Configuration
+		public class OtherServiceConfig
+		
+		@Bean
+		public IPing ribbonPing() {
+			PingUrl pingUrl = new PingUrl();
+			pingUrl.setExpectedContent("true")
+			return pingUrl
+		}
+
+6.11 - Customizing Your RibbonClient Load Balancing Strategy
+	In this demo, we'll learn how to customize our ribbon client that we're using to call the ribbon-time-service
+	And again, we're going to be building on the previous demo. So make sure that you've completed the demo where you set up a ribbon client without using service discovery
+	In a new package, create a config class, annotated it with @Configuration, add a new IRule method with @Bean
+
+7.1 - Introduction (Creating Self-healing services with Circuit Breaker)
+
+7.2 - Cascading Failures and Resource Overloading
+	In a distributed system, if there's anything that we can be 100% sure about, that's that failure is inevitable. But why though?
+	Well, failure can happen at many different levels in a system. Hardware can fail, networks can fail and software can definitely fail. And a distributed system is no different in that sense but the likelihood for failure is just simply much greater
+	You have more hardware, you have more network and you have more software. And with these increased numbers comes that increased probability for failure
+	Adding to that chance of failure is the way in which processes communicate in a distributed system. Process communication that was once within a process is now done across a network
+	And even as resilient as our networks are today, there's still a much more likely chance of a communication failure across a network versus within a process
+	A particularly bad side effect of failures in a distributed system is something called a cascading failure
+	A cascading failure is a failure in a system in which a system in one system can cascade, almost like dominos, to other parts of the system causing them to fail as well
+	There are multiple issues at play here
+		First, we have a fault tolerance problem. Calling services are unaware that the service they're calling is likely to fail and yet they still attempt to call the service
+		And second, we have a resource overloading problem. Calling services are allowed to invoke dependent services with pretty much unconstrained resources
+
+7.3 - Embracing Failure with the Circuit Breaker Pattern
+	So how do we solve this problem of cascading failures and failures in generated in a distributed system?
+	We have to learn to embrace and tolerate failures and degrate gracefully when we do. So in the event that a downstream dependent service is failing, it's actually better for the caller not to attempt to make a call to the dependent service, which is likely to fail
+	And instead, the caller should fail fast or degrade gracefully, perhaps byreturning old data or empty results and allow the failing service to recover
+	And then periodically check if hte service has recovered.
+	And in turn, what this does is it relieves pressure from any upstream services that are waiting for a response
+	And the other thing that we need to do is we need to limit the resources that are consumed
+	So the clients should put limits on the number of resources allowed to call a dependent service
+	And what this does is it prevents those requests from stacking up unconstrained, which could cause the client to fail itself
+	The first strategy for fault tolerance is actually a well-known pattern, circuit breaker pattern
+	And the Circuit Breaker Pattern (CBP) is a design pattern in modern software used to detect failures and encapsulate the logic of preventing those fialures from reoccuring constantly
+	The name CB comes from the idea that the pattern shares a lot similarities with how a real circuit breaker works
+
+7.4 - Fault Tolerance with Netflix Hystrix and Spring Cloud
+	Spring cloud implements fault tolerance with the help of a library from Netflix called Netflix Hystrix
+	Hystrix is a latency and fault tolerance library, and it was designed to stop cascading failures and enable resiliency in distributed systems
+	It's a concrete implementation of the CBP, and it allows you to easily wrap calls and automatically watches them for failures that meet a certain volume and air-percentage threshold within a given rolling window
+	The default for the rolling window is 10 seconds, and the request volume must be at least 20 requests. And if 50% or more of the requests are errors, then the circuit will be tripped and no requests will be allowed through
+	So if for instance you had a thousand requests in a 10 second window, if 500 of them were errors, then the circuit would be tripped
+	Hystrix will periodically recheck if the circuit should be closed and it does that by allowing a single request through every 5 seconds. That's the default
+	And if that request succeeds, then it will close the circuit, and if it fails, then it will remain open
+	Any requests that are short-circuited or timed-out or rejected or failed will be given a chance to execute what's called the fallback method
+	And as I mentioned before, a fallback might be something like returning cache data, a default value, or just something like an empty response
+	In addition to the CBP, Hystrix also has additional functionality that protects services from being overloaded
+	All Hystrix wrap calls are bounded either by a thread pool or a semaphore. And what this does is it constrains the resource usage, like we talked about earlier so that requests don't stack up and consume all of the valuable resources
+	And in the event that all of the available resources are consumed, any new requests will fail immediately and execute the fallback method, if one is available
+
+7.5 - Using Spring Cloud and Netflix Hystrix
+	Using spring cloud and netflix hystrix is extremely easy
+	Just like you use all of the other spring cloud projects, you start by including a dependency in pom.xml
+		groupId - org.springframework.cloud
+		artifactId - spring-cloud-dependencies
+		version - Camden.SR2
+		type - pom
+		scope - import
+	Another dependency
+		groupId - org.springframework.cloud
+		artifactId - spring-cloud-starter-hystrix
+	And if you'd like to be able to consume metrics for your Hystrix calls, add dependency for actuator
+		groupId - org.springframework.cloud
+		artifactId - spring-boot-actuator
+	In main application class, add new annotation @EnableCircuitBreaker
+	And then in either your @Component or your @Service class, locate the method that you want to wrap with Hystrix, and annotate that method with the @HystrixCommand
+	Then on the @HystrixCommand annotation, define a new attribute called fallbackMethod and set that to the name of the method that you want to fall back to in the event of a failure
+		@Service
+		public class Service{
+			@HystrixCommand(fallbackMethod = "somethingElse")
+			public void doSomething() {...}
+			
+			public void somethingElse() {...}
+		}
+	In terms of code, that's all there is to it. But there's a gotcha that you have to look out for and that's around the Hystrix timeout
+	And you need to make sure that your Hystrix timeouts encompass the caller timeouts plus any of the retries and then a little bit of a buffer
+	And the default timeout is set to 1000ms or a second and if you need to change it, you can use this big long property to set the timeout in ms
+		hystrix.command.default.execution.isolation.thread.timeoutInMilliseconds=<timeout_ms>
+
+7.6 - Demo: Implementing Fault Tolerance with Netflix Hystrix
+	Demo
+		discovery server project
+		weather-service (demo using spring initalizr to create project with these dependencies - web and eureka discovery; load project)
+		weather-app (demo using spring initalizr to create project with these dependencies - web, eureka discovery, Hystrix and actuator; load project)
+	In weather-service
+		In main class, add @RestController and @EnableDiscoveryClient. Create the method for your service
+	In weather-app
+		In main class, add @EnableCircuitBreaker, @EnableDiscoveryClient and @RestController. Create RestTemplate
+		Now remember a Hystrix command can oly be defined in an @Component or an @Service class
+
+7.7 - Metrics and Insight with the Hystrix Dashboard
+	Netflix Hystrix tracks the execution status of protected calls so that it knows when to trip the CB
+	And one of the advantages of this is that we can use those metrics to get insight into how our calls are functioning
+	Reading those metrics in their raw form wouldn't be very easy or efficient. And that's where the Hystrix Dashboard comes in
+	And the dashboard is a web application that helps you visualize all of those metrics in a quick and easy-to-use fashion
+	The dashboard is jam-packed with information
+		It tracks and displays information about the state of the circuit, whether it's open or closed, the error rate for the call, the traffic volume that it's receiving, how many requests were successful, reject or timedout and the latency percentiles for the call
+		And you also use it to track a single server or a cluster of servers
+	To use it, it's literally as easy as declaring a couple dependencies in your pom.xml and adding a single annotation
+
+7.8 - Using Spring Cloud and the Netflix Hystrix Dashboard
+	In order to use Hystrix dashboard, you first, like always, declare a new dependency in pom.xml on spring-cloud-dependencies (same as before)
+	Then add another dependency
+		groupId - org.springframework.cloud
+		artifactId - spring-cloud-starter-hystrix-dashboard
+	In main application class, add @EnableHystrixDashboard annotation
+	That's all you need to get started with the Hystrix dashboard
+
+7.9 - Reading and Understanding the Hystrix Dashboard
+	A lot of info but it's mostly obvious (it also has a legend)
+
+7.10 - Demo: Monitoring Fault Tolerance Metrics with Hystrix Dashboard
+	Demo
+		hystrix-dashboard (demo using spring initalizr to create project with these dependencies - Hystrix Dashboard; load project)
+	In main application class, add @EnableHystrixDashboard
+	Launch app, in browser go to localhost:8080/hystrix
+	Use weather-app few times to generate some data. Then, in Hystrix dashboard, put in the URL to the Hystrix stream of weather-app
+		Example - http://localhost:8000/hystrix.stream
+	Click "Monitor Stream" button and you'll be presented with the metrics
+
+7.11 - Aggregating Hystrix Metrics with the Netflix Turbine
+	Hystrix metrics are tracked on a service by service basis
+	Now a single Hystrix stream might have metrics on more than one Hystrix protected call, but those metrics are only for that service
+	And the implications of this are that every service has its own Hystrix stream URL that you need to use if you want to consume its metrics
+	If you wanted to track the metrics for multiple services, you'd have to open up multiple Hystrix dashboards and track them independently. And I'm sure you can imagine how bing of a pain that would be if you had tens or even hundreds of services that made up your application
+	To solve this, Netflix developed a tool called Turbine that aggregates many Hystrix streams into one
+
+7.12 - Using Spring Cloud and Netflix Turbine
+	How do we start using Turbine?
+	You start by defining a new dependency on spring-cloud-dependencies (same as before) in pom.xml
+	Then, add another dependency
+		groupId - org.springframework.cloud
+		artifactId - spring-cloud-starter-turbine
+	In main application class, add @EnableTurbine
+	And last, we have a little bit of configuration to add. In application.properties add (in addition to the standard spring application name and discovery server location properties)
+		turbine.ap-config=<list_of_service_ids>	# comma separated list of service IDs. And these are the same service IDs that you use for service discovery
+		turbine.cluster-name-expression='default'	# can be SpEL value to name your cluster
+	And in Turbine, a cluster is just a grouping of esrvices that need to be monitored together
+	And for our purposes,  to make things easy, we're going to set the value to "default" surrounded by single quotes
+	Once you have everything configured and your Hystrix Dashboard is started up, instead of entering the hystrix.stream URL, you'd enter the URL of your Turbine server and end it with turbine.stream
+
+7.13 - Demo: Aggregating Multiple Hystrix Streams with Turbine
+	Clone projects and load into IDE
+		https://github.com/dustinschultz/scf-hystrix-datetime-service
+		https://github.com/dustinschultz/scf-hystrix-datetime-app
+	Launch discovery server, weather-app, weather-service, datetime-app and datetime-service
+	Create a new project - turbine ((demo using spring initalizr to create project with these dependencies - Turbine; load project)
+	In main application class of turbine, add @EnableTurbine
+	In application.properties of turbine
+		server.port=3000
+		spring.application.name=turbine-aggregator
+		eureka.client.service-url.defaultZone=http://localhost:8761/eureka
+		turbine.app-config=weather-app,datetime-app
+		turbine.cluster-name-expression='default'
+	Launch turbine. Generate some data/metrics for the 2 apps
+	In browser, go to localhost:8080/hystrix
+		In the URL, put http://localhost:3000/turbine.stream
+		Give title name
+		Click "Monitor Stream"
+
+8.1 - Introduction (Brining It All Together and Where to Go Next)
+
+8.2 - How Does It All Fit Together?
+	The question is how does it all fit together to from a cloud-native system? And to start, let's recap everything that's involved
+		It starts with one or more application services. And in our example here we have 2 application services and both fo them are running multiple instances
+		Then at the heart of everything is the Service Discovery Server. It's the phonebook or the directory of the system allowing everyone to register their location, as well as discover the location of others. And remember that we utilize Netflix Eureka throughout the course for our SD needs
+		Next we have the Config Server to handle our dynamic and distributed configuration needs. And remember tha we use the Spring Cloud Config Server for this
+		After that, we have the gateway, or the front door, of the system and it's responsible for receiving and routing requests to back-end services. And we use Netflix Zuul for this
+		Then we have a client-side load balancer to distribute requests among the multiple instances that we run for high availability purposes. And remember in our case, we used Netflix Ribbon
+		And last, we have fault tolerance to be able to tolerate and measure failures and prevent them from causing cascading failures to other systems. And we use Netflix Hystrix for this
+
+8.3 - Putting It All Together: On Startup
+	Now that we've recapped all of the pieces involved, let's take a moment to look at how they all interact with each other, specifically on startup
+	It all starts with the SDS. Each and every instance of every piece of the system registers itself with the SDS upon startup
+	And then it also receives a reply with the location of other registered services
+	For application services, this reply is very important because it tells them where the location of the CS is at
+	And once they know the location of the CS, they can make a request to retrieve any configuration that will ultimately be used to bootstrap their startup process
+
+8.4 - Putting It All Together: On Request
+	Now that we have all of our application and their supporting services started, let's look at how they all interact with each other during a request
+	The request for a given path begins at the gateway server, Netflux Zuul in our case. And Zuul will match the path to a given service ID, and then it will use service discovery, either by requesting it from the SDS or via a previously cache result to locate the service that will handle that path
+	Once the service is located, it'll make a Hystrix-protected call to the service using Ribbon to handle the client-side load balancing of which instances it should send the traffic to
+	In our example, the request was sent to service A. Now, suppose that Service A also depends on Service B to fulfill the request
+	Upon receiving the request, service A will utilize service discovery to locate service B. And it'll do that either via a previously cached result or by requesting it from the SDS
+	Next, it'll make a Hystrix-protected call using Ribbon  for client-side load balancing to one of the instances of service B
+	Service B will respond to service A, and then service A will respond to the gateway and finally, the gateway will respond to the original request
+
+8.5 - Where to Go Next
+	Remember that Spring Cloud is a conglomerate of projects and while the fundamentals that we covered was a lot of information to learn, they only represent two of the many pieces of Spring Cloud. And that's the Spring Cloud Config project and the Spring Cloud Netflix project
+	There are whole bunch of other projects like Spring Cloud Bus, Spring Cloud Cluster and Spring Cloud Stream that all help you solve problems in the cloud
+	To get the best idea of what's availalbe with Spring Cloud, visit the documentation
+		https://spring.io/projects/spring-cloud
+	And scroll down to the section that says "Main Projects"

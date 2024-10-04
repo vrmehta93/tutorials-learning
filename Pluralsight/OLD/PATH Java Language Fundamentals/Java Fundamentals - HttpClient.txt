@@ -1,0 +1,401 @@
+Sander Mak
+May 14, 2019
+
+2.1 - Course Overview (Introducing HttpClient)
+	We'll assume that you have a solid knowledge of how HTTP works already
+	The important thing to note here is that when talking about java nad HTTP, we can either talk about APIs to implement the server part of HTTP or about APIs that support the client side of HTTP. This course will be about the client perspective
+	There are also Java APIs to implement the server part of HTTP. However, we won't discuss those in this course
+
+2.2 - Introducing the HttpClient API
+	The HttpClient API was introduced in java 11, which was released in September 2018. However, it was already available as a preview feature the year before that in java 9
+	This way the API had some time to mature in the real world before it was finalized in java 11
+	As of java 11, the HttpClient API is part of the java standard library
+	The HttpClient replaces the HttpURLConnection API that was already available in java for a long time
+	And like HttpURLConnection, this new HttpClient supports HTTP/2 and WebSocket communication. And it supports earlier versions of HTTP
+	Another important feature is that it provides both synchronous, blocking and asynchronous, non-blocking methods to perform HTTP requests
+	The design goal of HttpClient API was to be easy to use in common cases and powerful enough for complex use cases
+	Let's have a look at the 3 most important types that are part of the HttpClient API. All these types live in a java.net.http package
+		HttpClient class - most important methods are send() and sendAsync(). You cannot directly instantiate the HttpClient class. Instead, there's a newBuilder method that provides you with a builder class
+		HttpRequest - it contains all the information that you would expect like the URI that the request is targeted at, possibly HTTP headers that need to be sent along with the request, and HTTP method indicating whether it's a GET, etc that should be sent in the request to the server. Same as HttpClient, you cannot construct an HttpRequest directly. But you can do so with a builder. The builders always return immutable objects
+		HttpResponse - in addition to URI, headers, and status code, typically the most important part of the HttpResponse is the body
+	Now we previously saw that you can instantiate HttpClient using the builder pattern. However, there's also a static convenience method on HttpClient called newHttpClient() that will return a fully-functional HttpClient instance with all default settings applied
+	Quick example
+		HttpClient client = HttpClient.newHttpClient();
+		HttpRequest request = HttpRequest.newBuilder(URI.create("https://pluralsight.com"))
+			.build();
+		HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+2.3 - What's Wrong with HttpURLConnection?
+	You might be wondering why was it necessary to replace HttpURLConnection. If there already was a way to do HTTP requests in the java standard library, why did we need a new one? There were several reasons why HttpURLConnection needed to be replaced, but they all have the same cause. It's just a very old API
+	Nobody should use HttpURLConnection anymore in new code. But what if you're not yet on java 11 and you don't have access to the HttpClient API? You still shouldn't reach for HttpURLConnection. In that case, it's better to look at third-party libraries performing HTTP requests
+	Examples are Apache HttpComponents project, which also offers an HttpClient API, there's also OkHttp from Square (open source), and there's also even higher-level libraries like the JAX-RS REST Client. This REST client doesn't only perform HTTP requests, but it also knows about REST principles and can, for example, automatically map JSON responses to java objects
+
+3.1 - Exploring BodyHandlers (Performing Your First HTTP Requests)
+	As of java 9, the java platform itself has been modularized. This means that many functionalities in the java libraries are delivered separately in their own module
+	If you're building your application using a java module system, you need to be explicit about the dependencies that your module has on other java modules which can be either other application modules that you're developing, third-party libraries or modules from the JDK
+	If you're creating a modular java application and you want to use the HttpClient, then you need to add the following requires statement to your module declaration, which lives in module-info.java
+		module myapplication {
+			requires java.net.http;
+		}
+	If you're not using java modules in your application development and you're developing and running your application on the plan java classpath, then you won't need such a module declaration
+	send() for synchronous request
+	We've seen one example of BodyHandlers already - BodyHandlers.ofString()
+		ofByteArray() - bytes array
+		ofFile(path) - path
+		ofLines() - Stream<String>
+		discarding() - void. For cases where you're not really interested in the response body
+
+3.2 - Demo: HttpClient Synchronous Requests
+
+3.3 - HttpClient and CompletableFuture
+	sendAsync() - asynchronous
+	The return value is CompletableFuture<HttpResponse<T>>
+	sendAsync returns this value immediately. At the same time, it will perform ths HttpRequest in the background. And once the response to this request has been received in the background, the CompletableFuture will be completed with this response
+	There's one more thing I would like to highlight and that is sendAsync method doesn't throw any exceptions
+	That also has to do with the fact that the requst or response is handled in the background and your application code will move on to the next statement after sendAsync has been called
+	You can think of CompletableFuture as some kind of holder for a future value that has yet to be computed. The type parameter T represents the type of the value that we're expecting. Then, whenever a computation has completed, which in case of HttpClient means that a response has been received and the BodyHandler has been invoked on it, then the HttpClient can call complete() on the CompletableFuture and provide it with the value, which would be an HttpResponse
+	But as we said before, things might also go wrong. So the HttpClient could also call completeExceptionally()
+	In that case, the CompletableFuture won't hold a value, but it will hold an error that was encountered instead
+	Note that we, as users of the HttpClient API, will never call complete or completeExceptionally. We will get back this CompletableFuture, and at some point in time the HttpClient will call complete or completeExceptionally depending on whether the request succeeded or not
+	That still leaves the question on how to use CompletableFuture that we get back from sendAsync
+	We need to use CompletableFuture in a non-blocking, asynchronous manner
+	Instead of blocking and waiting for this CompletableFuture to be completed, we can instead configure callbacks on the CompletableFuture that need to happen when it's completed
+	One example is the thenApply() method on the CompletableFuture
+	The interesting thing is that thenApply returns a new CompletableFuture<String>. This of course, assumes we've used a body handler thatreturns a string when calling sendAsync
+	Because we get back a new CompletableFuture, we can do the same thing again
+	The main takeaway here is that by doing this, we're still not waiting and blocking for the response, but instead we're configuring actions or functions or lambdas to be performed on this response once it's there
+	Now, a word of caution. Using these blocking get() and join() methods should be a last resort. It's always a prefrred to express your computations as asynchronous callbacks on the CompletableFuture	
+
+3.4 - Demo: HttpClient Asynchronous Requests
+	.exceptionally() after .thenApply()
+
+4.1 - Configuring HttpClient (Configuring HttpClient)
+	It's good to keep in mind that the configuration we're about to discuss affects all requests that are done using this HttpClient that you're configuring. Most of these configurations options cannot be overwritten at the request level
+	Therefore, if you need different configurations for different types of requests, you need to create multiple appropriately configured HttpClient instances
+	For now, we'll focus on non-security related configuration
+	First configuration we'll look at is setting the HTTP version
+		HttpClient.newBuilder()
+			.version(Version.HTTP_2)
+	The version enum itself is nested inside of the HttpClient class. At the moment, there are 2 options available, HTTP_1_1 and HTTP_2. HTTP_2 is default
+	And if the HttpClient is configured to HTTP/2 it will automatically fall back to HTTP/1.1 if the server doesn't support version 2
+	You can also configure the version on individual requests. At the moment, this is also the only client configuration that you can override at the request level
+	All subsequent HttpClient configuration options that we'll discuss will affect all requests done through the client without the possibility of overriding these options at the request level
+	There's one configuration option on the builder called priority that only affects HTTP/2 requests because assigning priority is only specified in the HTTP/2 protocol
+		HttpClient.newBuilder()
+			.priority(1)
+	The priority setting takes an integer in the range of 1-256 inclusive. A higher number means a higher priotity
+	Another setting on the HttpClient builder has to do with redirect policies
+		.followRedirects(Redirect.NORMAL)
+	By default, the HttpClient is configured to never follow redirects. That means when you perform a request to a server that wants to redirect you to another URI, the HttpClient won't follow this redirect
+	You can also configure the HttpClient to always follow redirects when a server responds with a redirect status code
+		HttpClient.Redirect.ALWAYS
+		HttpClient.Redirect.NEVER
+		HttpClient.Redirect.NORMAL
+	NORMAL is the same as always redirecting except in the case of a redirection from a secure resource to a non-secure resource, which will not be followed
+	When you configure HttpClient to follow redirects, a single request might result in a redirect response and will in turn, perform a new request and get an additional response. This last response is the one that you'll get back from the send() method on the HttpClient
+	However, the intermediate response from the server, the redirect response, is also there. You can access it using the previousResponse method which returns an Optional<HttpResponse>
+		HttpResponse::previousResponse
+	If there's a redirect response available that was followed by HttpClient then it will be inside of the Optional returned by previousResponse
+	Interestingly, the HttpResponse class also has a request method. You can use this method to obtain the actual request that triggered the response. If  there's no redirection then this is your original request. However, if there has been a redirect response from the server, then the HttpClient will perform a new request to the redirect location. In that case, it will be the second request you get back from the HttpResponse method
+		HttpResponse::request
+	It might even be that your original request is a POST request and because of a redirect response sent by the server, it has been turned into a GET request, accroding to the HTTP RFCs
+	So in that case, you'll be able to access this HttpRequest that has been crafted by the HttpClient in response to the redirect by calling the request method on the utlimate response that you're getting back from send
+	Next, there's the connectTimeout configuration option
+		.connectTimeout(Duration.ofSeconds(3))
+	It takes a java.time.Duration and this is the time that HttpClient will wait for connection to be established to the HTTP server
+	If you don't configure a connectTimeout, the default is to wait indefinitely, which is almost never what you want
+	The connectTimeout has nothing to do with how long the HttpClient will wait for the server to respond. This is usually known as a requestTimeout which can only be configured at the request itself
+	The connectTimeout is all about establishing a TCP connection to a server. If that takes longer than the configured connectTimeout, an exception will be thrown
+	Last, there's also a configuration option to set a custom executor to be used by the HttpClient instance
+		Executor exec = Executors.newCachedThreadPool();
+		
+		HttpClient.newBuilder()
+			.executor(exec)
+	The executor is used by the HttpClient to do asynchronous processing. By default, when building a new HttpClient, it also instantiates a new private thread pool for this HttpClient
+	In some cases, you may wish to share an executor across different HttpClients. You can do that by creating or obtaining an executor yourself and passing this executor to the executor method on the HttpClient builder
+	You can use this option when instantiating multiple HttpClients to prevent too many threads from being created
+
+4.2 - Demo: Configuring HttpClient
+
+4.3 - BodyPublishers: Requests with a Body
+	So far in this course, we've focused on simple GET reqeusts that don't transmit a payload to the HTTP server. Now we're going to look at how we can create requests that also contain payloads
+	Like the GET method, POST method takes a parameter, so-called BodyPublisher
+	This BodyPublisher is responsible for producing the payload that's sent along with the POST request. In that sense, the BodyPublisher is similar to the BodyHandler that we saw earlier for handling the response payload
+	BodyPublisher work the other way around. It tells the HttpClient how to construct the body of an HTTP request given a java object
+	You can either implement the BodyPublisher yourself, which is acutally a Reactive Streams publisher but we'll talk about that later
+	Usually, you'll reach for an existing predefined BodyPublisher on the BodyPublisher class
+	The PUT method also takes a BodyPublisher
+	Now there are other HTTP methods besides POST and PUT, for example PATCH. But not every HTTP method has its own method on the HttpRequest.Builder. If you want ocreate a request other than GET, POST or PUT, you'll have to use the method method() on the HttpRequest.Builder
+		method(String method, BodyPublisher publisher)
+	Some HTTP methods are restricted. For example, if you try to use connect as an HTTP method in OpenJDK, you'll get an exception. Which HTTP methods are restricted is an implementation-specific concern
+	So the restricted HTTP methods may vary across different JDK implementations
+	There are several predefined BodyPublishers on the BodyPublishers class
+	The BodyPublishers class is a nested class inside of HttpRequest, much in the same way as the BodyHandlers class is nested insode of HttpResponse
+	There's the ofString() BodyPublisher. It takes a string and this string will be the payload that's sent to the HTTP server as part of the HTTP request
+	Then there's ofByteArray() - produces the raw bytes that are passed in as the argument
+	ofFile() takes a path of a file on the file system
+	ofInputStream() - you can pass a lambda that should return an InputStream
+	noBody()
+
+4.4 - Headers and Cookies
+	Let's have a look at the API to set headers on the request
+	Once you have a builder for a request, you can use the header method to add a header
+		HttpRequest.newBuilder(URI.create(...))
+			.header("Accept", "text/html")
+			.build()
+	If you want to have multiple headers, that's of course possible too. Just use the header method repeatedly until you've added all the headers that you want
+	It's even possible to add multiple headers in one go using the headers() method instead of the header() method
+		HttpRequest.newBuilder(URI.create(...))
+			.headers("Accept", "text/html",
+				"User-Agent", "Java")
+			.build()
+	If you add the same header, so the same header name, multiple times with different values then all  of these values will ultimately end up in the header because HTTP defines that a header can have multiple values
+	If you want to be absolutely sure that a header doesn't have multiple values, you can also use the setHeader() method
+	As discussed earlier, some headers are managed by the HttpClient itself, an example being the host header. But there are others as well like content length. These headers cannot be set directly using the methods that we see here. If you try to do so, you'll get an exception
+	In the end, when you build the request and send it through the HttpClient, the HttpClient will take care of adding the headers and the values in the correct way to the HttpRequest
+	The way it does this is quite differnt for HTTP/1.1 and HTTP/2. HTTP/1.1 is a plain text protocol, and the headers will be added to this plain text to the request
+	Whereas HTTP/2 is a binary protocol and the headers will be encoded in a binary format and even compressed specially
+	The nice thing is that from a developer perspective, API is the same and the complexities are all hidden in the implementation of HttpClient
+	There's another mechanism that we've haven't talked about yet. HTTP itself is a stateless request response protocol
+	It turns out that in many cases you do want to keep some state about the interaction between the server and the client. And cookies are a way, mainly used in browsers, to do so. Cookies contain state defined by a server, but the state is kept by the client and then sent back later to the server, if it's necessary
+	It's interesting to see that this mechanism is built upon headers. A server can include headers in the response. And when  a server includes a "Set-Cookie" header, this should be interpreted by the client as state to be kept for the next request
+	That's also how the mechanism works in browsers. When a browser sees a "Set-Cookie" header with some key values pairs in the body of this header, then it will store these name value pairs in a so-called persistent cookie that is associated with the domain that the request was made to
+	Then, whenever a new request is done to the same domain, the browser will include a "Cookie" header. And the value of this cookie header is the name value pairs that are stored previously
+	This way, browsers and HTTP servers can create the illusion of persistent state across different normally stateless HTTP requests
+	Of course, this whole setup works when the server and the client both know about the Set-Cookie and Cookie headers
+	Now, you could try to implement this yourself with HttpClient, knowing that it's all about the Set-Cookie and Cookie header. But in reality, you don't really want to manage this yourself because there's much more complexity around how cookies do and should behave that we haven't talked about
+	The good news is that HttpClient offers a hook for us to confgiure the handling of cookies
+		HttpClient.Builder::setCookieHandler(CookieHandler handler)
+	You can tap into this by using the setCookieHandler for configuring HttpClient. There, you can pass in a CookieHandler, which takes care of all the aspects of handling and storing and communicating cookies
+	CookieHandler, btw, is not a new type in the HttpClient API. It was already part of java for a long time and could also be used in conjunction with the old HttpURLConnection that we talked about
+	If you want HttpClient to honor cookies, a quick way to get started is to use the CookieManager class
+		HttpClient.newBuilder()
+			.cookieHandler(
+				new CookieManager(null, CookiePolicy.ACCEPT_ALL)
+			)
+			.build()
+	CookieManager is a concrete implementation inside JDK of CookieHandler. In this example, we create a new manager, and the first argument is a CookieStore where the cookies are persisted. Here we pass null,  and that means a default in-memory store will be used for the cookies
+	The second argument defines the policy of which cookies to accept and wehich to ignore. Here, we're using a liberal policy when we saw we accept all cookies
+	With this CookieHandler in place, when a response contains a cookie, that means the Set-Cookie header is set, then it will be stored. And it will be transmitted automatically with subsequent requests to the same domain
+	You can also create your own implementation of CookieHandler. Or you could use the CookieManager with a custom CookieStore or CookiePolicy
+	What's best here, really depends on the use case
+	Many  HTTP interactions can also do without cookies, so it's not always necessary to configure a CookieHandler. But if you do, you now know what types to look for
+
+4.5 - Demo: Headers and Cookies
+	I'm going to show the demo using jshell, which is an interactive java console where you can enter code and ti will be evaluated directly. It was introduced in java 9
+	CookieManager implements CookieHandler
+
+5.1 - Secure Connections (Security)
+	When performing HTTP calls, there are several security-related concerns, some of which are covered out of the box by HttpClient and some of which require some configuration
+	First, we're going to look at secure connections between the client and the server
+	Usually, when communicating with an HTTP server, we want the connection to be secured. Fortunately, we already saw this in action. HttpClient supports HTTPS URLs out of the box
+	For secure connections, HttpClient uses TLS, which stands for Transport Layer Security
+	In JDK 11, HttpClient supports TLS up to and including version 1.3
+	Everything just works when you connect to servers with TLS certificates signed by well-known certificate authorities (CA)
+	That's because JDK maintains a list of threshold authorities, and HttpClient will automatically verify the validity of the server certificate for HTTPS calls
+	So, it appears there's not much to do for us to ensure secure connections. But there are 2 situations where you might want to adjust this behavior of HttpClient
+	The first is when you want to securely communicate with servers that are using self-signed certificates or certificates signed by a CA that is not on the default CA list of the JDK
+	You might, for example, have a company internal CA that signs certificates for servers used within your organization
+	The other situation where you'll need to do some work yourself is when you want to do mutual TLS authentication where both the server and the client present a certificate to authenticate
+	Out of the box, HttpClient only validates a server certificate and doesn't present a client certificate to the server
+	When you need to override the HttpClient behavior in terms of secure connections, you need to use SSLContext
+	SSLContext is the main entry point for influencing secure connection behavior of HttpClient
+	The SSL in the class name is actually a bit misleading since SSL, as a secure transport layer, has been deprecated in favor of TLS
+	Don't be fooled however, this class handles newer protocols like TLS just as well
+	You can use the sslContext method on the HttpClient builder
+		HttpClient.newBuilder()
+			.sslContext(SSLContext.getDefault())
+			.build()
+	When you don't specify SSLContext on the builder, the actual behavior is the same as when you specify SSLContext as shown here. In that case, a default SSLContext will be used, which is a JVM-wide SSLContext instance
+	This JVM-wide SSLContext initializes the trustStore where the trusted CA are kept based on the location provided in the JVM startup parameter -Djavax.net.ssl.trustStore
+	When this parameter isn't set, it defaults to the trustStore bundled with the JDK. This default trustStore maintains the list of all the big internet CAs such as VeriSign, Symantec, and so on
+	This list of trusted CAs is similar to a list kept by browsers
+	Another parameter that is used by the default SSLContext is the javax.net.ssl.keyStore. Here the client certificates are stored that can be used for authenticating the client to the server
+	As we discussed before, usually the default SSLContext is good enough, especially now that you know how to override the trustStore and the keyStore to be used
+	Besides SSLContext, you can also tweak SSL parameters
+	The SSLParameters object maints the list of secure protocols and cipher suites that are used for secure connections
+		SSLParameters params = new SSLParameters(
+			new String[] {"TLSv1.2"},
+			new String[] {"TLS_AES_128_GCM_SHA256"}
+		)
+		
+		HttpClient.newBuilder()
+			.sslParameters(params)
+			.build()
+	Again, in almost all cases, you don't need to override this, but if you want to yo ucan create your own SSL parameters with a specific subset of secure protocols and cypher suites
+	And then by setting this custom SSLParameters on your HttpClient, only these protocols and cypher suites will be used
+	Let's get back to our two main use cases for tweaking the secure behavior of HttpClient
+	First, what if the server that we're communicating with is using a self-signed certificate or a certificate signed by an authority that's not in a JDK trusted CA list? That might be the case if you have a company internal CA that signs certificates for your servers
+	In that case, you'll need to add the CA to a trustStore. You can use the keytool utility that's distributed with java to add elements to a trustStore
+	Creating and managing trustStore using keytool is beyond the scope of this course. If you need to do this, I suggest looking at the documentation of a keytool as a starting point
+	Then, when you've added the CA to the trustStore, then you can set the javax.net.ssl.trustStore parameter to the path of this new or updated trustStore
+	When you do this, the default SSLContext that is used by HttpClient now will validate certificates against this provided trustStore
+	Another alternative is to create a custom SSLContext that points to the new trustStore
+	This is only recommended if you need to have multiple HttpClients in a single JVM with different trustStores
+	Otherwise, relying on the default SSLContext and just setting the javax.net.ssl.trustStore parameter is preferred
+	So how about the second scenario where you want to have mutual authentication between the client and the server?
+	Server certificate validation already happens automatically, but for our client we need to do some additional work
+	In order to get this working, you need to add your client certificate to a keyStore. Again, we won't go into all the details on how to do this, but you can use the same keytool utility to manage a keyStore
+	Then, once the client certificate has been added to the keyStore, set a javax.net.ssl.keyStore parameter to the newly created or updated keyStore
+	The other option, like with the trustStore, is to create your own custom SSLContext pointing to this keyStore
+	There are many options when creating an SSLContext, so I suggest looking at the javadoc of SSLContext when you need to do so
+	And, as before, I want to point out that it is easier to just work with the default SSLContext and to configure the trustStore and the keyStore using the 2 JVM properties that we've seen
+
+5.2 - HTTP Basic Authentication
+	After looking at TLS, there's also a security mechanism defined at the HTTP level that HttpClient supports
+	This mechanism is Basic HTTP authentication and it works like this
+	The client does a request to a secure resource on the server
+	Because the server doesn't know anything about the client yet, it sends back a 401 Unauthorized response, meaning that the server won't service the request unless the client is authorized
+	Of course, there are many ways in which the client could authenticate itself, but the mechanism that we're looking at now and that is supported by HttpClient is called HTTP Basic Authentication
+	Because there are many ways to authenticate, typically when a server responds with a 401 Unauthorized, it addds a header called "WWW-Authenticate" indicating the authentication scheme that the server supports
+	If it includes Basic ("WWW-Authenticate: Basic") as is the case here, then HttpClient will be able to use this mechanism to authenticate the client to the server
+	What should happen is that the client does a new request to the secure resource but now the client will also send an authorization header to the server "Authorization: Basic <credentials>". The value of this authorization header consists of 2 parts
+		The first part indicates the authentication scheme, in our example Basic
+		And the second part contains the credentials of the client to be used for authentication at the server site
+	When doing HTTP Basic Authentication, these credentials ahve a certain format
+	First you take the username, you add a colon ":" and then the password, all in plain text. And this computation of username and password is base64 encoded before it's added to the header
+	Now, if you have some basic security awareness, you can see that the scheme to encode these credentials is easily reversible
+	This implies that you should never use HTTP Basic Authentication over an unsecure channel
+	In other words, if you're using HTTP Basic Authentication between a client and a server, always ensure that this happens over secure channel so an HTTPS URL using TLS for encryption at the transport layer as we discussed earlier in this module
+	We've now seen how HTTP Basic Authentication works, and we could implement this ourselves, of course, by noticing a 401 response and constructing the correct authorization header to retry the request
+	But, there's an easier way to do this using a so-called authenticator
+	Authenticator is an abstract class in a JDK. And you can configure HttpClient to take an authenticator by passing in an Authenticator instance to the authenticator() method on the HttpClient builder
+		HttpClient.newBuilder().authenticate(
+			new Authenticator() {
+				protected PasswordAuthentication getPasswordAuthentication() {
+					return new PasswordAuthentication("user", "passwd".toCharArray());
+				}
+			}
+		).build()
+	This authenticator instance should override the getPasswordAuthentication method. This method returns a PasswordAuthentication object, which contains the credentials to be used for authentication to the HTTP server
+	Here we have a simple implementation that returns a PasswordAuthentication with username user and a hardcoded password
+	With this HttpClient configuration, when a 401 is returned from a server with a header indicating Basic Authentication is supported, then HttpClient will automatically retry the request with a correctly formatted authentication header based on the PasswordAuthentication object returned from the authenticator
+	Of course, in real code the authenticator implementation should NOT have a hardcoded username and password. We're getting from elsewhere but the mechanism remains the same
+	There's no built-in support for other authentication mechanisms such as OAuth
+	So if you need to support other authentication mechanism, you'll need to manage the authorization header yourself
+	Last, I want to briefly show how to configure a proxy with HttpClient
+	Proxy servers aren't strictly security related, but they are used for security reasons
+	A proxy server sits in between the HttpClient and the server and relays requests from the client to the server as an intermediary
+	You can configure a proxy server using the proxy method on the HttpClient builder
+		HttpClient.newBuilder().proxy(
+			ProxySelector.of(new InetSocketAddress("proxyserver.com", 8080))
+		).build()
+	You can pass a ProxySelector to the proxy method in the builder
+	There are several convenient factory methods to create a ProxySelector, like the ProxySelector.of shown here, instructing the HttpClient to proxy all requests through proxyserver.com using port 8080
+	If you don't configure a proxy directly then a system-wide proxy is used using ProxySelector.getDefault()
+	Usually, this will be the proxy server that's configured at the OS level
+	If you need to be very specific about which proxy to use when, then you can implement your own ProxySelector
+	Sometimes, a proxy server requires authentication. If that's the case, you can use the same authenticator mechanism that we saw previously to authenticate it with a proxy server by creating an authenticator that returns the proxy username and proxy password from the getPasswordAuthentication method
+
+6.1 - WebSocket Support (Exploring Advanced HttpClient Features)
+	Keep in mind, this will be an exploration
+	Let's look at the first advanced feature of the HttpClient API, and that is support for WebSocket communication
+	The regular HTTP interactions that we've seen so far in this course are all request/response oriented where you do a single HTTP request and get back a single response
+	WebSocket communication is different. A WebSocket is all about doing full-duplex bidirectional communication between the client and the server
+	A client can open a WebSocket channel to a server and ti will remain open for as long as the client and the server want to communicate
+	When using WebSocket, the client and the server communicate using a message-based protocol where messages can flow both ways
+	Either the client can send messages or the server or even both at the same time
+	That's why WebSockets are a very popular choice for implementing real-time web applications
+	WebSockets are supported by all major browsers, but we're giong to look at how we can use HttpClient to do a WebSocket communication rather than using a browser for this
+	The messages exchanged between the client and the server are typically either in a text format or in a raw binary format
+	The WebSocket protocol itself is a binary protocol
+	Now that you have a rough idea of how WebSockets work and what they can do, we're going to have a look at how HttpClient client can do websocket communication with a websocket server
+	Opening a websocket connection to a websocket server works as follows
+		CompletableFuture<WebSocket> wfFuture = HttpClient.newHttpClient()
+			.newWebSocketBuilder()
+			.buildAsync(URI.create("ws://server-url"), webSocketListener);
+	The webSocketListener handles all the communication back from the server to the client
+	WebSocket.Listener is an interface that you can implement to handle messages that are sent over the WebSocket from the server to the client
+	There are 3 methods on the WebSocket.Listener interface that are concerned with some bookkeeping around the WebSocket connection
+		onOpen
+		onClose
+		onError
+	They are only called once in the lifecycle of a WebSocket
+	If you need to perform some action when a websocket is opened or closed or when an error occurs, you can do so by implementing one of these methods
+	There are 2 methods that are concerned with the actual communication from the server to the client
+		onText
+		onBinary
+	You need to implement these methods to receive the messages and to handle them in your application
+	Then there are the onPing and onPong methods
+		onPing
+		onPong
+	They look funny of course, but inside the websocket specification this ping pong mechanism has been specified. So it's also implemented b ythe HttpClient WebSocket APIs
+	When you implement a websocket listener, you don't need to implement all of these methods. That's because the websocket listener interface defines default implementations for each of these methods on the interface itself
+	Therefore, you could choose to implement only te onText method if you're only interested in receiving text messages from a server and want to ignore the binary messages
+
+6.2 - Demo: WebSocket
+
+6.3 - Reactive Streams Integration
+	So far we've assumed that you want to process the whole body of an HTTP request or an HTTP response at once. While that's a convenient and easy way to work with HttpClient, it's also possible to use a different approach by working with Reactive Streams
+	The goal here is to stream the body of an HTTP request or to stream the body of an HTTP response using a new API called Flow API
+	This API was introduced in java 9, and it consists of only interfaces. This Flow API is heavily inspired by the Reactive Streams specifications that was created by several vendors in the JVM space. For example, the organizations behind Spring, Akka an the Vert.x framework have been involved in the creation of this Reactive Streams API
+	Now it's part of the JDK. That's important because these APIs being in the JDK can now be used as a bridge between implementations of Reactive libraries like Spring Reactor, RxJava, and Akka streams
+	The most important types in the Flow API are a publisher and a subscriber
+	A publisher generates data. This might be a limited set of data or this might be an infinite stream. It doesn't really matter
+	A subscriber is interested in the data of the publisher and subscribes to the stream. The subscriber itself controls how many items will receive at a given time by using the request method
+	And after the request has been called, the publisher will call onNext with new values as many times as the subscriber requested
+	Now, there's much more to this, you can cancel streams and there's error handling, but for now the picture should be clear
+	The publisher pushes data to the subscriber, but only as much data as is available and as is requested by the subscriber
+	This is a pretty big difference when comparing these two alternative streams-based approaches in the JDK, like input stream and output stream, because there's no notion of what we call "back pressure"
+	Publisher and subscribers may have different rates of publishing and processing data. If a subscriber is faster than the publisher, then there's no problem
+	If the publisher generates data faster than the subscriber can process, then either the subscriber gets overwhelmed or the publisher must buffer. And the buffer can overrun, of course. But this problem is avoided in the Flow API by having this request method where the subscriber can signal how much it can process
+	And therefore, it will never be overwhelmed, and the publisher will only generate as much data to the subscriber as is necessary
+	And again, this Flow API is only about interfaces. The idea is that the implementation will be provided by reactive libraries like RxJava and Spring Reactor. And indeed, these libraries already offer adaptors from their own reactive types to the Flow API types that are now in the JDK
+	The end result of having these types in the JDK is that HttpClient can also make use of them. That way you can stream either a request or a response body using these Reactive types, handling data as it comes in
+	The biggest difference to working with traditional input streams and output streams is that the Flow API includes back pressure, as we discussed before
+	Also, everything is handled in a non-blocking manner when working with Reactive Streams in the Flow API
+	What does it mean in terms of integration with the HttpClient API? Earlier in this course, we saw that we can create HTTP reqeusts that have a body using a BodyPublisher
+	When you look closely at the implementation of the BodyPublisher interface that's part of the HttpClient API, you can see that BodyPublisher actually extends the Flow.Publisher API
+	Therefore, a BodyPublisher is a publisher in the Flow API sense in the publisher's byte buffers
+	Additionally, the BodyPublisher also introduces a contentLength method in the interface that will be used to generate the corresponding header in the HTTP requests
+	Since every BodyPublisher also must be a Flow publisher, this also holds true fro the predefined BodyPublishers like ofFile()
+	And the nice thing about this BodyPublisher, which reads your file from disk and uses that as the body of the HTTP request, is that it really is Reactive end to end
+	What happens is that this BodyPublisher will read your file in chunks of 16k bytes
+	It will publish these 16k bytes as a ByteBuffer to the HttpClient. And then HttpClient will write this out to the network socket so that this part of the file gets transmitted to the HTTP server
+	Once this successfully happens, it will continue with the next chunk of the file
+	This shows back pressure across the whole stack in action
+	If the server doesn't keep up and doesn't acknowledge the previous packets yet, which ultimately is a TCP networking concern, then the publisher won't generate and push new byte buffers yet until the connection to the server is ready again to send bytes
+	This means that at any point in time, no matter how slow or fast the server is, only 16k bytes of the file will be in memory. Therefore, you're truly stremaing the file from disk to the HTTP server when you're using BodyPublishers::ofFile
+	There's another method on BodyPublishers called ofPublisher
+	This method takes an arbitrary publisher of ByteBuffers and will turn it into a BodyPublisher to be used with the HttpClient API
+	That means that if you're using a Reactive library like Akka Streams or Spring Reactor, which offer adaptors from their Reactive types to the JDK Flow API types, then you can use any data that's generated by these Reactive libraries as input to the body of your HTTP requests using the BodyPublishers::ofPublisher method
+	Now of course, sending requests in a streaming manner is only one part of the equation. What about handling responses in a streaming way?
+	As we know, the body of an HTTP response is created by a BodyHandler. And if we look at the implementation of the BodyHandler interface, then you see that it has a single apply method which should return a BodySubscriber based on the ResponseInfo that is passed in from the HTTP response
+	When zooming in on the BodySubscriber interface that's part of the HttpClient API, then again we see that it extends a flow type, in this case, the Flow.Subscriber type
+	So ultimately, a BodyHandler results in a subscriber of a list of ByteBuffers represents the response
+	The HttpClient implementation will act as a publisher of the response bytes, which this BodySubscriber will be subscribed to
+	Now besides all the predefined BodyHandlers that we've seen so far, there's also BodyHandlers::ofSubscriber method, which will take an arbitrary Reactive Streams Flow subscriber and will turn it into a BodyHandler
+	Then the HttpClient implementation will stream the response bytes as they come in to the subscriber
+	There's another convenience method that will turn a subscriber into a BodyHandler and ti's called ofLineSubscriber
+	When you use this method, you assume that the response of the server will be textual, and the HttpClient implementation will push each individual line in the response to the subscriber that you provide to the ofLineSubscriber method
+	With ofLineSubscriber, your subscriber should consume strings rather than ByteBuffer
+
+6.4 - HTTP/2 Server Push
+	The feature is called Server Push
+	Before we dive into the HttpClient support for Server Push, let's have a look at what that is
+	Typically, when a browser requests a resource from an HTTP server like an index.html file may contain references to other resources like Javascript or CSS files or images which the browser also has to retrieve from the HTTP server
+	Sadly, the client only finds out about needing these resources after receiving and parsing the index.html file
+	With HTTP/2, the server can get smart about this
+	Ultimately, the server knows that after it sends index.html, the client will also request javascript, sources, images, etc
+	So using the Server Push feature, the server can also push additional resources to the client in response to the original GET request
+	The server doesn't just plainly push these resources but it sends them as a so-called push promise
+	A push promise contains roughly the same information in terms of URI and headers that would otherwise be sent by the client for this additional resource
+	You can view with this a sort of synthetic request. And then the server will also send the response payloads associated with these push promises, or these synthetic requests that we talked about
+	At a high level, this is what the HTTP Server Push feature supports
+	You do an initial request and you may get back additional responses in the form of push promises
+	Even though HttpClient isn't a browser, it still supports HTTP/2 Server push. And to see how ti supports that, we must look at the PushPromiseHandler API
+	When you do an HTTP/2 call and you expect push promises to get back as well in additional to the original HTTP response then you this overload of sendAsync(HttpRequest, BodyHandler, PushPromiseHandler)
+	PushPromiseHandler is an interface that defines a single method called applyPushPromise
+	This applyPushPromise method is called for each push promise that's returned from the server to the client
+	When applyPushPromise is called, you'll receive 3 parameters. One is the initiatingRequest, which is the orignal HTTP request that triggered all the push promises, and the second parameter is an HTTP request that represents the request as if the client would have requested the resource itself
+	Of course, we didn't because it was pushed to us as a push promise containing all the information that was necessary to create the HTTP request, but that's how you should view it
+	This pushPromiseRequest is the synthetic request that we talked about
+	The last parameter, called acceptor, is the most interesting one
+	The function that's provided here will take a BodyHandler and in return will give a CompletableFuture wrapping the HTTP response associated with the push promise
+	We already provided a BodyHandler for the initiatingRequest in the sendAsync method, but the BodyHandler that you need to pass to the acceptor here should handle the response bias of the push resource that was pushed in addition to the original response
+	You can implement a PushPromiseHandler yourself and get complete freedom or you can use a factory method that's also defined on the PushPromiseHandler interface, which in only a few lines of code will give you a workable PushPromiseHandler implementation. This works as follows
+		var resultMap = new ConcurrentHashMap<HttpRequest, CompletableFuture<HttpResponse<String>>>();
+		
+		PushPromiseHandler<String pph = PushPromiseHandler.of(pushPromise -> BodyHandlers.ofString(), resultMap);
+	The first parameter is a lambda that takes a pushPromise synthetic request, and it should decide based on this request which BodyHandler to return. Here we take the easy way out. We don't really inspect the pushPromise request
+	No, we're just returning the ofString() BodyHandler by default, meaning that every push promise response will use this ofString() BodyHandler to create the body

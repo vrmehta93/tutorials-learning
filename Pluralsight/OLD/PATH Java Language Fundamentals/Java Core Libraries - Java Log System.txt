@@ -1,0 +1,160 @@
+Maaike van Putten
+Mar 25, 2021
+
+2.1 - Module Intro (Logging: What, When, and Why?)
+
+2.2 - What is Logging?
+	Logging is the act of writing information about events in the application to a file or console, also called the log file
+
+2.3 - Why Do We Need Logging?
+	Troubleshooting
+	Performance analysis
+	Auditing
+
+2.4 - When to Use Logging?
+	There are many situations in which you want to use logging. I tried to summarize them in 6 categories
+		Exceptions and errors
+		Events and states
+		Debug information
+		HTTP requests
+		Thread usage
+		Frontend errors
+
+2.5 - Case: Critical Bug at Our Customer
+	Let me introduce you to a problem that's happening to an application no logging that we're going to solve in this course
+	It's our client Carved Rock Fitness. We've build them a wonderful web shop, but now, for some reason when we want to purchase the products, the order doesn't get sent. There's no error on the front end and it leads to very difficult situations
+
+3.1 - Module Intro (Creating Log Messages)
+	Before we start, I'd like to make sure that you are aware that there are more loggers available than the one we'll be dealing with
+	A very popular one is log4j but since Java 1.4, Java has its own logger available. You can find it in the java.util.logging package. This is the one we'll be focusing on in this course
+
+3.2 - Schematic Diagram: Java Logging
+	So the logging process is not too hard
+		Something in the code triggers a log event
+		There's an instance of the Logger class that starts processing this, it can optionally filter the information first, and when it's done and there's something elft after filtering, the data is to be stored in a log record instance
+		This LogRecord gets passed on to the handler instance and this handler can have different rules for filtering and formatting that we'll see later in this course
+		When the handler is done formatting and filtering, the string gets passed on to the external file system on  which the log file is stored
+	There is a log manager influencing this process. We'll be dealing with that in the last module
+
+3.3 - Creating Our First Logger
+	Code
+		class LogExample{
+			private static final Logger LOGGER = Logger.getLogger(ExceptionExample.class.getName());
+			
+			main() {
+				logger.log(Level.INFO, "example message");
+			}
+		}
+	In order to get a logger, you can simply use the Logger method and then say getLogger. That's it. But we should give our logger name
+	It is common to grab the class name for this
+	Running the code above prints to the console
+	That's kind of alright but it's still super ugly. So what would be slightly better already is if we instantiate this log on top of our class
+
+3.4 - Log Levels
+	In order to be able to distinguish the different levels of urgency, there are log levels in place. The log levels represent the severity of the situation and it's very important to use the right one
+	There are sevel log levels in the java logging API. These levels get translated to a number, and higher the number, the more severe the situation
+		SEVERE
+		WARNING
+		INFO
+		CONFIG
+		FINE
+		FINER
+		FINEST
+	The logger instance knows where the threshold level is to start logging. This is actually not filtering, but the effect is very similar. If the log level is too low, it won't get logged
+	Back to Code demo
+	We've actually used a log level already. We've used the log level INFO and here is where things get a bit funky because The default of our handler is INFO and I set up a handler but also of our logger, so both are having a default level of info
+		main() {
+			LOGGER.setLevel(Level.FINEST);
+			LOGGER.log(Level.FINEST, "example msg");
+		}
+	If you run this, nothing happens (nothing prints in console). Why is that? This actually has to do with handlers, and I'm going to tell you something about handlers in the next video and together with handlers, we can change the output of our logging
+	So right now, our log is having the level FINEST. But then it gets sent on through the handler and the handler we're using, its a default handler, which is the console handler, it is not having the default level FINEST, it's having the default level INFO
+	So even though our log record gets sent to the handler, it won't be published to the log file because it gets filtered with the level in the handler
+
+3.5 - Log Handlers
+	So what are these handlers?
+	These log handlers, they send a message to the log place and handlers format the message using a formatter, and as you've seen, they also apply some filtering
+	So these handlers, they intercept the log records and they process them before they get sent on through the  log
+	There are a few different handlers
+		We have the ConsoleHandler, which is the default handler
+		FileHandler
+		StreamHandler
+		SocketHandler
+		MemoryHandler
+	Let's see how using a handler can actually solve the problem of our FINEST log level not coming through
+		main() {
+			LOGGER.setLevel(Level.FINEST);
+			ConsoleHandler consoleHandler = new ConsoleHandler();
+			consoleHandler.setLevel(Level.FINEST);
+			LOGGER.addHandler(consoleHandler);
+			LOGGER.log(Level.FINEST, "example msg");
+		}
+	Now it prints the log message in the console
+	But this code is really ugly. Let's improve it
+		static {
+		LOGGER.setLevel(Level.FINEST);
+		ConsoleHandler consoleHandler = new ConsoleHandler();
+		consoleHandler.setLevel(Level.FINEST);
+		LOGGER.addHandler(consoleHandler);
+	}
+	
+	main() {
+		LOGGER.log(Level.FINEST, "example msg");
+	}
+
+3.6 - Best Practices and Different Log Methods
+	There are different methods for logging. Best practices for logging. I have identified 6 best practices but I'm sure there are more
+	The first and most important one is that you be precise - Mention who, when, where, what and the result
+	Be precise but be careful with sensitive data. Don't store sensitive data in your log. It gets accessed by many people for many purposes
+	Use the right log level
+	The best logs aer both readable for machines and for humans. This means that processing it can be automated but that humans understand it when they go over it as well. Formatting helps a lot for this 
+	Don't log too much. Logging too much pollutes your log and logging too much can hurt the performance of your app
+	But be careful, because don't log too little, either. You do want to be able to use your log to solve problems and keep track of your application. You have to develop a certain feeling for the sweet spot of the right amount of logging
+	There are 3 log methods and they have many overloads
+		log() - specify level and message
+		logp() - stands for log precise, as you might remember, is one of the best practices. You want to specify the level again, but then also you want to mention the class from which the log message is coming and you want to mention the method from which the log message is coming and lastly, you'll also mention the log message itself
+		logrb() - stands for a log ResourceBundle and what this does is it's actually going to use the ResourceBundle and the localization settings over your log message, so this is a great opportunity if you need to have localization applied to your log messages
+
+3.7 - Case: Adding Logging to Our CarvedRockFitness App
+
+4.1 - Module Intro (Configuring and Formatting Logging)
+
+4.2 - Case: Log to a File by Adding FileHandler
+	XML is the defualt formatting of our log (with FileHandler)
+
+4.3 - Log Formatting: SimpleFormatter and XMLFormatter
+	Our log in the console looks very different than our log in the file, and that is because there are different log formatters in place
+	Log formatters change the structure of the log message
+	There are 2 built-in formatters
+		SimpleFormatter - this is the one we saw in console
+		XMLFormatter
+	To change formatter in FileHandler
+		FileHandler fileHandler = new FileHandler(logFilename);
+		fileHandler.setFormatter(new SimpleFormatter());
+	You have a bunch of options for SimpleFormatter but we'll keep it simple here
+
+4.4 - Log Filters
+	Let's go back to the overview of java logging
+	We add our code. It was triggering the logger. Then the logger would check for the filter and then the LogRecord would be sent to the handler, and the handler would also check for the filter. And this is the part we're at now
+	We've just seen the formatter, which was actually changing the string message before sending it to the external log file but the filter is executed first
+	It calls the filter after checking the level of the handler
+	So how to do this?
+	You need to implement the Filter interface, it's isLoggable method, it must be implemented and this isLoggable, it returns true when it can go through the filter, and it returns false wehn the filter should keep the log record and not send it through to the log file
+	You can actually all set filter on the logger itself as well but in here, we'll show you how to set it on the handler
+		Filter filterAll = s -> false;
+		fileHandler.setFilter(filterAll);
+	filterAll is not a very helpful filter since it's going to prevent everything from being sent to the log file
+	You can also do this for the ConsoleHandler. You can add filters to any handler
+
+4.5 - LogManager and Configuration Files
+	The LogManager is the class responsible for managing the logger hierarchy. It loads the configuration for all the loggers. This can be done through a special config class or a configuration file
+	LogManager is a singleton, which means, that it only gets instantiated once and whenever it gets called, it will always be that same instance
+	So, about this configuration file, if you don't specify one, it will have to default logging properties from your JRE home lib. but you can load your custom logging properties
+	In order to achieve this, you could change the one in JRE home but please don't do this
+	It's a better to create your custom file in your app and read it using your LogManager
+	Let see how we can do that
+	Created logging.properties in resources folder. It's a convention
+	(demo of creating a util class LoggingUtil to handle LogManager)
+		LogManager.getLogManager().readConfiguration(new FileInputStream(logPropertiesPath))
+	By reading from logging.properties file, we could actually get rid of all these ugly static handlers that we had before
+	

@@ -1,0 +1,98 @@
+Nicolae Caprarescu
+Aug 1, 2019
+
+2.1 - Version Check (Introduction to Mockito)
+
+2.2 - Introduction
+	In object oriented context, a good place to start is to say that the unit is a single class and therefore, unit testing is about testing functionality of an individual class
+
+2.3 - Demo Code Overview
+
+2.4 - Writing a Test without Mocks
+
+2.5 - Installing Mockito and Adding a Mock to the Mockless Test
+	https://site.mockito.org/
+	Get dependency and add scope of test in pom.xml
+
+2.6 - What is Mocking?
+
+2.7 - Why Mock?
+
+2.8 - Test Doubles
+
+2.9 - What is a Unit?
+	The reality is that the unit can be whatever the dev team needs it to be
+
+2.10 - Mock Classes or Mock Interfaces? 
+	At the general level, most of the software community tends to agree that it's conceptually better to mock at an interface level, as it's in line with the SOLID principles
+
+3.1 - Introduction (Configuring Return Values of Mocked Methods)
+
+3.2 - Stubbing Your First Mocked Methods
+
+3.3 - Solidifying the Knowledge Gained so Far
+
+3.4 - Using Argument Matchers
+	Argument matchers add flexibility to both method stubbing and verification
+	They're commonly used when you just don't care about hte value being passed as an argument or when you want to define a return value for a wide range of argument values or even for an argument value that isn't known beforehand
+	You cannot mix and match argument matchers and actual values in a method stub. That is once you used argument matchers in a method stub, all arguments must be argument matchers
+
+3.5 - Stubbing Methods with Exceptions
+	thenThrow()
+	assertThrows()
+	doThrow() - for methods that return void since java compiler doesn't like it
+
+4.1 - Introduction (Verifying That Mocked Methods Behave Accordingly)
+	Testing state vs testing behavior
+
+4.2 - Verifying Mocks
+	verify()
+	The main idea here is that if you do care about what any of the method stubs return, the something else will break, usually way before you even reach the verify statements in your tests
+	Therefore, there's no point to explicitly verify a method that you've stubbed
+	The conclusion is that if you stub, you get implicit verification for free and if you verify, then you don't care about the return value of that bit of code, so you don't stub
+	Of course, keep in mind that this is true most times and you should always aim for this
+	If you aim for it and see that it's simply not possible, it means that you've most likely encountered a scenario where stubbing and verification of the same method call is necessary. And you should go ahead and do so, recognizing the exceptional scenario you've encountered
+
+4.3 - Argument Matchers and Argument Captors
+	An argument captor is just a special version of an argument matcher, which just captures arguments for further inspection or assertion
+
+5.1 - Introduction (Advanced Mocking Techniques)
+	Default strictness mode of Mockito 2.x is actually not strict. In detail it's called WARN
+	As you can imagine, it reports console warnings when things aren't ideal
+	Mockito 1.x was LENIENT, and STRICT is actually planned as the default strictness mode for Mockito 3.x
+
+5.2 - Using Advanced Verification Tools
+	verifyNoMoreInteractions()
+	ignoreStubs()
+	Warning, do not use verifyNoMoreInteractions in every test. Don't even use it often!
+	While in most cases, it's good to be specific about the thing you're verifying when you're acutally verifying something, in this case, verifying the unexpected leads to over specified tests, which require a higher maintenance effort
+
+5.3 - Partial Mocks
+	Mockito allows yo uto create spies, which enable yo uto spy on real objects
+	Spies should be used carefully and occasionally
+	The main use case for spies is to deal with source call, which you can't easily change
+	When you call a method on spy, a real method gets called unless you explicitly stubbed it out
+	Please note that Mockito doesn't delegate the method call you make on the spy to the real instance you're spying on
+	It actually creates and uses a copy of that real instance
+	Please remember that spies should be used occasionally and, in particular, when dealing with code you can't easily change
+	Spies shoudl only be used occasionally and are useful when you find yourself in a situation with code that's impossible, or too costly, to change
+
+5.4 - Testing Code That Deals with Time
+	Mockito can't static methods
+	If you can't change the source code, or if it's too difficult to do so, you can use PowerMock, another mocking framework which actually extends Mockito
+	This means that it allows you to easily mock static methods while allowing you to use Mockito as usually for everything else
+	That was solution one. Solution two involves using Java's Clock class, which is an abstraction of time that can be plugged in as needed
+	This allows applications to use an object to obtain the current time rather than a static method. This avoids all static calls to obtain time, which means that you don't need PowerMock on top of Mockito in order to carry out your testing
+
+5.5 - Final Methods and Selective Partial Mocks
+	Mockito has added supports for mocking final classes and methods recently (since 2.1.0)
+	Please note that this feature is still incubating at the time of this course
+
+6.1 - Introduction (Behavior-driven Development (BDD))
+	BDD is an extension of TDD
+	The general structure of BDD oriented tests is given, when, then
+	Mockito provides support for this in the form of aliases present in the BDDMockito class
+	The underlying keywords represent Mockito methods, and the other are test stages at an abstarct level
+	When using Mockito's standard style, the problem is the working of it's when() method
+
+6.2 - Using Behavior Driven Development Aliases

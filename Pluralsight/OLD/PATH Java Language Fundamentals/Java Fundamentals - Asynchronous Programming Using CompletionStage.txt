@@ -1,0 +1,1184 @@
+Jose Paumard
+
+2.1 - Introduction to the Course, What Are You Going to Learn? (Introducing Asynchronous vs. Concurrent Tasks)
+	This course is all about this CompletionStage / CompletableFuture API introduced in Java 8
+	It is about creating pipelines of tasks in an asynchronous way
+
+2.2 - Who Are You? What Should You Know to Follow this Course?
+
+2.3 - Agenda of the Course
+
+2.4 - Agenda of this Module
+
+2.5 - Defining the Technical Vocabulary of Asynchronous Programming
+	Let us first set up the problem
+	Suppose we want to launch a task, get the result produced by this task and use this result to launch another task with the input being the result of this previous task
+	Setting up the problem in this way is a little abstract, so let us make it concrete
+	Suppose we have a set of IDs, think of primary keys to a database, and from those IDs, we want to read the set of users from a database. This is really our first task. It takes input and will produce this list of users as an output and this output, we 're going to feed it to another task which is send emails
+	What we can see at first is that reading users from a database will take some time
+	And of course we do not want to block the thread that is going to execute this task. Putting a thread in wait state is not something you want to do. You want all your threads to be as busy as possible in your application
+	You may think that concurrent programming will bring solutions to do that, but let us go one step further
+	We need to get the list of our users and launch the sending of emails using this list of users as an input
+	So if we're using concurrent programming, the question is, what thread is going to get the result and what thread is going to feed the other task with this result and launch this other task
+
+2.6 - Using the Executor Pattern to Launch Tasks in Other Threads
+	Concurrency means that we're executing code in several threads to be able to do more than one thing at the same time
+	A task itself is created in a thread but creating a task in a thread doesn't necessarily mean that this task is going to be executed in the same thread
+	And in fact, this task can be executed in another thread
+	And then if this task produces a result, this result has to be passed to the first thread that created it to be, for instance, further processed and maybe generate other tasks
+	(sample code to along with the concrete example using Executor pattern)
+		ExecutorService service = Executors.newSingleThreadExecutorService();
+		
+		Runnable task = () -> {...}	// Copying a json file to a DB
+		
+		Future future = service.submit(task);
+		
+		// more things
+		
+		... = future.get()	// block until the task is done
+	So we're running in the main thread. This is the thread that is creating another pool of thread in form of this ExecutorService and that is creating this task in the form of Runnable
+	If we do not call the right method on this runnable, this runnable is not executed
+	Then our main thread will pass this task to the ExecutorService by claling service.submit(task) and we'll get back immediately a future object
+	This future object acts as a bridge  between  the threads of the ExecutorService and the main thread that is between the red thread and this blue thread
+	At some point in the future this ExecutorService will pass this task to one of its thread and will execute this task, so this task will either produce a result, either completes without producing a result
+	While this ExecutorService is doing that, the main thread can carry on with other things
+	And then at some point the main thread needs to get a result or needs to be notified that the task is finished. We can call the get() method on the future object but this get method is blocked until the task is done, until the ExecutorService is done with writing this JSON file to our database
+	So this get() call is a blocking call, it stops the thread that is calling it. At some point, the task will be done, so our thread will be able to get the result if there is one and carry on with its execution
+	We could have also called the cancel method on this future object telling the ExecutorService "I do not need the result anymore. You can just kill this task and I will continue to work"
+		... = future.cancel();
+	This cancel method is not blocking but it is still launched in the main thread, the thread that created and submitted the task to the ExecutorService
+
+2.7 - Analyzing the Behavior of the Executor Pattern
+	What can we see here?
+	First, the executor patterns enable the launching of tasks in other threads and this is a very classical pattern introduced in the JDK in Java 5
+	But it doesn't offer the non-blocking behavior. If this task is producing a result, getting this result can only be done by calling the get method on the Future object we get and this get call is a blocking call
+	So getting the result will most probably block the launching thread and this is exactly what we want to avoid
+	What we would like to do is just launch the subsequent tasks automatically on the completion of the task we have sent to the executor service
+
+2.8 - Analyzing the Difference Between Concurrent and Asynchronous
+	So now we can see what is the difference between a synchronous execution and asynchronous execution
+	Synchronous means that the thread that launched the task needs to wait for the task to complete to continue to work
+	Asynchronous means that the task is executed at some point in the future and that there is no need to wait for anything for it to complete
+	In our example, the execution of the task is asynchronous because it happens sometime future and we don't really know where it's going to happen. But the get() call method is synchronous, getting the result is synchronous. So it's nice to be able to launch a task in another thread, but if we read the results, then we'll be blocking by a synchronous call
+	Does asynchronous mean "in another thread"? The short answer is no and we can see a very simple example of that. Let us consider this code:
+		List<String> strings = ...;
+		
+		strings.sort(Comparator.naturalOrder());
+	The question is, when does this comparator get executed? Short answer is sometime in the future and we do not know when
+	Second question, in what thread this comparator is going to be executed? Answer is in the main thread becase we don't have any ExecutorService creation of thread or whatever in this pattern here
+	And we could go one step further. how many times in this comparator going to be called? We do not know. Even if we knew exactly the number of strings there is in this list, it is not possible to tell in advance exactly how many times this comparator is going to be called. All we can say is that if there is a quick sort algorithm behind that, it will be probably called n times the ln(n) or the number of strings in that list
+	So asynchronous and concurrent are 2 different notions. We can be asynchronous without being concurrent, and being concurrent doesn't necessarily mean that we're asynchronous
+	A task can be asynchronous and still be called in the thread we're running in
+
+2.9 - Understanding Blocking Calls and Why You Should Avoid Them
+	Let us see the difference between a blocking call and a non-blocking call, and we saw a blocking call in a previous example
+	Blocking means that a thread has to wait to execute a task or access a resource
+	Synchronization, in the concurrent framework of the JDK, is a blocking way to prevent race conditions. If you guard a block of code with a "synchronized" keyword, once a thread is executing this piece of code, all the other threads will have to wait for the thrad to complete its work
+	Suppose that once the JSON file we have is recorded in the DB, in our example, we need to notify the user by flashing a green light, for instance, on some kind of interface. How can we do that in this code?
+		... = future.get();
+		
+		lightIcon.setColor(Color.GREEN);
+	The get call is synchronous and blocking, so when the result is available, our lightIcon will be set to green
+	But we need to be careful because here we are basically updating a human interface. Suppose we're using Swing or Java Effects, this kind of code should be executed in the right thread. So this code is basically buggy
+	What we need to call really is the following
+		SwingUtilities.invokeLater(() -> lightIcon.setColor(Color.GREEN));
+	All this needs to be called in the right thread
+
+2.10 - Analyzing the Patterns an Asynchronous API Should Provide
+	So the question is, is there a non-blocking way of chaining a task, which is lighting the green light
+	On the completion of another task, which is writing the JSON file to our DB with control of the thread that is going to execute the subsequent task
+	Unfortunately, the short answer is no, at least with the API available before the CompletionStage API. We cannot do that with the JDK in a simple way
+	So what we need here is the following
+		First, we want to be able to trigger a task on the completion of another task
+		Second, we want to be able to specify to control in which thread this second task is going to be executed
+
+2.11 - Understanding the Synchronous Nature of the Observer Patern
+	Could the solution come from the message driven or even driven approaches?
+	One solution you may think could be to fire an event and create a listener for this event. This listener could be the one that could light our green light on our interface
+	Question is, how does this pattern work?
+	Here's the pattern of code available in CDI (Context and Dependency Injection) (https://www.cdi-spec.org/) for the Java EE
+		@Inject
+		Event<Signal> event;
+		
+		Signal signal = new Signal(...);
+		event.fire(signal);
+	How does it work under the hood? This fire() method, which is a CDI method will loop through the listeners registered for that event, and we'll call the notify() method of those listeners
+	This notification is, in fact, synchronous, executed in the same thread as the thread that fired the event and it is also a blocking call, meaning that if a notify method crashes, throws an exception, or blocks for several seconds, this fire call will also be blocked
+	We'll have to wait fro all the notify() method to return
+	So clearly, this event approach is not the right one
+	BTW, it's also possible in CDI to fire asynchronous events and those patterns are built on the CompletableFuture API
+	So an event is triggered to notify the change of a state and the recipient of the event has to declare itself to the source of the events, usually, through a broker, and it is, most of the time, synchronous and blocking to fire an event
+	There are also asynchronous ways of doing it built on the CompletableFuture API
+
+2.12 - Comparing Event Driven and Message Driven Systems
+	So clearly, to solve our problem, events are not the right tool. What about messages?
+	A Message is something that is sent to a broker and this broker will call the subscriber of the topic of the message most of the time in another thread, sometimes even in another JVM, so it is clearly neither the right way to update, a local interface
+	Messages are nice, but mostly to deal with different parts of our applications
+	So message driven organization of applications do not provide any answer to our problem either
+	In a nutshell, we can say that an event is a signal whereas a message is a piece of data that recipients will get and react upon. A message can also carry an event to different parts of our application
+
+3.1 - Introduction to the Module and Agenda (Setting up an Asynchronous Operations with CompletionStage)
+
+3.2 - Defining a Tasks
+	We're not going to define it completely, especially we're not going to define the technical aspects of it, but I would like to give you the big picture of what is a task now
+	A task is something very basic and simple to understand. Basically, this task is something a computer has to execute. It is a computation. It may taken an input and it may produce an output
+	It is not mandatory. A task may take no input and may produce no output
+	And it may have side effects. The side effects is something a little abstract, but think of our reading of users in our database, maybe once the users have been read, we logged a message in a special file log. This logging of a message is not really an output of this task, but it is something that modifies the global state of your application. Basically, you've added a line in a log file, so this is a modification of the state of your application. Since this is not really an output of a task, you cannot use this as an input for a subsequent task
+	From a technical point of view, a task has to be an object (it could also be a lambda expression)
+	There may be some confusion
+		A task has an implementation, which is basically what it is going to do, what it's going to execute
+		It is also wrapped in a technical object that will add meta information for this task
+		This wrapper carries information on the state of this task and you may think the following
+		First, being still waiting for a thread to be available to execute it or being currently running or completed
+		This wrapper is going to be the CompletableFuture object itself
+
+3.3 - Using Runnable to Create Tasks
+	What are the available models to launch tasks in another thread? We've got 2
+		Runnable interface
+		Callable interface
+	Runnable interface - Starting with Java 8, this interface becomes a functional interface. It models a task that do not taking anything and that doesn't return anything
+	Here's a very simple, and probably useless implementation of this interface
+		Runnable runnable = () -> {}
+	A more useful one
+		Runnable loggingAMessage = () -> logger.info("Closing connection");
+		Runnable sendingAMessage = () -> sendMessage("Data has been read");
+	This is the first way we have to create tasks in the JDK
+
+3.4 - Using Callable to Create Tasks and Launch Them in Another Thread
+	The second pattern uses the Callable interface. It has been introduced in Java 5
+	This callable interface models a task that doesn't take any argument, but that can produce a result and that can file with a checked exception
+	Here's a first implementation of such a task, a reducer
+		Callable<User> readUser = () -> connection.readUser(1L);
+	Second one that is going to read a page from a URL and probably return its content in a string of characters
+		Callable<String> readPage = () -> readPage("http://somesite.com");
+	It is always possible to launch a task in the current thread. In the runnable case, all you have to do is call the run method of your implementation, and in callable interface, use the call() method
+	And the java.util.concurrent API brings more patterns to launch such tasks in another thread
+
+3.5 - Getting a Future Object with the Executor Pattern
+	Let us see how it is possible to launch such tasks in another thread. We have 2 patterns for that
+		Runnable pattern
+		Executor pattern
+	The runnable pattern is the first pattern available
+		Runnable task = () -> sysout("Hello World");
+		
+		Thread thread = new Thread();
+		thread.start(task);
+	This thread is goign to execute this task in itself, that it, in another thread than the main thread
+	If I mention this pattern, it's mostly to tell you that this is an obsolete pattern that you should NOT use anymore. If you see that in your application, you should try to remove it and to replace by the executor pattern
+	The Executor pattern is the following
+		Runnable task = () -> sysout("Hello world!");
+		
+		ExecutorService service = Executors.newSingleThreadExecutor();	// One of the many factory methods
+		
+		service.submit(task);
+	It also works with runnable
+	This pattern also works with the callable model for a task, so you can also pass a callable task to this submit method
+		Callable<String> task = () -> readPage("http://mysite.com");
+		ExecutorService service = Executors.newSingleThreadExecutor();
+		
+		Future<String> future = service.submit(task);
+	This submit() method will give you back a future object that we quickly saw in the previous module of this course. You get this future object immediately
+	What can you do with this future object? Well, you cannot do much, in fact, you can query it to get the returned object by this task if this object exists
+	It's not the case, of course, if your task is a runnable object
+	And you can cancel the execution of this task if you feel like something is going wrong, for instance
+	And that's it. You cannot do anything more, so all you can do with this pattern is launch something in another thread and get the result back in the thread that launched the task
+
+3.6 - Creating a CompletableFuture from a Runnable or a Supplier
+	Let us see how we can go from this future object to CompletableFuture object
+	This CompletableFuture object is almost the same as a Future object with more methods and more capabilities
+	So everything you know about a future object is also true for a CompletableFuture and we're going to add some functionalities to it to create this CompletableFuture object
+	Let us go back to our Executor pattern. The new pattern is the following:
+		Runnable task = () -> sysout(...);
+		ExecutorService service = Executors.newSingleThreadExecutor();
+		
+		CompletableFuture<Void> completableFuture = CompletableFuture.runAsync(task);
+	Instead of submitting this task to this service, we're going to call CompletableFuture.runAsync(task). instead of getting back a future object, what we get back is a CompletableFuture object, in that case, a void Since our task is a runnable task, that doesn't return anything
+	This is the first CompletableFuture pattern we see
+	Unfortunately, the CompletableFuture pattern doesn't work with callables. There is a very good reason for that
+	So instead of using the example above (for Callable), we're going to change the callable to a Supplier
+		Supplier<String> task = () -> readPage("http://mysite.com");
+		ExecutorService service = Executors.newSingleThreadExecutor();
+		
+		// service.submit(task);	// does not compile anymore
+		
+		CompletableFuture<String> completableFuture = CompletableFuture.supplyAsync(task);
+	The night thing is that most of the time, the implementing code is the same. You just have to change the type of task from Callable to Supplier.
+	The Executor pattern doesn't compile anymore because the submit method is expecting a callable object and not a Supplier object
+	But this supplier can be passed to another factory method of the CompletableFuture, which is supplyAsync
+	I just told you that most of the time you can change your callable to a supplier. It only works if your task doesn't throw any checked exceptions because the supplier's signature doesn't declare any checked exceptions, this is the main difference between callable and supplier
+	So if your callable is throwing a checked exception, you cannot make it a supplier
+	So far we've seen 2 patterns
+		runAsync() that takes a Runnable
+		supplyAsync that takes a Supplier
+
+3.7 - Controlling the Thread Executing a Runnable or a Supplier
+	Now the question is, in what thread those asynchronous tasks are going to be run?
+	If we take a closer look at the code, in the executor pattern, we have an explicit executor service, which is a pool of thread. In the asynchronous patterns, we don't have such pool of thread, so this is a question
+	By default, all the asynchronous tasks launched with those patterns are run in what is called the Common Fork/Join Pool
+	This Common Fork/Join Pool is launched by default with the JVM starting with Java 8. It is an executor service or merely an extension of it with special capabilities
+	If you remember the Stream API, when you launch the computations in parallel streams, the threads of the Common Fork/Join Pool are used to run the parallel tasks of your stream
+	You can also pass an explicit executor service as a parameter
+		Runnable task = () -> sysout("Hello world");
+		ExecutorService service = Executors.newSingleThreadExecutor();
+		
+		Future<String> future = service.submit(task);
+		
+		CompletableFuture<Void> completableFuture = CompletableFuture.runAsync(task, service);
+	We have a tasn and executor service created in the usual way. If you pass this task to this service using the submit method, you will get a future object, and if you use the CompletableFuture runAsync method, pass the task as a first parameter and service as a second parameter, you get a CompletableFuture object and your task will be executed in exactly the same way in this executor service
+	So basically, those 2 patterns do the same. You can replace the firstt one by the second one and get a CompletableFuture future instead of a plain future object
+	The same goes for a supplier
+		Supplier<String> task = () -> readPage("http://mysite.com");
+		ExecutorService service = Executors.newSingleThreadExecutor();
+		
+		// service.submit(task);
+		
+		CompletableFuture<String> completableFuture = CompletableFuture.supplyAsync(task, service);
+	Remember that you cannot pass directly a supplier to the submit method of your service object because this submit is expecting a callable, but the code of a callable is the same most of the time as the code of a supplier.
+	So what you need to do is just change the type of your task and pass this task to the supplyAsync factory method of the CompletableFuture task with the service, the executor service, as a second parameter.
+	In fact, these 2 lines of code, do the same thing
+		Future<?> future = executorService.submit(() -> sysout("..."));
+		
+		CompletableFuture<?> completableFuture = CompletableFuture.runAsync(() -> sysout(...), executorService);
+	And same for the second pattern
+		Future<String> future = executorService.submit(() -> readPage("...");
+		
+		CompletableFuture<String> completableFuture = CompletableFuture.supplyAsync(() -> readPage(...), executorService);
+
+3.8 - Understanding CompletableFuture and CompletionStage
+	CompletableFuture, technically speaking, is a Java class that implements 2 interfaces
+		Future interface
+		CompletionStage interface
+	This is why sometimes people are talking about the CompletionStage API or the CompletableFuture API, in fact, both are the same
+	The fact this CompletableFuture is also an implementation of this future object, is making CompletableFuture and Future compatible Java objects
+	CompletionStage adds methods to chain tasks. This is where the method of chaining tasks are defined
+	And CompletableFuture also adds more methods to the CompletionStage interface
+	So most of the time in your code, you'll be using CompletableFuture, even if you're calling methods that are defined on CompletionStage interface
+
+3.9 - Comparing the Methods from Future and CompletableFuture
+	In this CompletableFuture API, a task has a state which was not really the case in the executor and future API
+	This state may be running, meaning that this task is currently running as a task
+	It may be completed normally. This is a task that has run normally and produced a result in a certain. This result can be anything including, btw, void that is no result
+	And it also maybe completed exceptionally. This happens if a task encountered a problem and raised an exception while running
+	As we saw previously, there are 5 methods on the Future interface, 2 methods to get result. Those methods are blocking code
+		T get();
+		T get(long timeout, TimeUnit unit);
+	A cancel method
+		void cancel();
+	2 getters
+		boolean isDone();
+		boolean isCancelled();
+	CompletableFuture brings 5 future like methods that are not defined on CompletionStage. The first 2 are join and getNow
+		T join();	// may throw an unchecked exception
+		T getNow(T valueIfAbsent);
+	join() is the same as get(). The difference is that it doesn't throw a checked exception so you don't have to wrap this in a try-catch pattern
+	getNow() will check if the task is done. If that's not the case, it will cancel it and return the value of valueIfAbsent
+	2 methods to force the returned value
+		boolean complete(V value);
+		void obtrudeValue(V value);
+	2 methods to force an exception
+		boolean completeExceptionally(Throwable t);
+		void obtrudeException(Throwable t);
+
+3.10 - Completing or Obtruding a CompletableFuture to Produce a Value
+	How does complete(value) work?
+	Well, it checks if the task is done or not. If it's done, then it does nothing, that is calling join() or get() will return the value the task computed
+	And if it's not done, then it completes the task interrupting the current process and sets the return value to the value that is passed as a parameter
+	The obtrudeValue works almost the same
+	It checks if the task is done. If it's done, then it forces the returned value to the value passed as a parameter and this is the difference with the previous method
+	If it's not done, then the behavior is the same, it completes this task and sets the return value to the value passed as a parameter
+	This obtrudeValue should be used in error recovery and not in normal operations
+
+3.11 - Completing or Obtruding a CompletableFuture to Throw an Exception
+	Same goes for completeExceptionally and obtrudeException
+	completeExceptionally will force the completion if the task is not done in an exceptional way, meaning that the join of the get method will throw an exception
+	obtrudeException does almost the same as the previous one, meaning that it forces the completion even if the task is done. Even if the task completed in a normal way, it would force the exception state and both of the join or the get call will throw an exception
+	The exception thrown by the get or the join method is not the exception passed as a parameter here. Merely, it is a  special exception of the Future API or the CompletableFuture API that will have the exception passed as a parameter as the root call of this exception
+
+3.12 - Introducing the Live Demo, Launching a First Tasks
+	Let us run this code
+		CompletableFuture.runAsync(() -> sysout(...));
+	Odds are you're not going to see anything happening in your Eclipse console or in your IDE console
+	Why? Because this task has been launched in a Common Fork/Join Pool of threads. This Common Fork/Join Pool is made of demand (daemon?) threads that don't prevent the JVM from exiting, and the only non-daemon thread that we have is the main thread
+	And the problem is that once we have finished to run this runAsync method call, the main thread dies and so the JVM without giving a chance for our runnable to be executed.
+	We can see that by adding a little wait after 
+		Thread.sleep(100);
+
+3.13 - Demo: Checking in Which Thread a Task is Running
+	If we run this code:
+		ExecutorService executor = Executors.newSingleThreadExecutor();
+		Runnable task = () -> System.out.println("I am running async");
+		CompletableFuture.runAsync(task, executor);
+	This time, we expect this task to be executed in this executor. So we're running asynchronously, but as we can see, the JVM did NOT exit, meaning that there are still threads running in this machine
+	Obviously the main thread is done but what is not done is our executor service precisely
+	To fix this, add executor.shutdown()
+	What is happening is that the shutdown method as stated in the java doc, runs all the tasks that have been submitted but no further task is accepted. So our task is properly executed and then this executor is just shut down (you can remove sleep())
+	This is great but let us make sure that our runnable is executed in the right thread by modifying sysout
+		ExecutorService executor = Executors.newSingleThreadExecutor();
+		Runnable task = () -> System.out.println("I am running async" + Thread.currentThread());
+		CompletableFuture.runAsync(task, executor);
+		
+		executor.shutdown();
+	This prints "Thread[pool-1-thread-1,5,main]"
+	If we remove the second parameter from runAsync (and put back sleep()), then it prints "Thread[ForkJoinPool.commonPool-worker-1,5,main]"
+	Of course this "worker-1" is a random thread taken from the ForkJoinPool. It might differ if you run this code on your machine
+
+3.14 - Demo: Executing a Supplier Asynchronous and Getting its Result
+	Let us now run some code using the Supplier Pattern
+	If we run this code as is:
+		Supplier<String> supplier = () -> Thread.currentThread().getName();
+		
+		CompletableFuture.supplyAsync(supplier);
+	We're not going to see anything for 2 reasons
+		This supplier will not have any chance to be executed because the main thread is going to die exactly in same way as the previous example
+		This supplier doesn't show anything
+	The join method is going to return a string, which is the string produced by the supplier:
+		Supplier<String> supplier = () -> Thread.currentThread().getName();
+		
+		CompletableFuture<String> completableFuture = CompletableFuture.supplyAsync(supplier);
+		
+		System.out.println(completableFuture.join());
+	Since the join method is a blocking call, we do not need to wait for this task to complete because the main thread will be blocked by this join method call
+
+3.15 - Demo: Delaying the Execution of a Supplier Asynchronously
+	(same pattern of using ExecutorService for supplyAsync)
+
+3.16 - Demo: Forcing the Completion of a Task Using Complete and Obtrude
+	We saw in the slides that it is possible to force the completion of a CompletableFuture. Let us do that
+	Added completableFuture.complete("Too long"); before the join()
+	This prints "Too long" in the console. The code doesn't wait for 500 ms anymore because we create this CompletableFuture and complete it with no delay. And the value returned by the join method is too long which is the value forced by our complete call
+	Let's move completableFuture.complete("Too long"); after the join()
+		ExecutorService executor = Executors.newSingleThreadExecutor();
+		Supplier<String> supplier = () -> {
+			try
+			{
+				Thread.sleep(500);
+			} catch (InterruptedException e)
+			{
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			return Thread.currentThread().getName();
+		};
+		
+		CompletableFuture<String> completableFuture = CompletableFuture.supplyAsync(supplier, executor);
+
+		String string = completableFuture.join();
+		System.out.println(string);
+		
+		completableFuture.complete("Incomplete");
+		
+		String string1 = completableFuture.join();
+		System.out.println(string1);
+		executor.shutdown();
+	This prints the right result (and not "Too long"). Why? Because we waited for the completableFuture to complete, got the result and since this complete method has been called once the completableFuture was done, it did not change anything to the returned value
+	It's not the case for the obtrudeValue method call, the first value displayed is the value created by the supplier and the second value is the value forced by this obtrudeValue call that is the parameter of this method call replaced the value of this completableFuture
+		(use obtrudeValue() instead complete())
+
+3.17 - Demo: Creating and Completing a Void CompletableFuture
+	Calling "new CompletableFuture<>();" also creates a new CompletableFuture that is not going to produce any kind of value by itself but that can be completed using the complete method call or the obtrudeValue method call. Let us see that
+		CompletableFuture<Void> cf = new CompletableFuture<>();
+		
+		Void nil = cf.join();
+	The only instance of this Void class is the null value. In fact, this code is never going to return. If I run this code, you can see that the JVM doesn't exist, it is still running and unless I kill it from the outside, it will never exit properly
+	(update code)
+		CompletableFuture<Void> cf = new CompletableFuture<>();
+		
+		Runnable task = () -> {
+			try
+			{
+				Thread.sleep(500);
+			} catch (InterruptedException e)
+			{
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			cf.complete(null);
+		};
+		CompletableFuture.runAsync(task);
+		
+		Void nil = cf.join();
+		System.out.println("We are done");
+	Now what I'm going to do is run this task asynchronously. I'm not interested in the return CompletableFuture object, but what is going to happen is that this task "task" is going to be executed asynchronously, and after 500 ms, we'll call complete(null) on this CompletableFuture we just created
+	So what we should do is that in 500 ms, the message "We are done" should be displayed, meaning that the join method has returned. (it prints that in the console)
+	So what we did here is that we created a CompletableFuture that can only be completed by calling its complete() method or its obtrudeValue() method
+	And this is a trick we're going to use in the last module of this course to create a complex chain of tasks in an asynchronous way
+	
+4.1 - Introduction to the Module and Agenda (Triggering a Task on the Completion of Other Tasks)
+
+4.2 - Setting a Pipeline of Tasks as a Map Filter Reduce Pattern
+	Let us first define a first pipeline of tasks
+	We're going to suppose that you have a list of primary keys corresponding to users stored in a database and what you want to do is to query this database to get the corresponding user objects
+	This is a well-known pattern. The first step is clearly mapping. We have a primary key object and we map those primary key objects to user objects
+	And the second step is clearly a reduction aggregating all the user objects in a list
+	In CompletableFuture API, the first task since it is producing a result is bound to be supplier. This supplier will give you your list of primary keys
+	The second task, need to have a model, a model for this subsequent task. Let us analyze the problem carefully
+		First of this, this second task needs to be launched when the supplier is done
+		Second, this task should be able to get the value of the primary keys supplied by the supplier and map each primary key to a user object
+	So this is clearly a function object from the java.util.function package that takes a given value, here primary key, and returns another value, here a user object
+
+4.3 - Sending a Result from a Supplier to a Function
+	Let us write code. The first step is, of course, passing our supplier to the supplyAsync factory method and the second step is a new method called thenApply()
+		CompletableFuture<List<Long>> cf1 = CompletableFuture.supplyAsync(() -> List.of(1L, 2L, 3L));
+		CompletableFuture<List<User>> cf2 = CompletableFuture.supplyAsync(() -> List.of(1L, 2L, 3L))
+					.thenApply(list -> readUsers(list));
+	That will take this function as a parameter
+	This thenApply method returns a CompletableFuture object wrapping the list of users returned by the readUsers method
+	This lambda is a function that takes here a List<Long> and returns a List of Long and returns a List of Users. So it is a very classical mapper in the Java 8 sense
+		Function<List<Long>, List<User>> mapper = list -> readUsers(list);
+	So a CompletableFuture can send its result to a mapper, which is a function from the java.util.function package. The fact that the result is passed from the supplier to the function when this result is available is handled by the CompletableFuture API in an asynchronous way
+	It means that we have solved our first problem. We do not need to get the result in the launching thread. This result will be passed automatically for us by the API
+
+4.4 - Launching Runnable, Consumer and Function After Existing Tasks
+	Sending a result to a mapper is not the only available pattern provided by this CompletableFuture API, so let us see more tasks for this API
+	Suppose that you need to log a message once the list of users has been read from the database. Logging a message is, in fact, just a runnable, and we can do that, we can call the thenRun()
+		CompletableFuture<List<User>> cf2 = CompletableFuture.supplyAsync(() -> List.of(1L, 2L, 3L))
+					.thenApply(list -> readUsers(list));
+		cf2.thenRun(() -> logger.info("the list of users has been read"));
+		cf2.thenAccept( users -> logger.info(users.size() + " users have been read"));
+	But we can also as well, pass a consumer to the thenAccept() method. The consumer will take the previous result here, the user's list, and pass it for instance, to another logger that will also log the number of users that have been read from the database
+	So we have 3 patterns
+		thenApply - takes a function that acts as a mapper
+		thenRun - takes a runnable
+		thenAccept - takes a consumer
+	We have 3 available model to chain a task on another task (table comparison - CompletableFuture Supported Tasks)
+		The first model is the Runnable interface - the method of the runnable interface is the "void run()" method and the corresponding method on the CompletableFuture object is the thenRun(). This thenRun() method takes a runnable as a parameter
+		The second one is the consumer - the name of the method of this consumer interface is "void accept(T)", and the corresponding method on the CompletableFuture class is the thenAccept() method. This thenAccept method takes a consumer as a parameter
+		The last model is our mapper, a Function that takes an object and returns an object from another type. The method on that functional interface is the "R apply(T)" and the corresponding CompletableFuture method is the thenApply()
+	So here are 3 supported tasks that can be chained on the completion of a runnable or a supplier
+
+4.5 - Understanding Single Task Chaining Patterns
+	Let us take a closer look at the patterns in the single task chaining patterns
+	Here's the code to create a CompletableFuture on a runnable since it is a runAsync method
+		CompletableFuture<Void> cf = CompletableFuture.runAsync(() -> updateDB());
+	This runnable doesn't return anything. On this runnable, we can then trigger another runnable that will log information once our long-running process is done
+		CompletableFuture<Void> cf = CompletableFuture.runAsync(() -> updateDB())
+			.thenRun(() -> logger.info("Update done!"));
+	Since the first runnable doesn't return anything, it makes sense to chain this task with another runnable that doesn't expect any parameter
+	But it turns out that we can also chain this runAsync with a consumer with the thenAccept method
+		CompletableFuture<Void> cf = CompletableFuture.runAsync(() -> updateDB())
+			.thenAccept(value -> ...);
+	But you really need to be very careful because since the previous task didn't produce any value, the only value that can be provided to this consumer is the "null" value. So be careful when you write this kind of code. Do not use this value to call, for instance, a method on it because what you will get is a NullPointerException breaking your code
+	In fact, you may wonder, does chaining a runnable with the consumer or a function make sense. And the answer is probably no since the only value that will be provided to your consumer or your function will be the null value
+	On the other hand, you can chain really anything on a supplier
+		CompletableFuture<List<User>> cf = CompletableFuture.supplyAsync(() -> List.of(1L, 2L, 3L));
+	This time, this supplier will supply your list of longs so you can chain this task on a mapper, a function that will  read your user object
+		CompletableFuture<List<User>> cf = CompletableFuture.supplyAsync(() -> List.of(1L, 2L, 3L))
+			.thenApply(list -> readUsers(list));
+	Or a consumer that will log some kind of information about this  list
+		CompletableFuture<Void> cf = CompletableFuture.supplyAsync(() -> List.of(1L, 2L, 3L))
+			.thenApply(list -> logger.info(...));
+	Or a runnable that will also log, for instance, some kind of information on the completion of the creation of this list
+		CompletableFuture<Void> cf = CompletableFuture.supplyAsync(() -> List.of(1L, 2L, 3L))
+			.thenApply(() -> logger.info(...));
+	So in a nutshell, the first task can be a supplier passed to the supplyAsync factory mehtod or a runnable passed to the runAsync method
+	And the next task can be a runnable - thenRun, a consumer - thenAccept or a function - thenApply
+	Be careful because some combinations may be irrelevant. Chaining a consumer or a function on a runnable is probably not something you want to do
+
+4.6 - Composing CompletableFutures to Prevent Blocking Calls
+	Let us see one more pattern in this topic called the CompletableFuture Composition. It is a very important pattern
+	Suppose that you ahve a first task that fetches a list of user IDs of user primary keys from some kind of remote service. This is a long-running task, so you decideed to run it asynchronously
+	And the second task you need to run is the task that feches the user objects from a database and return the list of those user objects
+	Of course since both tasks are long-running process, you want to run them asynchronously. Let us have a look at the code
+		Supplier<List<Long>> userIdsSupplier = () -> remoteService();	// returns the user IDs
+		
+		Function<List<Long>, List<User>> usersFromIds = ids -> fetchFromDB(ids);	// returns the user objects
+	We can write this code to pass this to the CompletableFuture API
+		CompletableFuture<List<User>> cf = CompletableFuture.supplyAsync(userIdsSupplier)
+			.thenApply(usersFromIds);
+	In this pattern, fetching the user objectgs with the user IDs is clearly a synchronous operation. This fetchFromDB will take the list of Long and synchronously create the list of user objects
+	It is conducted synchronously when the list of user IDs is made available and this is probably what we do NOT want to do
+	What it should be really is a function that returns a CompletableFuture of List of User. Let us try to write that
+		Supplier<List<Long>> userIdsSupplier = () -> remoteService();	// returns the user IDs
+		
+		Function<List<Long>, CompletableFuture<List<User>>> usersFromIds = ids -> fetchFromDB(ids);	// returns the user objects
+	This returned user object, instead of returning them in a list, it should wrap them in a CompletableFuture<List<User>> and if you write it in that way, this time, it is an asynchronous call that will return the CompletableFuture immediately and compute the result asynchronously
+	But the question now is, how can we chain this call to the supplyAsync call because if we chain it using  the thenAccept method, what we will get is a CompletableFuture<CompletableFuture<List<User>>>
+	And what we're interested in is just to get a CompletableFuture<List<User>>
+	So we have another method for that called thenCompose() method that is going to compose both completable futures and that will return a CompletableFuture<List<User>>, which is exactly what we want
+		CompletableFuture<List<User>> cf = CompletableFuture.supplyAsync(userIdsSupplier)
+			.thenCompose(usersFromIds);
+	In fact, thenCompose() method works exactly the same as the flatMap from the Stream API or the Optional API. It is exactly the same concept. The concept is to compose CompletableFutures (CompletableFutures are composable)
+
+4.7 - Triggering Tasks on the Completion of Two Tasks
+	We saw how to trigger one task on the completion of another task. What can we do when we have more than one task at the same time? Let us see that now
+	Suppose we have this pipeline of tasks, get IDs, read users with those IDs, send email to those users and write a report
+	It is very easy to chain more than one task on the completion of a given task, for instance, log operations, here log IDs or log emails
+	All you need to do that is to get the CompletableFuture and call the thenApply method or thenAccept method with the right consumer
+	This is the exact same patter as the one we saw previously
+	But suppose that what we want to do is read the users from the primary keys and for some reason, we have the emails of those users in a separate part of our database. So the get IDs will trigger both the reading of our users and the reading of their emails separately.
+	And of course, the send email task should be launched when both tasks are done by gathering both results for both tasks
+	So this is a first chaining that we've not covered yet and that we're going to see, but there is a second one
+	Here, suppose that we have, in fact, 2 DBs probably replicated with our users in it, and what we want to get is the list of users as fast as possible. So we're going to launch 2 read queries on 2 different DBs, and what we need is just a first result that we get
+	We just do that for performance reason to get the result as fast as possible
+	In fact, the second result is not expected to be different from the first one
+	So here, we're launching a task on the completion of one task among two
+
+4.8 - Triggering Tasks on the Completion of Two Completed Tasks
+	When both tasks complete, what you can do is
+		Execute a Runnable
+		Execute a BiConsumer
+		Or execute a BiFunction
+	The two combined are completable futures can return objects of different types. In that case, the BiConsumer or BiFunction will have to take 2 parameters of 2 different types corresponding to the two types returned by each upstream task
+	The two patterns available are the following
+		CompletableFuture<Long> cf1 = ...;
+		CompletableFuture<User> cf2 = ...;
+		
+		CompletableFuture<Void> cf3 = cf1.thenAcceptBoth(cf2, (id, name) -> logger.info(...));
+	We can call thenAcceptBoth on  one of those completable futures, pass the second one as a parameter and the corresponding here BiConsumer since we have called the thenAccept method
+	This BiConsumer will get the result from the first CompletableFuture here along called "id", and the result from the second CompletableFuture here, a user, that we have called "name"
+	The thenCombine method takes a biFunction instead of a BiConsumer so it will create a result that can be passed to another task
+		CompletableFuture<List<User>> cf3 = cf1.thenCombine(cf2, (id, user) -> query(...));
+	Those are the patterns you can use when what you want to do is wait for both results to become available
+
+4.9 - Triggering Tasks on the Completion of One of Two Tasks
+	When what you need to do is trigger a task on the completion of one task in a set, what you can do is trigger a runnable, a simple consumer that will tkae the first result available or a function instead of a BiFunction that will also get the first result available
+	In that case, both completable futures must return objects of the same type. Why? Because those 2 objects have to be exchangeable. Let us take a look at the code
+		CompletableFuture<Long> cf1 = ...;
+		CompletableFuture<Long> cf2 = ...;
+		
+		CompletableFuture<Void> cf3 = cf1.thenAcceptEither(cf2, id -> logger.info(...));
+	We can use the thenAcceptEither()  method call on either of those 2 completable future passing the other one as a parameter
+	And since we're calling the thenAccept, we can pass a single consumer that will take the first Long available and here on this example, log it, call thenApplyToEither
+		CompletableFuture<Void> cf3 = cf1.thenApplyToEither(cf2, id -> readUser(id));
+	And the last pattern is thenRunAfterEither() that takes another completable future and a runnable
+		CompletableFuture<Void> cf3 = cf1.thenRunAfterEither(cf2, () -> logger.info(...));
+	This is something that doesn't take any parameter, so of course, it will nto get anything to be run
+	We also have 2 patterns that will accept an undefined number of completable futures
+	Let us suppose that we have N of them. In that case, there's no combining of the results offered by the API because probably it would be too complex to setup.
+	So the resulting completable future will be complete either on the completion of all the N completable futures or on the completion of the first completable future
+	Suppose we have a set of 4 completable futures
+		CompletableFuture<Long> cf1 = ...;
+		CompletableFuture<User> cf2 = ...;
+		CompletableFuture<String> cf3 = ...;
+		CompletableFuture<List<User>> cf4 = ...;
+		
+		CompletableFuture<Void> cf = CompletableFuture.allOf(cf1, cf2, cf3, cf4, ...);
+	The first pattern is the allOf(0 factory method that takes all those completable futures and btw that could take more because the signature of this method is of varargs. It returns a CompletableFuture<Void> meaning that his completable future will complete once all of those completable future are complete, but we will not be able to get or combine the results of those completable futures
+	The second one is the anyOf() that also takes a varargs
+		CompletableFuture<?> cf = CompletableFuture.anyOf(cf1, cf2, cf3, cf4, ...);
+	This time it returns a CompletableFuture that will own the first result of the first CompletableFuture to complete
+	Those are the 2 patterns provided by the factory method of the CompletableFuture class
+
+4.10 - Understanding in Which Thread a Triggered Task is Executed
+	So now that we saw how to chain tasks and how to trigger tasks on the completion of other tasks, let us talk about threads and let us answer this question in what thread each task is executed and is there a way to force the execution of a given task in a given thread
+	Let us answer this question, in which thread your tasks are executed? And can you force this execution to be conducted in a given thread
+	There is a rule that always, by default, all the asynchronous tasks are executed in the Common Fork/Join Pool and we already saw that rule at the beginning of this course
+	A task triggered by another task, by default, is executed in the same thread as the triggering task. This is a new rule that we are adding to the first one
+	So now for all the tasks we have written so far, we know in which thread each task is executed
+	And the good news is that the API gives the possibility to change that to force in which thread every task is executed
+	You can change it in 2 ways
+		First, you can say that the given taks should be executed in another thread of the same pool of threads are the triggering task
+		And you can also ask the API to execute this task in another pool of threads
+
+4.11 - Analyzing Use Cases to Choose Which Thread is Executing What Task
+	Let us see that on a complex example of code
+		CompletableFuture<List<User>> cf2 = CompletableFuture.supplyAsync(() -> List.of(1L, 2L, 3L));
+	So this first call supplyAsync is executed by default in the Common Fork/Join Pool
+	If we chain a task with a thenApply method, since it is also a default call, this is going to be executed in the same thread as the thread that created the list of longs
+		cf2.thenApply(list -> readUsers(list));
+	Now if we pass an executor as a second parameter to this supplyAsync, thep provided supplied will be executed in the pool of threads
+		CompletableFuture<List<User>> cf2 = CompletableFuture.supplyAsync(() -> List.of(1L, 2L, 3L), executor);
+	And a function passed as a parameter to this thenApply call by the application of the second rule will be executed also in the same thread as the supplier, but this time, not in the Common Fork/Join Pool merely in this executor passed as a parameter to this supplyAsync method call
+	Let us go back to the default pattern (without executor as a parameter). This time, this is executed in a Common Fork/Join Pool. We already saw that. But now, we're not calling thenApply(), but thenApplyAsync which is another version of this thenApply method
+		cf2.thenApplyAsync(list -> readUsers(list));
+	It tells the API that this function that computes the list of users can be executed in another thread of the same pool of threads. So this time, this function will be executed in the Common Fork/Join Pool, but probably in another thread of this same pool of threads
+	And we can also pass another executor to this thenApplyAsync method call
+		cf2.thenApplyAsync(list -> readUsers(list), executor);
+	So this time, the function will be executed in any thread of this executor passed as a second parameter
+	So the objects, the list of longs, will be passed from one pool of threads, the Common Fork/Join Pool, to another one, this executor pool of threads
+	Last example, let us go back to our basic supplyAsync call executed in the Common Fork/Join Pool
+	We have a first call thenApplyAsync, and we pass an executor as a second parameter so the reading of the users are going to be executed in another thread from this new pool of threads.
+		cf2.thenApplyAsync(list -> readUsers(list));
+	But if on the same CompletableFuture we called a thenRun() method, this time this runnable is called on the supplyAsync CompletableFuture, it will be executed in the same thread as this supplyAsync and this is a trick.
+		cf2.thenRun(() -> logger.info("..."));
+	It means that this runnable and this function can be executed at the same time in 2 different threads, and I can even call another thenAcceptAsync on the same CompletableFuture returned by this supplyAsync method call
+		cf2.thenAcceptAsync(users -> logger.info("..."));
+	But this time, since we have called thenAcceptAsync, the consumer passed as a parameter will be executed in the same pool of thread, that is the Common Fork/Join Pool, but in the thread that can be different from the one that executed the List.of()
+	So in fact, this consumer can be executed at the same time as the runnable passed to the thenRun() method in the same pool of thread
+	So by playing with the differnt pool of threads and those async calls, you can finely tune how your tasks are going to be executed and which thread is going to executed each task
+
+4.12 - Wrapping up the Patterns for Controlling Threads
+	So in the end, you have a full and fine control of the thread or the pool of threads that is going to execute each of your tasks
+	The problem is that it makes the API quite complex to understand at a first glance since it adds many methods. Remember, we have all the methods that takes the runnable, the function, and the consumer, then we have the one that takes the BiConsumer and the BiFunction, and then we are adding the async version of those methods and then another set of async method that takes an executor as a parameter
+	That makes really a lot of methods in this CompletableFuture class
+	Be careful, as a last note, moving data from one thread to another is costly whether you're in the same pool of threads or another one
+
+4.13 - Introducing the Live Demo, Chaining the First Tasks
+	Is this code going to work if we just launch this code like this?
+		Supplier<List<Long>> supplyIDs = () -> {
+			sleep(500);
+			return Arrays.asList(1L, 2L, 3L);
+		};
+		
+		Function<List<Long>, List<User>> fetchUsers = ids -> {
+			sleep(300);
+			return ids.stream().map(User::new).collect(Collectors.toList());
+		};
+		
+		Consumer<List<User>> displayer = users -> users.forEach(System.out::println);
+		
+		CompletableFuture<List<Long>> completableFuture = CompletableFuture.supplyAsync(supplyIDs);
+		completableFuture.thenApply(fetchUsers)
+				 .thenAccept(displayer);
+	The answer is yes and no. It will work indeed, but will not display anything. Why? Because our chain of tasks did not have any chance to run.
+	We have a wait call of 500 ms. So  the main thread is dead before anything can be executed. Let us add a sleep call with one second and this time we can see that our displayer displays the 3 users we have in our list
+
+4.14 - Demo: Running the Last Task in a Special Thread
+	Now suppose that this displayer is updating some kind of human interface and it has to be run in a special thread. We can create an executor for that
+	(demo of adding ExecutorService to above code)
+
+4.15 - Demo: Composing a Long Running Task with a CompletableFuture
+	Now what we can see here is that fetching our users from the database takes some time obviously, it takes 300 ms just because we put a sleep in that function but in a real application, it might still take a lot of time
+	So instead of making this function synchronous because this function  is currently synchronous, we're going to make it asynchronous by returning a CompletableFuture<List<User>>
+		ExecutorService executor = Executors.newSingleThreadExecutor();
+		
+		Supplier<List<Long>> supplyIDs = () -> {
+			sleep(500);
+			return Arrays.asList(1L, 2L, 3L);
+		};
+		
+		Function<List<Long>, CompletableFuture<List<User>>> fetchUsers = ids -> {
+			sleep(300);
+			Supplier<List<User>> userSupplier = () -> ids.stream().map(User::new).collect(Collectors.toList());
+			return CompletableFuture.supplyAsync(userSupplier);
+		};
+		
+		Consumer<List<User>> displayer = users -> {
+			System.out.println("Thread - " + Thread.currentThread().getName());
+			users.forEach(System.out::println);
+		};
+		
+		CompletableFuture<List<Long>> completableFuture = CompletableFuture.supplyAsync(supplyIDs);
+		completableFuture.thenCompose(fetchUsers)
+				 .thenAcceptAsync(displayer, executor);
+		
+		sleep(1_000);
+		
+		executor.shutdown();
+	Now what we're doing is wrapping our operation as a supplier. So at this time, we create this supplier, since it is a lambda expression, nothing is executed. This stream is not created and the mapping is not made and the collection is not made either. It will be made when the right method from the supply object, which is the get method, btw, will be called by the internal API of this supplyAsync method and the result is going to be wrapped in a CompletableFuture, thus made available once the computation is done
+	Now the question is, which therad is going to execute our stream, the fetching of our user object from our fake database. To know that, we need to add some more code here (adding sysout thread name in userSupplier)
+	And you can see that this thenCompse method call runs this code asynchronously, which is expected, and since we didn't provide an executor, it is using the default executor for the CompletableFuture API, which is the ForkJoinPool for the threads
+
+4.16 - Demo: Checking in Which Thread an Async Composition is Executed
+	Now the question is, can we change the thread that is executing the fetching of the users?
+	(adding another executor to the code and change thenCompose to thenComposeAsync with executor2 as parameter) - Let us run this code and it doesn't seme to work very well because the fetching of our users was executed in the Common Fork/Join Pool
+	So what did happen exactly? What happened is that this thenComposeAsync is executing the fetchUsers in the executor2 pool of threads
+	(Adding a sysout in the fetchUsers Function and running it) - I can see that indeed my function is running in the second executor but not my userSupplier. If I want my supplier to be executed in that second executor, what I need to do is supply this executor as a second parameter
+		ExecutorService executor1 = Executors.newSingleThreadExecutor();
+		ExecutorService executor2 = Executors.newSingleThreadExecutor();
+		
+		Supplier<List<Long>> supplyIDs = () -> {
+			sleep(500);
+			return Arrays.asList(1L, 2L, 3L);
+		};
+		
+		Function<List<Long>, CompletableFuture<List<User>>> fetchUsers = ids -> {
+			sleep(300);
+			System.out.println("Function is Currently running in " + Thread.currentThread().getName());
+			Supplier<List<User>> userSupplier = () -> {
+				System.out.println("Currently running in " + Thread.currentThread().getName());
+				return ids.stream().map(User::new).collect(Collectors.toList());
+			};
+			return CompletableFuture.supplyAsync(userSupplier, executor2);
+		};
+		
+		Consumer<List<User>> displayer = users -> {
+			System.out.println("Thread - " + Thread.currentThread().getName());
+			users.forEach(System.out::println);
+		};
+		
+		CompletableFuture<List<Long>> completableFuture = CompletableFuture.supplyAsync(supplyIDs);
+		completableFuture.thenComposeAsync(fetchUsers, executor2)
+				 .thenAcceptAsync(displayer, executor1);
+		
+		sleep(1_000);
+		
+		executor1.shutdown();
+		executor2.shutdown();
+	You can see that when you begin to play with composition running asynchronously, choosing your executor, etc, you really need to be extremely careful and understand and follow very well where each task is executed because if you're not careful, you will end up running tasks in threads that you do not have control over typically, the Common Fork/Join Pool. 
+
+4.17 - Demo: Displaying the Result of Two Tasks in a Third One
+		ExecutorService executor1 = Executors.newSingleThreadExecutor();
+		
+		Supplier<List<Long>> supplyIDs = () -> {
+			sleep(250);
+			return Arrays.asList(1L, 2L, 3L);
+		};
+		
+		Function<List<Long>, CompletableFuture<List<User>>> fetchUsers = ids -> {
+			sleep(350);
+			Supplier<List<User>> userSupplier = () -> {
+				return ids.stream().map(User::new).collect(Collectors.toList());
+			};
+			return CompletableFuture.supplyAsync(userSupplier);
+		};
+		
+		Function<List<Long>, CompletableFuture<List<Email>>> fetchEmails = ids -> {
+			sleep(300);
+			Supplier<List<Email>> userSupplier = () -> {
+				return ids.stream().map(Email::new).collect(Collectors.toList());
+			};
+			return CompletableFuture.supplyAsync(userSupplier);
+		};
+		
+		Consumer<List<User>> displayer = users -> {
+			users.forEach(System.out::println);
+		};
+		
+		CompletableFuture<List<Long>> completableFuture = CompletableFuture.supplyAsync(supplyIDs);
+		CompletableFuture<List<User>> userFuture = completableFuture.thenCompose(fetchUsers);
+		CompletableFuture<List<Email>> emailFuture = completableFuture.thenCompose(fetchEmails);
+		
+		// Create another CompletableFuture that will complete on the completion of both userFuture and emailFuture
+		userFuture.thenAcceptBoth(emailFuture, (users, emails) -> {
+			System.out.println(users.size() + " " + emails.size());
+		});
+		
+		sleep(1_000);
+		
+		executor1.shutdown();
+
+4.18 - Demo: Displaying the Result of the First Completed Task
+	So now I would like to show you is how to trigger a task on the completion of the first task in a set of 2 tasks
+		ExecutorService executor1 = Executors.newSingleThreadExecutor();
+		
+		Supplier<List<Long>> supplyIDs = () -> {
+			sleep(250);
+			return Arrays.asList(1L, 2L, 3L);
+		};
+		
+		Function<List<Long>, CompletableFuture<List<User>>> fetchUsers1 = ids -> {
+			sleep(150);
+			Supplier<List<User>> userSupplier = () -> {
+				return ids.stream().map(User::new).collect(Collectors.toList());
+			};
+			return CompletableFuture.supplyAsync(userSupplier);
+		};
+		
+		Function<List<Long>, CompletableFuture<List<User>>> fetchUsers2 = ids -> {
+			sleep(5000);
+			Supplier<List<User>> userSupplier = () -> {
+				return ids.stream().map(User::new).collect(Collectors.toList());
+			};
+			return CompletableFuture.supplyAsync(userSupplier);
+		};
+		
+		Consumer<List<User>> displayer = users -> {
+			users.forEach(System.out::println);
+		};
+		
+		CompletableFuture<List<Long>> completableFuture = CompletableFuture.supplyAsync(supplyIDs);
+		CompletableFuture<List<User>> users1 = completableFuture.thenCompose(fetchUsers1);
+		CompletableFuture<List<User>> users2 = completableFuture.thenCompose(fetchUsers2);
+		
+		users1.thenRun(() -> System.out.println("user 1"));
+		users2.thenRun(() -> System.out.println("user 2"));
+		
+		users1.acceptEither(users2, displayer);
+		
+		sleep(6_000);
+		
+		executor1.shutdown();
+	And what we'll see is not what is expected. What we see is that "user 2" is the first CompletableFuture to complete. It is clearly triggering the acceptEither method call, that is the execution of the displayer and "user 1" is completed after the first one
+	So what is happening here, the problem, lies here in the creation of functions. Those functions have to be created as fast as possible and the problem is that we're creating them in a non-asynchronous way.
+	You see that the thenCompose method call that takes the fetchUsers1 and fetchUsers2 as parameters is, in fact, synchronous. And we cannot tell in advance which one of those 2 functions is going to be created and submitted first to the pool of threads
+	Now if this pool of threads is saturated and this is what we're observing currently, then fetchUsers2 will be the first one to be executed. fetchUsers1 cannot be executed because the thread is already busy and it will be executed after that
+	So let us make those calls asynchronous
+		CompletableFuture<List<User>> users1 = completableFuture.thenComposeAsync(fetchUsers1);
+		CompletableFuture<List<User>> users2 = completableFuture.thenComposeAsync(fetchUsers2);
+	They're going to be executed in the common Fork/Join pool where there are at least 4 threads. Run this code again and now you can see that "user 1" is executed first and the acceptEither has triggered the execution of the displayer and "user 2" completes
+	So you need to be careful when you're launching this acceptEither method call. Be sure that the functions that you're passing as parameters are properly executed and the CompletableFuture are underway when you call this method
+
+4.19 - Module Wrap Update
+	3 tables
+		1-1 CompletableFuture Chaining
+			thenRun() - takes Runnable as a paremeter
+			thenAccept() - takes Consumer as a parameter
+			thenApply() - takes a Function
+			thenCompose() - takes a Function that is itself asynchronous that will produce a result in an asynchronous way
+			All 4 patterns exist in an asynchronous version and in a version that accept an executor a a parameter to further control which thread is going to execute each task
+		2-1 CompletableFuture Chaining
+			runAfterBoth() - takes Runnable
+			thenAcceptBoth() - takes BiConsumer
+			thenCombine() - takes BiFunction
+			Those 3 tasks are goign to be triggered on the completion of the 2 completable future they are built on. They do exist in an asynchronous version and they can accept a further executor to finally control which thread is going to execute what
+		2-1 CompletableFuture Chaining
+			Triggered on either completable futures
+			runAfterEither() - triggers the execution of a runnable
+			acceptEither() - traiggers the eecution of a runnable with a Consumer
+			applyToEither() - with a function
+			Those 3 tasks are goign to be triggered with the result of the first available result of the two completable futures. All of them exist in the asynchronous version and all of them can accept an executor once again to finally control which thread is going to execute this
+
+5.1 - Introduction to the Module and Agenda (Dealing with Exception in the CompletionStage Pipeline)
+
+5.2 - Introducing How an Exception Affects a Pipeline of Tasks
+	What can be done in a CompletableFuture pipeline when things don't work as expected. In fact, exceptions are part of the CompletableFuture API, they are expected to happen and they're fully suppoted in this API
+	The behavior of the downstream pipeline of tasks is fully specified if an exception is raised at some level, and there are several ways to catch them, to process them, and even to rethrow them in a different way
+	Let us see that. Suppose we have the following pipeline of tasks. First we get primary keys of users, then we read them from a database, and at the same time, we need to log information on those primary keys. Then we're going to send emails to our users, write a report and at the same time, log their emails
+	But for some reason, this task, the logging of the primary keys completes with an exception. What can happen in that case?
+	Second case is the read users wtih completing with an exception
+	Obviously, in the first case, it's probably not too bad for the remaining of the tasks because nobody depends on the logging of the primary keys. But here, it's not the case anymore. Since we don't have our list of user objects, we won't be able to send email, write reports, or log the emails or the downstreams tasks will also complete with an exception
+
+5.3 - Understanding What is Happening When an Exception is Raised
+	Let us see the code
+		CompletableFuture<List<User>> cf2 = CompletableFuture.supplyAsync(() -> List.of(1L, 2L, 3L))
+			.thenApply(list -> readUsers(list));
+	Suppose that the SQL exception is thrown when the list of users is fetched from the database. So this SQL exception is raised by the readUsers method that takes the list of primary keys of our user
+	In that case, obviously, the completable future cf2 cannot produce any result and it can certainly not produce a list of users. In that case, it is said to complete exceptionally
+	What does it mean to complete exceptionally? It means that if we call the join method on this completable future, it will throw a CompletionException and if we see this CompletableFuture as a plain Future object and call the get method from the future interface, we will also have an exception of different type of type ExecutionException
+		List<User> usersFromJoin = cf2.join();	// from CompletableFuture
+		List<User> usersFromGet = cf2.get();	// from Future
+	Those 2 exceptions will have the SQLException as the cause of this exception with a full stacked trace that will enable us developers to fix the bug that created this exception
+	Since the readUsers() call threw the SQLException, no subsequent task can be executed. If we call thenRun() and log some information or thenAccept and try to log this information, nothing will be logged, nothing will be executed, neither the runnable, neither the consumer
+		cf2.thenRun(() -> logger.info("list of users has been read"));
+		cf2.thenAccept( users -> logger.info(users.size() + " users have been read"));
+	And both the completable future returned by the thenRun and thenAccept method call will also complete exceptionally with the cause of exceptions being the SQLException
+
+5.4 - Understanding How a Raised Exception Completes a CompletableFuture
+	So in a nutshell, an exception may complete a completable future. This completable future will be complete exceptionally
+	It will prevent this completable future from providing a result
+	Instead, it will forward this exception to all its downstream completable futures
+	But now, we know from the previous module that getting or joining a result from a completable future is not the classical pattern to get the result and to do something with it
+	So a consequence of that is that in most applications, the get() or join() method will never be called and cannot be called, of course, in a try/catch pattern to prevent the exception from doing some damage in our application
+
+5.5 - Catching an Exception with the Exceptionally Pattern
+	Let us see how we can handle exceptions in the completable future pipeline. In fact, we have several  patterns to do that and none of them is relying on the use of try/catch, which is a very nice thing
+		The first one is 3 patterns available is the exceptionally() call
+		The second one is whenComplete() method call
+		Third one the handle() method call
+	Let us begin iwth the exceptionally() method call. Let us go back to our pipeline of tasks and suppose that read users completes with an exception because something went wrong while we were reading our database
+	Instead of sending our list of users directly to the send email task, we're going to insert a special method call between both, which is this exceptionally()
+		CompletableFuture<List<User>> cf2 = CompletableFuture.supplyAsync(() -> List.of(1L, 2L, 3L))
+			.thenApply(list -> readUsers(list));
+			.exceptionally(exception -> List.of())
+	exceptionally() takes a function as a parameter and this function takes a throwable, which is the exception that may be thrown by the previous task and it returns an object of the same type of the completable future it is called on
+	So here we decide to, in fact, swallow the exception and return an empty list of users
+	So exceptionally returns a completable future of the same type as the one it is called on, that is here a CompletableFuture<List<User>>
+	If no exception is thrown by the readUsers method, then it is transparent and it returns the value generated by  the previous completable future
+	If an exception is thrown, then the function passed as a parameter is called, it is executed and it gets the exception as a parameter and the result this function is going to provide will be sent to the subsequent tasks instead of the result that ha snot been created by this readUsers method
+	So if you call thenRun() on this CompletableFuture with a runnable or a thenAccept with a consumer (same as above - to log info), those 2 methods will produce completable futures that will complete normally and that will execute as usual
+
+5.6 - Modifying the Pipeline of Tasks to Catch Exceptions
+	So let us modify our pipeline of tasks slightly by inserting this exceptionally method call in it. If no exception is thrown by the readUsers() operation, then this task will be transparent
+	The list of users will be provided to the send email task as usual
+	And the contrary, if an exception is thrown in the task readUsers, then this exception mehtod will create in our example an empty list and provide it to the send email task
+	Note that this exception can also be rethrown. exceptionally() can throw an unchecked exception making the send email, write report and log email tasks to complete exceptionally
+
+5.7 - Consuming an Exception with the WhenComplete Pattern
+	The whenComplete() pattern that takes a result and the exception if it is thrown
+	Of course one of those 2 objects is bound to be null because if an exception has been raised, there will not be any results and if an exception is not raised, this exception object will be null
+	And they're both passed to a BiConsumer that takes the object and the exception
+	Now the point is that the completable future returned by this whenComplete mehtod call has the same behavior and returns the same thing as the one it is called on
+	So if the completable future, this whenComplete() is called on, raised an exception, so completes exceptionally, then the whenComplete mehtod will also complete exceptionally
+	whenComplete cannot swallow the exception as the exceptionally() can
+	Let us see that on our example
+		CompletableFuture<List<User>> cf = CompletableFuture.supplyAsync(() -> List.of(1L, 2L, 3L))
+			.thenApply(list -> readUsers(list))
+			.whenComplete(
+				(list, exception) -> {
+					if(list != null)
+						logger.info("The list of users has been read");
+					else
+						logger.error("An exception has been raised");
+				}
+			)
+	Sicne either of those objects may be null, you need to check in your code if the list object or the exception object is null to further process it
+	And the exception raised by the thenApply() method call, if any, will also be raised by the whenComplete() method call. That is, if the thenApply CompletableFuture completes exceptionally, the whenComplete CompletableFuture wil also complete exceptionally
+	If no exception is raised by thenApply, the result of the whenComplete CompletableFuture will just be the same
+
+5.8 - Transforming an Exception with the Handle Pattern
+	The other pattern is the handle pattern. This pattern also takes a result and the exception if thrown
+	Of course, we're in the exact same situation as the previous one. One of these objects is bound to be null but this time, they are passed to a BiFunction that produces a result
+	And the result is returned by this completable future so this method call, this handle method call, this time, can swallow the exception
+	Let us see that on some code
+		CompletableFuture<List<User>> cf2 = CompletableFuture.supplyAsync(() -> List.of(1L, 2L, 3L))
+			.thenApply(list -> readUsers(list))
+			.handle(
+				(list, exception) -> {
+					if(list != null)
+						return list;
+					else {
+						logger.error("An exception has been raised");
+						return new ArrayList<>();
+					}});
+	This handle method takes a BiFunction that takes itself the result of the previous completable future and the exception. One of them is null
+	So you need to tech which object is null to further process it
+	The BiFunction can either process or swallow the exception or rethrow it as needed
+	One last point, both methods whenComplete and handle have asynchronous versions. So we have
+		whenCompleteAsync()
+		handleAsync()
+	Both come in 2 versions, one that takes an executor and one that doesn't. So you can also control in which thread this exception handling will be conducted
+
+5.9 - Introducing the Live Demo, Setting up a Chain That Fails
+	Let us run this code of simulating an exception
+		Supplier<List<Long>> supplyIDs = () -> {
+			sleep(200);
+			// Simulate exception
+			throw new IllegalStateException("No data");
+			//return Arrays.asList(1L, 2L, 3L);
+		};
+		
+		Function<List<Long>, List<User>> fetchUsers = ids -> {
+			sleep(300);
+			return ids.stream().map(User::new).collect(Collectors.toList());
+		};
+		
+		Consumer<List<User>> displayer = users -> users.forEach(System.out::println);
+		
+		CompletableFuture<List<Long>> supply = CompletableFuture.supplyAsync(supplyIDs);
+		CompletableFuture<List<User>> fetch = supply.thenApply(fetchUsers);
+		CompletableFuture<Void> display = fetch.thenAccept(displayer);
+		
+		sleep(1_000);
+		
+		System.out.println("Supply " + supply.isDone() + " ex - " + supply.isCompletedExceptionally());
+		System.out.println("Fetch " + fetch.isDone() + " ex - " + fetch.isCompletedExceptionally());
+		System.out.println("Display " + display.isDone() + " ex - " + display.isCompletedExceptionally());
+	Of course, the displayer doesn't display anything. All 3 completable future are completed and they all completed exceptionally
+	So when one completable future throws an exception, completes exceptionally, or the downstream completable future of the same chain also completes exceptionally, it cannot produce any result, it cannot conduct any action
+
+5.10 - Demo: Setting up the Exceptionally Pattern to Catch an Exception
+	(demo of adding exceptionally() right after supply initiation) exceptionally() is a method of completable future that is there to catch the exception. It takes a function that takes an exception as a parameter and it should return a default value or rethrow this exception in a different way
+		CompletableFuture<List<Long>> supply = CompletableFuture.supplyAsync(supplyIDs);
+		CompletableFuture<List<Long>> exception = supply.exceptionally(e -> Collections.emptyList());
+		CompletableFuture<List<User>> fetch = exception.thenApply(fetchUsers);
+		CompletableFuture<Void> display = fetch.thenAccept(displayer);
+	So now, we have one more completable future in our chain, which is the result of this exceptionally() method call
+	Now you can see that both the fetch and display completable future did not complete exceptionally
+	So this is a first pattern to deal with exception, catch is using this exceptionally() mehtod call
+	Let us try to call the join method on this supply (call supply.join() after display initiation). In this case, supplyIDs throws an exception, so we expect this join method to also throw this exception
+	Indeed, exception is thrown. It is an exception of type CompletionException which is the standard exception thrown by the join method
+
+5.11 - Demo: Logging an Exception Using the WhenComplete Pattern
+	We now have a second way of dealing with exception which is using the whenComplete method
+		CompletableFuture<List<Long>> supply = CompletableFuture.supplyAsync(supplyIDs);
+		CompletableFuture<List<Long>> exception = supply.whenComplete(
+				(ids, ex) -> {
+					if(ex != null)
+						System.out.println(ex.getMessage());
+				});
+		CompletableFuture<List<User>> fetch = exception.thenApply(fetchUsers);
+		CompletableFuture<Void> display = fetch.thenAccept(displayer);
+	This time, the exception has been properly logged. I have no data available and the 3 completable futures, supply, fetch and displayer are all done and did complete exceptionally
+	So this is how whenComplete works. The role of this method call is not to swallow the exception, but merely to take either the result, either the exception of the completable future it is called down, and do some stuff with it but in a consumer way that is without being able to provide a replacement if an exception occurs
+	And if everything is OK with the upstream computation, then whenComplete will still call the BiConsumer but will provide the result provided by the completable future it has been called on
+
+5.12 - Providing a Default Value with the Handle Pattern
+	And the last method we need to see is the handle method
+		CompletableFuture<List<Long>> supply = CompletableFuture.supplyAsync(supplyIDs);
+		CompletableFuture<List<Long>> exception = supply.handle(
+				(ids, ex) -> {
+					if(ex != null) {
+						System.out.println(ex.getMessage());
+						return Collections.emptyList();
+					}
+					
+					return ids;
+				});
+		CompletableFuture<List<User>> fetch = exception.thenApply(fetchUsers);
+		CompletableFuture<Void> display = fetch.thenAccept(displayer);
+	The supplier of course completed exceptionally but the fetcher and the displayer did not because the exception has been swallowed by the BiFunction of this handle method, thus allowing the rest ofhte chain to compute normally
+
+5.13 - Module Wrap Up
+	Exception Handling table
+		First, we saw the exceptionally() method that takes a function that takes the exception and can produce a result. This call can recover from the exception, that is it can swallow this exception. There is no asynchronous version of this method call
+		Then we saw the handle method call that takes a BiFunction that may take the object produced by the previous completable future and the exception, if any, and that will produce another result that can be same as the T or can be different, it allows for the recovering that is the swallowing of the exception if it has been raised. And there is an asynchronous version of this method called handleAsync
+		And we have the whenComplete method that takes a BiConsumer. This BiConsumer will  take either the job if it has been produced, either the exception if it has been raised. One of those two is bound to be null. It doesn't allow for the recovering from the exception, that is the produce completable future will complete exceptionally in the case of an exception and there is an asynchronous version of this method
+
+6.1 - Introduction to the Module and Agenda (Creating Performant Asynchronous Pipelines with CompletionStage)
+	This module is all about performance
+
+6.2 - Introducing the HTTP Client Example from Java 10
+	Let us begin with an example called the HttpClient example. Here is what we want to do
+	We have a list of URIs, think about a list of pages on the web that we need to download. So in first step, we want to read each URI, get the body of the pages, and write the content of this body in a file locally. At the same time, we want to log some information once we have the list of URIs and once we have all the bodies of the request
+	This is the kind of pipeline we've talked about in the previous module and it's quite easy to implement that using completable futures
+	Just a word of warning. This HttpClient we're going to use is from Java 10 and it is in a module that is a Java 10 incubator module. At the time of the recording of this module, java 11 has not been released yet and this incubator module might go away, it might not make it to the upcoming versions of the JDK
+	So if you cannot see it, if you cannot find it in your JDK distribution, it probably means that you don't have the right version. If you have a Java 11 or 12, try to downgrade to java 10 to find this HttpClient module
+
+6.3 - Creating the HTTP Client and Request Using the Builder Pattern
+	So how is an HttpClient built? There's a build pattern
+		HttpClient client = HttpClient.newBuilder()
+			.version(HttpClient.Version.HTTP_1_1)
+			.build();
+	Creating an HttpClient is really easy and btw, it also works and also supports HTTP 2
+	Once we have that, we need to create an HttpRequest object that also uses the build pattern
+		HttpRequest request = HttpRequest.newBuilder()
+			.GET()
+			.uri(URI.create("https://somesite.com")
+			.build();
+	And then to get the response, we just call the send method on the client object
+		HttpResponse response = client.send(request,
+			HttpResponse.BodyHandler.asString());
+	BodyHandler offers several ways of storing the response whether it is in memory or on a local disk
+
+6.4 - Analyzing Why the HTTP Request Should Be Made Asynchronously
+	Let us analyze this HTTP request
+	Obviously, this code is executed in the main thread. First we create the client and the request
+	Then we send the request across the network, probably the internet, then we get the result and at last, we write the result to a file
+	In fact, getting the result is probably a long-running process and we have written it in a blocking way
+	It means that while the data is incoming from the internet, our main thread is blocked and cannot do anything else
+	And btw, the same goes for the write operation for writing the result to a file
+	During this operation, that includes input/output operations, our main thread may also be blocked
+	So we have 2 blocking operations here, and from the previous module we saw, blocking operations could be made asynchronously using the CompletableFuture API
+	So let us try to do it in an asynchronous way. Launching the request should be passed to another thread in an auxiliary executor service. This aux thread will handle the client and request creation, the sending of the request, the result, and the writing of hte result to a file
+	In this way, the main thread is not blocked anymore or the operations are handled by another thread, thus freeing this main thread for other operations
+	From a pure technical point of view, this pattern can be, implemented in 2 ways
+		With the classical executor pattern from java 5, there is no problem to do that with an executor pattern
+		With CompletableFuture pattern
+	What you're going to see is why it should be done, in fact, with the CompletableFuture pattern and what does this pattern bring that the Executor pattern cannot offer
+
+6.5 - Understanding the Cost of Moving Tasks to Other Threads
+	Sicne we're talking about perforamcne, the question that we need to ask ourselves is what is the cost of this pattern instead of the executor service pattern? In fact, there's an obvious part in this cost is that the data has to be moved from one thread to the other and this operation is costly moving data from one context of thread to another is a costly operation
+	Beside that, is there another cost that we didn't think about, another hidden cost? As we're going to see, the answer is yes
+	Moving data is not the only cost of switching from one thread to another. Let us see that
+	Suppose that our main thread is launching not one request, but many requests. Here we have 6. Each request is going to launch a completable future or any asynchronous operation on the executor service it is working with
+	And suppose that this executor service has only 4 threads, which is the classical default configuration if you're running on your local machine. It means that the 4 first tasks are going to reach this executor service will be handled by each thread, but the two others are going to wait so they are going to be blocked due to the fact that all the threads of this executor service are currently running tasks
+	This blocking operation is not necessarily of use, and if one of our 4 tasks is really long, takes a lot of time, or is blocking a thread, it means that the executor service will behave, will run the tasks, in fact, very slowly
+	And this is clearly a hidden cost, something that you may not think about when you're designing your system
+	There is a special executor service called the cached thread pool executor service that you can use. It is an executor service that creates threads on the end when there are tasks that are waiting to be executed
+	And it is also able to free the unused threads when there are too many
+	But creating threads in this way has a cost. If you have really too many tasks to handle, you might also run in another problem, which is lack of memory and out of memory error if you really have lots and lots of threads in your JVM
+	BTW, the HttpClient API that we're using in this example uses this cached thread pool by default so this is how it works
+
+6.6 - Comparing the Executor and the CompletableFuture Patterns
+	And remember that at the end of the day what we want to do is log some kind of message when the request has been properly received
+	What about this final operation? How can we integrate it in the code we have written so far?
+		HttpResponse response = client.send(request,
+			HttpRequest.BodyHandler.asString());
+		logger.info("Done!");
+	(diagram title - Logging a Message with the Executor Pattern)
+	Well, clearly the logging of this message is the last operation in our pipeline. If we want to use the executor pattern, since this operation is not handled directly by the HttpClient API, we need to log the message in the main thread by getting the future object from the submission of the task to the executor service calling the get method of this future object and logging the message after this get method has returned
+	So clearly, we have another thread context switch in this operation and even worse, we have to wait on this get call from the future object
+	So in this pattern we're using two threads instead of one and still blocking the main thread for the logging message to be launched
+	So clearly, when you need to do that, the executor pattern is not the right pattern to use.
+	(diagram updated title - Logging a Message wtih CompletableFuture)
+	If we need to log a message with the CompletableFuture API, all you need to do is add thenRun call on this completable future and the message will be logged in the auxiliary thread already running the HttpClient
+	So in that case, everything is running smoothly. The other end of logging the message is not too bad and is in fact, only the logging of that message
+	So at first, the executor pattern seemed to be the right tool to implement what we want to do, but in fact, the chaining of the task is not supported by this executor pattern and clearly the CompletableFuture pattern is the right tool for this job
+	This is what we already saw in the previous modules of this course
+
+6.7 - Making the HTTP Request Asynchronous Using CompletableFuture
+	Let us now examine the request itself. Let us analyze this pattern from this point of view
+		HttpResponse response = client.send(request,
+			HttpResponse.BodyHandler.asFile(path));
+	We saw that we have to call the send method passing the request as a parameter. This request is, in fact, just a transport object that will carry on the elements of the request. And the BodyHandler, and here we're using asFile BodyHandler, that will write the response in a file at the path passed as a parameter
+	In fact, sending a request across network probably the internet itself is costly. It will include the network transmission of the request, the response from the server, and the network transmission of that response
+	But writing the file is also costly. It's an input/output operation. If the file system is a network mount, it might also incur network transmission, which is costly
+	So what we would like to do is to launch those 2 request asynchronously to prevent any blocking operation at the thread level. And of course, this is an easy job for the CompletableFuture API
+	The nice thing is that HttpClient has also a sendAsync method that takes the same parameters as the send method that is a request and a BodyHandler
+		CompletableFuture<HttpResponse> response = client.sendAsync(request,
+			HttpResponse.BodyHandler.asFile(path));
+	This sendAsync method returns a completable future wrapping this HttpResponse created by the API
+	Since it is a completable future, the nice thing is that we can chain other tasks on it. For instance, getting the body of this repsonse, which will return a path to the file that has been created and the path toFile method call if what we need is a file and not a path object
+		client.sendAsync(request,
+			HttpResponse.BodyHandler.asFile(path))
+			.thenApply(response -> response.getBody())
+			.thenApply(path -> path.toFile())
+			.thenApply(file -> logger.info(file + " has been created");
+	It makes writing o this code much easier and as we're going to see in live coding part, it can also bring a very nice solution to handle errors
+	Now what we have here is non-costly tasks that we want to chain on the receiving and the construction of this response object. response.getBody is just an in memory getter on the response object and the same goes for the path toFile method call
+	What can you do if what you need is to chain costly tasks? We already saw a solution to this problem. What you need to do is run them asynchronously and for that you have a solution offered by the CompletableFuture API, which is composition
+	In fact, what you can do is create an asynchronous task that returns a result wrapped in a completable future and then chain it using the thenCompose method call on the CompletableFuture object
+
+6.8 - Using Delayed Start to Create Costly Chains of Tasks
+	Now what can be done if creating the chain of task itself is a costly process
+	In fact, this case should not be overlooked. If the creation of the chain of tasks is itself costly, if it is a costly process, the completable future answer is it should be created asynchronously, meaning that the creation of this chain of tasks, the thenComplete, the thenApply, the thenRun, etc should be wrapped in an asynchronous task itself. Wrapped, maybe not. It may be probably not a good idea to wrap that in a CompletableFuture because the CompletableFuture API provides a very elegant solution, a little trick, that we're going to see now
+	Using an async call at some point to move from one thread to another could be seen as a solution, but as we already saw it, moving your data from one thread to another is itself costly. So you don't want to create your data, for instance, to read your list of primary keys in one thread, then transfer this list of primary keys to another thread to fetch the user object
+	This is going to be another head that you should not pay in this case
+	So the trick that we're going to see is to use a delayed start, that is to create everything in the same thread asynchronously if they're long-running tasks and trigger the start of the processing with a fake CompletableFuture object
+	Let us see that
+
+6.9 - Writing the CompletableFuture Delayed Start Pattern
+	The first step is to create a fake CompletableFuture, an empty CompletableFuture and we're going t ocall it start
+		CompletableFuture<Void> start = new CompletableFuture<>();
+	CompletableFuture<Void> meaning that the only value this completable future may produce is the null value
+	Passing this null value from one thread to another will not be costly, in fact, it will be almost free
+	On this CompletableFuture, we can chain whatever we need
+		start.thenCompose(nil -> getUserIDs())
+			.thenCompose(ids-> getUsersFromDB(ids))
+			.thenCompse(users -> sendEmails(users))
+	Since all those tasks are long running tasks, we wrap them in functions that return CompletableFuture objects and chain them using the thenCompose method call from CompletableFuture
+	All the chain is then linked to this technical CompletableFuture object that we first create, which is called start and remember that this empty CompletableFuture object is not complete, it's not done, it's not finished, so nothing is triggered, no operation is occuring when we're building this chain of tasks
+	You can even create several branches in your chain if you need it by creating this same start object, then composing that to the fetching of the primary keys and then running some kind of logger and continue by composing the fetching of user objects from the database. This is also perfectly valid
+		CompletableFuture<Void> start = new CompletableFuture<>();
+		CompletableFuture<List<Long>> ids = start.thenCompose(nil -> getUserIDs())
+		
+		ids.thenRun(ids -> logger.info("Users read"))
+		ids.thenCompse(ids -> getUsersFromDB(ids))
+			.thenCompose(users -> sendEmails(users))
+		
+		start.complete(null);
+	The trick is, once again, nothing will happen until the start CompletableFuture completes.
+	So to trigger this computation, you need to complete this start CompletableFuture and the only way you have to complete this CompletableFuture object is to call the complete() method providing the only value that start can produce, which is the null value
+	So in this case, start completes in the main thread, then triggering all the tasks that have been chained on this object, also in the main thread
+	Here, we're not really asynchronous since we're executing in the main thread. But we could also call the completeAsync method on this CompletableFuture that is going to complete this CompletableFuture in a thread from the executor passed as a parameter
+		start.completeAsync(() -> null, executor);
+	The only difference is that we do not provide the value to complete this CompletableFuture, but merely a supplier that is going to be called to create that value, thus this syntax, no parameter returns null
+	And this is a trick that you can use to properly launch your chain of tasks
+
+6.10 - Introducing the Live Demo, Setting up the Delayed Start Pattern
+	Let us see how all this is working on real examples. We're going to take a closer look at which thread is executing what. We're not really going to see the differences in performance of the different patterns, why, because this kind of thing is extremely difficult to set up, but I will still give you hints on how to see them
+	Trying to optimize the performances of a completable future system when it is complex is, in fact, quite hard. Most of the time, it turns out that you have to deal with multi-threaded computation and choose the right thread to do the right computation
+	When you need to deal with performances, you need to measure things in your own application and on your production environment. Most of the time, measuring things on a development desktop PC is just useless because the behavior of a desktop PC is very different from the one of the server
+	There is a very good tool available as part of the OpenJDK project, which is called JCStress
+		https://openjdk.java.net/projects/code-tools/jcstress/
+	JCStress is something that can help you improve the correctness of concurrency in your application in the JVM, in class libraries, and even in hardware
+	It's a very technical tool not very stable still because it's still experimental so using it is quite hard, quite tricky, and is far beyond the scope of this course.
+	So I'm just mentioning this tool because it's really a great tool but I will not be talking more about it. You'll need to check it yourself if you want to use it
+	What I would like to show you is how we can use the starting completable future trick to trigger an all chain of completable future
+		Supplier<List<Long>> supplyIDs = () -> {
+			sleep(200);
+			return Arrays.asList(1L, 2L, 3L);
+		};
+		
+		Function<List<Long>, List<User>> fetchUsers = ids -> {
+			sleep(300);
+			return ids.stream().map(User::new).collect(Collectors.toList());
+		};
+		
+		Consumer<List<User>> displayer = users -> {
+			System.out.println("In thread " + Thread.currentThread().getName());
+			users.forEach(System.out::println);
+		};
+		
+		CompletableFuture<Void> start = new CompletableFuture<>();
+		
+		CompletableFuture<List<Long>> supply = start.thenApply(nil -> supplyIDs.get());
+		CompletableFuture<List<User>> fetch = supply.thenApply(fetchUsers);
+		CompletableFuture<Void> display = fetch.thenAccept(displayer);
+		
+		
+		start.complete(null);	// Added in 6.11
+		sleep(1_000);
+	We created this completable future (start) just by using the default constructor. The CompletableFuture thus created will never complete unless we call this complete method passing the right value. And since this is a CompletableFuture of Void, the only vlaue this completable future can provide is the null value
+	
+
+6.11 - Demo: Controlling Threads with the Delayed Start Pattern
+	This time, this code has been executed in a main thread, which was not the case in the previous context (before chaining to start). In the previous context, the code was executed in ForkJoinPool
+	Now if we want to control the thread which is gonig to execute this code, we need to the completeAsync method
+		start.completeAsync(() -> null, executor);
+	If we use it that way, it will be executed in the Common Fork/Join Pool
+
+6.12 - Demo: Setting up the HttpClient Example
+	 Code for HttpClient (java.net.http package in Java 11; However, Jose uses Java 9 when this is still in incubator. And I'm having issues SSL issue when running modified code and don't know how to fix it yet. So I'm not adding any code here)
+	 Usinsg client.sendAsync
+
+6.13 - Demo: Running the HttpClient Example and Controlling the Threads
+
+6.14 - Demo: Delaying the Start of the HttpClient Example
+
+6.15 - Module Wrapup: Three Ideas to Build Performant Async Pipelines
+	First, you saw the important of controlling your threads. In a nutshell, going asynchronous gives you control and predictability because sometimes you do not want to block a thread or you want to execute the particular task in a particular thread
+	Non asynchronous gives you performance, most of the time, it gives you performance because you do not have to move data from one thread to another
+	And when you have to go asynchronous, then you should be careful about the amount of data you will need to move from one thread to another
+	And as we saw it, you can also use delayed start in the case your chain of task itself is costly to create
+	Let me go back on the 3 main ideas
+		First one is you should avoid to block your threads and for that, you can use async calls for long-running tasks
+		Use pools of threads of the right size. If your pool of threads is too small, then you will have tasks waiting for available thread to execute them
+		And you should always try to identify which thread is executing what task
+		The second idea is avoid moving data across threads because it is costly and if you need to do it, try to move as little data as possible.
+		For that, you can try to identify your map/filter/reduce operations in your data processing pipeline
+		And execute everything in the same thread. If your first task is producing a lot of data, think about the list of users we saw as an example and then you need to process this list of users, then try to process it that produced it in the first place
+		And it turns out to be the same advice you should try to identify which thread is executing each task
+		And the third and last idea is to use the "task triggering trick". It helps for costly chains if the creation of your chain of tasks is itself costly and it gives you control on which thread is executing each task
+	So you see that all those 3 ideas are built around the same concept to identify which thread is executing what and all the examples we saw, you should have all the tools you need and all the ideas you need to do that
