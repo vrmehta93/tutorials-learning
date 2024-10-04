@@ -656,14 +656,54 @@ Updated June 2023
 
 7.9 - Path Expressions
 	Path expressions lets you dynamically reference a full path based on the configuration you're working with
+	There are 3 different values you can access:
+		path.root - directory of the root module i.e. configuration you're working on
+		path.module - resolves to the path of the module you're using
+		path.cwd - current working directory, that's the directory you're currently running Terraform from
+	Usually path.cwd and path.root are the same but it's possible to run Terraform from a different working directory than where your config is
 
 7.10 - Terraform Expressions and Functions
+	We've been using Terraform expressions for a bit. In particular - interpolation and heredoc expressions to include resource and variable values in a string or pass an entire string to an argument like user data
+	Terraform also supports standard arithmetic and logical operators like and, or, etc. The evaluation will depend on the data type you're operating on and whether that data type supports the comparison
+	Terraform also supports conditional expressions, which are essentially "if" statements followed by a value to return if true and a value to return if false
+	For expressions is used to manipulate and tarnsform collections. It can take any collection object type, map, list, set, etc and it will return a new tuple or object
+		They're great way to work with the set of instances that a count or for_each argument generates from a resource block
+	Terraform supports functions that transform and manipulate data
+	Unlike provider plugins, functions are built into the Terraform binary, so you don't have to initialize or download anything to use them
+	Since they don't have to use an external service or executable, they also evaluate much faster than a resource or a data source from a provider
+	The basic function syntax follows this format:
+		func_name(arg1, arg2, ...)
+	Arguments are not named and they must be in the proper order
+	You could test functions by placing them in a Terraform config, running a plan, evaluating the results, but that's time consuming and difficult to debug
+	For that reason, Terraform has a command called "console" that opens up an interpretation console when you can have Terraform evaluate functions and other expressions
+	That is much more efficient than testing things in a config directly
+	Console will also load the current state data values as a configuration, allowing you to use read data to test your functions and expressions
+	Terraform has over 100 functions
 
 7.11 - Common Function Categories
+	Based on current Terraform docs, there are at least 9 different function categories with more possibly coming in the future. We'll focus on the ones we'll use
+		Numeric - manipulate numbers. e.g. min(42, 13, 7)
+		String - manipulate strings. e.g. lower("TACOS")
+		Collection - for lists and maps basically. e.g. merge(map1, map2)
+		IP network - dedicated functions for IP addresses. e.g. cidrsubnet()
+		Filesystem - e.g. file(path) reads content of file out to a string
+		Type conversion - e.g. toset() converts list or tuple to set
+	Other categories are listed in the terraform docs
 
 7.12 - Functions for the Configuration
+	Currently we define startup script with heredoc expression but John wants us to move it into a file
+	We would use the file function but we would need to dynamically update the bucket name in our script
+	Instead, we will use the "templatefile(file_location, {map of variables}) - reads contents of a file and swaps placeholders in the file with the values submitted as part of the function
+	Another request from John was to simply networking by determining the subnet address dynamically. We can do that leveraging the cidrsubnet(cidr_range, subnet bits to add, network number) function
+	John also wants to consistently name all of the resources. We can do that by adding a variable for a naming prefix and adding a name tag for each resource tha doesn't have a name argument
+	Finally, we're going to be adding a naming prefix variable to the config, we can use it for our bucket name, and apply the lower()
 
 7.13 - Testing Functions with Terraform Console
+	Use commands/m7_commands.sh
+	You do need to initialize a configuration before "terraform console" will work properly
+	Use "lookup" function as it takes a 3rd argument after the key value which is the value to return if the key isn't found
+	You should always make sure to exit the console when you're done. Terraform locks the state data while console is running. This prevents another Terraform process from changing the state data underneath us while we're testing out expressions
+		With "exit" command
 
 7.14 - Using the Templatefile Functions
 
@@ -672,3 +712,135 @@ Updated June 2023
 7.16 - Adding a Naming Prefix
 
 7.17 - Validating and Deploying the Updated Configuration
+
+8.2 - Terraform Modules (Using a Module for Common Configurations)
+	Terraform module is simply a configuration that defines inputs, has some resources and/or data sources, and some outputs. And honestly, all those are optional
+	When you create a set of .tf or .tf.json files in a directory, that's a module
+	The main config you're working with is known as the "root module" and it can invoke other modules to create resources
+	Modules can form a hierarchy with the root module at the top. Our root module can invoke a child module which in turn could invoke another child module
+	The calling module is referred to as the "parent module" and the called module is the "child" module. The child module can be invoked multiples times by the parent module either repeating the module block or using the count or for_each meta arguments
+	The motivation behind creating/using modules is to leverage the logical grouping of resources and configs in your deployment for code reuse
+	The modules can be sources from local file system, a source control repo or a remote registry that followes the Hashicorp provider protocol. The most common source is the Terraform public registry
+	Modules that are hosted on a registry are versioned in the same way that providers are. It's important to note that versioning is only supported when working with a registry and not a locally stored module
+
+8.3 - Globomantics Updates
+	Potential improvements:
+		Leverage VPC module for networking
+		Create a module for S3 buckets. Include:
+			Load balancer permissions
+			Instance profiel permissions
+
+8.4 - Module Structure
+	A module is really just a collection of Terraform files in a directory
+	The contents of a module will include input variables, resources to be created and outputs that the parent module might want to use
+	Child module has no access to local values, resource attributes or input variables of the parent module. Likewise for parent module
+
+8.5 - Module Syntax
+	Creating a module block starts with the "module" keyword
+		module "name_label" {
+			source = "local_or_remote_source"
+			version = "version_expression"
+			providers {
+				module_provider = parent_provider
+			}
+
+			# Input variables
+		}
+	The name of the module should be something descriptive of the intention behind the module and not just the name of the module itself
+	The rest of the config goes inside the block
+	The "source" argument tells terraform where to get the module from. It could be a local file system, Terraform registry or any other supported source type
+	If the source supports versioning, meaning it's from Terraform registry, you can specify the version argument
+	If you'd like to use a specific instance of a provider in the module, you can use the "providers" argument. The value will be a map where the key is the name of the provider in the child module and the value is the name of the provider alias
+		If you don't specify a providers block, Terraform will use the default provider instance that matches the provideer type in the child module
+	The remainder of the block will be key-value pairs with the key being the name of the input variables
+	Module blocks also support some meta arguments, including the depends_on
+	Example: s3.tf
+		module "tacos" {
+			source = "./modules/s3"
+			# Input variables
+			bucket_name = "taco_bucket"
+		}
+
+8.6 - Module Scoping
+	Here's an example to talk more about scoping. We've got the module code in file "modules/s3/main.tf":
+		variable "bucket_name" {}
+
+		resource "aws_s3_bucket" "main" {
+			name = var.bucket_name
+		}
+
+		output "bucket_id" {
+			value = aws_s3_bucket.bucket.id
+		}
+	Let's say we want to reference an attribute of that resource in our root module "main.tf":
+		module "tacos" {
+			source = "./modules/s3"
+			bucket_name = "taco_bucket"
+		}
+
+		locals {
+			# taco_id = module.tacos.aws_s3_bucket.id	# ERROR
+			taco_id = module.tacos.bucket_id
+		}
+	The general form would be "module.<name_label>.<output>"
+
+8.7 - Adding the VPC Module
+
+8.8 - For Expressions
+	For expressions create a new collection based on an existing one, transforming data as needed
+	A for expression is especially useful when you're dealing with resources that have a "count" or "for_each" argument. But really, any time you need to transform a collection into another collection, the for expression is there for you
+	The input for a for expression can be any collection data type
+	The result of a for expression will either be a tuple or object type
+	Tuple Syntax:
+		# Create a tuple
+		[for item in items: tuple_element]	# Square brackets mean the result will be a tuple
+
+		# Example
+		locals {
+			toppings = ["cheese", "lettuce", "salsa"]
+		}
+
+		[for t in local.toppings : "Globo ${t}"]
+	Object Syntax:
+		# Create an object
+		{ for key,value in map: obj_key => obj_value}	# Curly braces
+
+		# Example
+		locals {
+			prices = {
+				taco = "5.99"
+				burrito = "9.99"
+				enchilada = "7.99"
+			}
+		}
+
+		{for i, price in local.prices: i => ceil(price)}
+
+8.9 - Using a For Expression
+
+8.10 - Creating the S3 Module
+
+8.11 - Adding the S3 Module
+
+8.12 - Validating and Applying the Configuration
+
+8.13 - Moving Resource Options
+	We'll use subnet as an example
+	Multiple options:
+		We can use the "terraform state mv" command after making our config changes, but before running a plan to move subnet entry to a new identifier address
+			terraform state mv OLD_ADDR NEW_ADDR	# Option 1
+		 	
+			# In our case
+			terraform state mv aws_subnet.public_subnets[0] module.app.aws_subnet.public[0]
+		This is the only option available to you prior to Terraform 1.1
+		Terraform 1.1 introduced the "moved" block which you can add to your config for each resource that's moving
+			moved {	# Option 2
+				from = aws_subnet.public_subnets[0]
+				to = module.app.aws_subnet.public[0]
+			}
+		Add this block to your config AFTER making other changes, but BEFORE running a plan
+		This is the preferred method for moving resources because you can preview the changes in the execution plan before making them
+
+8.14 - Fixing a Failed Run
+
+8.15 - Course Summary
